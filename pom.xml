@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>net.cardosi</groupId>
+  <artifactId>j2cl-maven-plugin</artifactId>
+  <version>0.2-SNAPSHOT</version>
+  <packaging>maven-plugin</packaging>
+
+  <name>Sample J2CL Maven Plugin</name>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.build.outputEncoding>UTF-8</project.build.outputEncoding>
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
+    <vertispan.version>0.1-SNAPSHOT</vertispan.version>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>args4j</groupId>
+      <artifactId>args4j</artifactId>
+      <version>2.33</version>
+    </dependency>
+    <dependency>
+      <groupId>com.vertispan.j2cl</groupId>
+      <artifactId>transpiler</artifactId>
+      <version>${vertispan.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.google.javascript</groupId>
+          <artifactId>closure-compiler-unshaded</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.vertispan.j2cl</groupId>
+      <artifactId>gwt-incompatible-stripper</artifactId>
+      <version>${vertispan.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.vertispan.javascript</groupId>
+      <artifactId>closure-compiler-unshaded</artifactId>
+      <version>1.0-SNAPSHOT</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.google.jsinterop</groupId>
+          <artifactId>jsinterop-annotations</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.google.guava</groupId>
+          <artifactId>guava</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>commons-codec</groupId>
+      <artifactId>commons-codec</artifactId>
+      <version>1.10</version>
+    </dependency>
+
+
+    <!-- Plugin requirements -->
+    <dependency>
+      <groupId>org.apache.maven</groupId>
+      <artifactId>maven-plugin-api</artifactId>
+      <version>3.6.0</version>
+    </dependency>
+
+    <!-- dependencies to annotations -->
+    <dependency>
+      <groupId>org.apache.maven.plugin-tools</groupId>
+      <artifactId>maven-plugin-annotations</artifactId>
+      <version>3.6.0</version>
+      <scope>provided</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-plugin-plugin</artifactId>
+        <version>3.6.0</version>
+      </plugin>
+      <!-- testing -->
+      <plugin>
+        <groupId>net.cardosi</groupId>
+        <artifactId>j2cl-maven-plugin</artifactId>
+        <version>${project.version}</version>
+        <configuration>
+          <src>.</src>
+          <classpath>.</classpath>
+          <outputJsPathDir>${build.directory}/js</outputJsPathDir>
+          <entrypoint>
+            <string>a</string>
+          </entrypoint>
+          <j2clClasspath>.</j2clClasspath>
+          <bytecodeClasspath>.</bytecodeClasspath>
+          <jsZipCacheDir>.</jsZipCacheDir>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
+  <repositories>
+    <repository>
+      <id>vertispan-releases</id>
+      <name>Vertispan hosted artifacts-releases</name>
+      <url>https://repo.vertispan.com/j2cl</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+    </repository>
+  </repositories>
+
+</project>
