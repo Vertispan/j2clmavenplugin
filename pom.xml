@@ -21,48 +21,10 @@
 
   <dependencies>
     <dependency>
-      <groupId>args4j</groupId>
-      <artifactId>args4j</artifactId>
-      <version>2.33</version>
-    </dependency>
-    <dependency>
       <groupId>com.vertispan.j2cl</groupId>
-      <artifactId>transpiler</artifactId>
-      <version>${vertispan.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>com.google.javascript</groupId>
-          <artifactId>closure-compiler-unshaded</artifactId>
-        </exclusion>
-      </exclusions>
+      <artifactId>build-tools</artifactId>
+      <version>${project.version}</version>
     </dependency>
-    <dependency>
-      <groupId>com.vertispan.j2cl</groupId>
-      <artifactId>gwt-incompatible-stripper</artifactId>
-      <version>${vertispan.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.vertispan.javascript</groupId>
-      <artifactId>closure-compiler-unshaded</artifactId>
-      <version>1.0-SNAPSHOT</version>
-      <exclusions>
-        <exclusion>
-          <groupId>com.google.jsinterop</groupId>
-          <artifactId>jsinterop-annotations</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>com.google.guava</groupId>
-          <artifactId>guava</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-
-    <dependency>
-      <groupId>commons-codec</groupId>
-      <artifactId>commons-codec</artifactId>
-      <version>1.10</version>
-    </dependency>
-
 
     <!-- Plugin requirements -->
     <dependency>
@@ -86,23 +48,6 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-plugin-plugin</artifactId>
         <version>3.6.0</version>
-      </plugin>
-      <!-- testing -->
-      <plugin>
-        <groupId>net.cardosi</groupId>
-        <artifactId>j2cl-maven-plugin</artifactId>
-        <version>${project.version}</version>
-        <configuration>
-          <src>.</src>
-          <classpath>.</classpath>
-          <outputJsPathDir>${build.directory}/js</outputJsPathDir>
-          <entrypoint>
-            <string>a</string>
-          </entrypoint>
-          <j2clClasspath>.</j2clClasspath>
-          <bytecodeClasspath>.</bytecodeClasspath>
-          <jsZipCacheDir>.</jsZipCacheDir>
-        </configuration>
       </plugin>
     </plugins>
   </build>
