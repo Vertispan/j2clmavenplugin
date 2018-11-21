@@ -16,7 +16,6 @@
     <project.build.outputEncoding>UTF-8</project.build.outputEncoding>
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
-    <vertispan.version>0.1-SNAPSHOT</vertispan.version>
   </properties>
 
   <dependencies>
