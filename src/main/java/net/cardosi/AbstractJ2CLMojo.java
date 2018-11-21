@@ -2,6 +2,7 @@ package net.cardosi;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,7 +17,7 @@ import org.apache.maven.plugins.annotations.Parameter;
 public abstract class AbstractJ2CLMojo extends AbstractMojo {
 
     @Parameter(property = "sourceDir", /*usage = "specify one or more java source directories",*/ required = true)
-    protected List<String> sourceDir = new ArrayList<>();
+    protected List<String> sourceDir = Arrays.asList("src/main/java");
 
     @Parameter(name = "bytecodeClasspath", /*usage = "java classpath. bytecode jars are assumed to be pre-" +
                 "processed, source jars will be preprocessed, transpiled, and cached. This is only " +
@@ -138,83 +139,6 @@ public abstract class AbstractJ2CLMojo extends AbstractMojo {
         getLog().info("jsZipCacheDir " + jsZipCacheDir);
         toReturn.put(jsZipCacheDir, new File(jsZipCacheDir));
         return toReturn;
-
-
-        /*
-         getLog().info("intermediate js from j2cl path " + intermediateJsPath);
-
-            generatedClassesDir.mkdir();
-            getLog().info("generatedClassesDir " + generatedClassesDir);
-            String sourcesNativeZipPath = File.createTempFile("proj-native", ".zip").getAbsolutePath();
-
-            classesDirFile.mkdir();
-            getLog().info("classesDirFile " + classesDirFile);
-            bytecodeClasspath += ":" + classesDirFile.getAbsolutePath();
-            List<File> classpath = new ArrayList<>();
-            for (String path : bytecodeClasspath.split(File.pathSeparator)) {
-                getLog().info("classpath.add " + path);
-                classpath.add(new File(path));
-            }
-
-            List<String> javacOptions = Arrays.asList("-implicit:none");
-            JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-            StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, null, null);
-            fileManager.setLocation(StandardLocation.SOURCE_PATH, Collections.emptyList());
-            fileManager.setLocation(StandardLocation.SOURCE_OUTPUT, Collections.singleton(generatedClassesDir));
-            fileManager.setLocation(StandardLocation.CLASS_PATH, classpath);
-            fileManager.setLocation(StandardLocation.CLASS_OUTPUT, Collections.singleton(classesDirFile));
-
-            // put all j2clClasspath items into a list, we'll copy each time and add generated js
-            List<String> baseJ2clArgs = new ArrayList<>(Arrays.asList("-cp", bytecodeClasspath, "-d", intermediateJsPath));
-            if (declareLegacyNamespaces) {
-                baseJ2clArgs.add("-declarelegacynamespaces");
-            }
-
-            String intermediateJsOutput = outputJsPathDir + "/app.js";
-            CompilationLevel compLevel = CompilationLevel.fromString(compilationLevel);
-            List<String> baseClosureArgs = new ArrayList<String>(Arrays.asList(
-                    "--compilation_level", compLevel.name(),
-                    "--js_output_file", intermediateJsOutput,// temp file to write to before we insert the missing line at the top
-                    "--dependency_mode", dependencyMode.name(),// force STRICT mode so that the compiler at least orders the inputs
-                    "--language_out", languageOut
-            ));
-            if (compLevel == CompilationLevel.BUNDLE) {
-                // support BUNDLE mode, with no remote fetching for dependencies)
-                baseClosureArgs.add("--define");
-                baseClosureArgs.add("goog.ENABLE_DEBUG_LOADER=false");
-            }
-            for (String def : define) {
-                baseClosureArgs.add("--define");
-                baseClosureArgs.add(def);
-            }
-            for (String ep : entrypoint) {
-                baseClosureArgs.add("--entry_point");
-                baseClosureArgs.add(ep);
-            }
-            for (String extern : externs) {
-                baseClosureArgs.add("--externs");
-                baseClosureArgs.add(extern);
-            }
-
-            // configure a persistent input store - we'll reuse this and not the compiler for now, to cache the ASTs,
-            // and still allow jscomp to be in modes other than BUNDLE
-            PersistentInputStore persistentInputStore = new PersistentInputStore();
-
-            for (String zipPath : j2clClasspath.split(File.pathSeparator)) {
-                getLog().info("Verify zipPath " + zipPath);
-                Preconditions.checkArgument(new File(zipPath).exists() && new File(zipPath).isFile(), "jszip doesn't exist! %s", zipPath);
-
-                baseClosureArgs.add("--jszip");
-                baseClosureArgs.add(zipPath);
-
-                // add JS zip file to the input store - no nice digest, since so far we don't support changes to the zip
-                persistentInputStore.addInput(zipPath, "0");
-            }
-            baseClosureArgs.add("--js");
-
-
-        //pre-transpile all dependency sources to our cache dir, add those cached items to closure args
-         */
     }
 
 }
