@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>net.cardosi</groupId>
+  <groupId>net.cardosi.j2cl</groupId>
   <artifactId>j2cl-maven-plugin</artifactId>
   <version>0.2-SNAPSHOT</version>
   <packaging>maven-plugin</packaging>
@@ -20,7 +20,7 @@
 
   <dependencies>
     <dependency>
-      <groupId>com.vertispan.j2cl</groupId>
+      <groupId>net.cardosi.j2cl</groupId>
       <artifactId>build-tools</artifactId>
       <version>${project.version}</version>
     </dependency>
