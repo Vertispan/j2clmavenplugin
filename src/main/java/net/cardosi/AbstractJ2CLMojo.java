@@ -8,11 +8,13 @@ import java.util.List;
 import java.util.Map;
 
 import com.google.javascript.jscomp.CompilerOptions;
+import net.cardosi.artifactitems.ArtifactItem;
+import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugins.annotations.Parameter;
 
 /**
- * Abstract claa to define commonly used parameters
+ * Abstract class to define commonly used parameters
  */
 public abstract class AbstractJ2CLMojo extends AbstractMojo {
 
@@ -126,6 +128,19 @@ public abstract class AbstractJ2CLMojo extends AbstractMojo {
     )
     protected String generatedClassesDir;
 
+    /**
+     * The additional <b>artifacts</b> to deploy
+     */
+    @Parameter(name = "artifactItems")
+    protected List<ArtifactItem> artifactItems = new ArrayList<>();
+
+    /**
+     * Path to the <b>directory</b> where additional <b>artifacts</b> must be deployed
+     */
+    @Parameter(name = "outputDirectory")
+    protected String outputDirectory;
+
+
     protected Map<String, File> getWorkingDirs() {
         Map<String, File> toReturn = new HashMap<>();
         getLog().info("intermediateJsPath " + intermediateJsPath);
@@ -138,6 +153,8 @@ public abstract class AbstractJ2CLMojo extends AbstractMojo {
         toReturn.put(classesDir, new File(classesDir));
         getLog().info("jsZipCacheDir " + jsZipCacheDir);
         toReturn.put(jsZipCacheDir, new File(jsZipCacheDir));
+        getLog().info("outputDirectory " + outputDirectory);
+        toReturn.put(outputDirectory, new File(outputDirectory));
         return toReturn;
     }
 
