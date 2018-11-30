@@ -25,12 +25,12 @@ public abstract class AbstractJ2CLMojo extends AbstractMojo {
                 "processed, source jars will be preprocessed, transpiled, and cached. This is only " +
                 "done on startup, sources that should be monitored for changes should be passed in " +
                 "via -src",*/ required = true)
-    protected String bytecodeClasspath;
+    protected List<String> bytecodeClasspath;
 
     @Parameter(name = "j2clClasspath", /*usage = "specify js archive classpath that won't be " +
                 "transpiled from sources or classpath. If nothing else, should include " +
                 "bootstrap.js.zip and jre.js.zip", */required = true)
-    protected String j2clClasspath;
+    protected List<String> j2clClasspath;
 
     @Parameter(name = "outputJsPathDir", /*usage = "indicates where to write generated JS sources, sourcemaps, " +
                 "etc. Should be a directory specific to gwt, anything may be overwritten there, " +

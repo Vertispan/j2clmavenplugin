@@ -78,8 +78,8 @@ public class Build extends AbstractJ2CLMojo implements Gwt3Options {
             Map<String, File> artifactFiles = getArtifactFiles(artifactItems, repoSystem, repoSession, remoteRepos);
             copyArtifactFiles(artifactFiles, getWorkingDirs().get(outputDirectory));
             final Set<DefaultArtifact> artifacts = project.getArtifacts();
-            String dependencies = artifacts.stream().map(artifact -> artifact.getFile().getPath()).collect(Collectors.joining(":"));
-            bytecodeClasspath = dependencies + ":" + bytecodeClasspath;
+            final List<String> dependencies = artifacts.stream().map(artifact -> artifact.getFile().getPath()).collect(Collectors.toList());
+            bytecodeClasspath.addAll(dependencies);
             getLog().info("bytecodeClasspath " + bytecodeClasspath);
             ListeningCompiler.run(this);
         } catch (Exception e) {
@@ -104,7 +104,7 @@ public class Build extends AbstractJ2CLMojo implements Gwt3Options {
     }
 
     @Override
-    public String getBytecodeClasspath() {
+    public List<String>  getBytecodeClasspath() {
         return bytecodeClasspath;
     }
 
@@ -144,7 +144,7 @@ public class Build extends AbstractJ2CLMojo implements Gwt3Options {
     }
 
     @Override
-    public String getJ2clClasspath() {
+    public List<String>  getJ2clClasspath() {
         return j2clClasspath;
     }
 
