@@ -10,11 +10,13 @@ built from here:
     https://github.com/gitgabrio/j2cl-devmode-strawman
 
 ------------------------
-The plugin has two goals
+The plugin has three goals
 
-1 build: it starts compilation
+1. build: it executes a single compilation
 
-2 clean: it cleans up all the plugin-specific directories
+2. run: it starts in listening mode detecting file changing and eventually recompiling them
+
+3. clean: it cleans up all the plugin-specific directories
 
 ----------------------
 To test it:
