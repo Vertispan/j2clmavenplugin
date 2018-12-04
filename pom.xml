@@ -6,7 +6,7 @@
 
   <groupId>net.cardosi.j2cl</groupId>
   <artifactId>j2cl-maven-plugin</artifactId>
-  <version>0.2a-SNAPSHOT</version>
+  <version>0.3-SNAPSHOT</version>
   <packaging>maven-plugin</packaging>
 
   <name>Sample J2CL Maven Plugin</name>
@@ -20,7 +20,7 @@
 
   <dependencies>
     <dependency>
-      <groupId>com.vertispan.j2cl</groupId>
+      <groupId>net.cardosi.j2cl</groupId>
       <artifactId>build-tools</artifactId>
       <version>${project.version}</version>
     </dependency>
