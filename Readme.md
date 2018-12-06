@@ -1,7 +1,7 @@
 J2CL Maven plugin
 =================
 
-Thius plugin works using the
+This plugin includes the code original developed as
 
         com.vertispan.j2cl:build-tools
 

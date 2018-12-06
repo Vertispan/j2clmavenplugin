@@ -1,4 +1,4 @@
-package net.cardosi;
+package net.cardosi.mojo;
 
 import java.io.File;
 import java.util.List;
@@ -7,7 +7,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.google.javascript.jscomp.CompilerOptions;
-import com.vertispan.j2cl.Gwt3Options;
+import net.cardosi.mojo.options.Gwt3Options;
 import org.apache.maven.artifact.DefaultArtifact;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -18,8 +18,8 @@ import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.repository.RemoteRepository;
 
-import static net.cardosi.artifactitems.ArtifactItemUtils.copyArtifactFiles;
-import static net.cardosi.artifactitems.ArtifactItemUtils.getArtifactFiles;
+import static net.cardosi.mojo.artifactitems.ArtifactItemUtils.copyArtifactFiles;
+import static net.cardosi.mojo.artifactitems.ArtifactItemUtils.getArtifactFiles;
 
 /**
  * Abstract class to be extended by Build/Run mojos

@@ -1,4 +1,4 @@
-package net.cardosi;
+package net.cardosi.mojo;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -8,8 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.google.javascript.jscomp.CompilerOptions;
-import net.cardosi.artifactitems.ArtifactItem;
-import org.apache.maven.artifact.repository.ArtifactRepository;
+import net.cardosi.mojo.artifactitems.ArtifactItem;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugins.annotations.Parameter;
 

@@ -1,4 +1,4 @@
-package net.cardosi.artifactitems;
+package net.cardosi.mojo.artifactitems;
 
 import java.io.File;
 import java.io.IOException;

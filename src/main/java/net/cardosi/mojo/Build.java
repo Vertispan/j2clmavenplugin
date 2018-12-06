@@ -1,21 +1,21 @@
-package net.cardosi;
+package net.cardosi.mojo;
 
-import com.vertispan.j2cl.ListeningCompiler;
+import net.cardosi.mojo.builder.SingleCompiler;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 
 /**
- * Incremental, continuous, compiler
+ * Single-time compiler goal
  */
-@Mojo(name = "run", requiresDependencyResolution = ResolutionScope.RUNTIME)
-public class Run extends AbstractBuilderRunnerMojo {
+@Mojo(name = "build", requiresDependencyResolution = ResolutionScope.RUNTIME)
+public class Build extends AbstractBuilderRunnerMojo  {
 
     @Override
     protected void internalExecute() throws MojoExecutionException{
-        getLog().info("Start listening...");
+        getLog().info("Start building...");
         try {
-            ListeningCompiler.run(this);
+            SingleCompiler.run(this);
         } catch (Exception e) {
             getLog().error(e);
             throw new MojoExecutionException(e.getMessage());
