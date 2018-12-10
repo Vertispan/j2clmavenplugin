@@ -6,7 +6,7 @@
 
   <groupId>net.cardosi.j2cl</groupId>
   <artifactId>j2cl-maven-plugin</artifactId>
-  <version>0.4-SNAPSHOT</version>
+  <version>0.5-SNAPSHOT</version>
   <packaging>maven-plugin</packaging>
 
   <name>J2CL Maven Plugin</name>
@@ -22,8 +22,8 @@
     <maven.source.plugin.version>3.0.1</maven.source.plugin.version>
     <maven.javadoc.plugin.version>3.0.1</maven.javadoc.plugin.version>
     <maven.gpg.plugin.version>1.6</maven.gpg.plugin.version>
+    <maven.dependency.tree.version>3.0.1</maven.dependency.tree.version>
     <!-- Builder dependencies versions -->
-    <args.version>2.33</args.version>
     <transpiler.version>0.2-SNAPSHOT</transpiler.version>
     <gwt.incompatible.stripper.version>0.2-SNAPSHOT</gwt.incompatible.stripper.version>
     <closure.compiler.unshaded.version>1.0-SNAPSHOT</closure.compiler.unshaded.version>
@@ -195,13 +195,14 @@
       <artifactId>maven-resolver-impl</artifactId>
       <version>${maven.resolver.version}</version>
     </dependency>
+    <!-- Do not reinvent the wheel -->
+    <dependency>
+      <groupId>org.apache.maven.shared</groupId>
+      <artifactId>maven-dependency-tree</artifactId>
+      <version>${maven.dependency.tree.version}</version>
+    </dependency>
 
     <!-- Builder dependencies -->
-    <dependency>
-      <groupId>args4j</groupId>
-      <artifactId>args4j</artifactId>
-      <version>${args.version}</version>
-    </dependency>
     <dependency>
       <groupId>com.vertispan.j2cl</groupId>
       <artifactId>transpiler</artifactId>

@@ -1,4 +1,4 @@
-package net.cardosi;
+package net.cardosi.mojo;
 
 public class TestRunner {
 }

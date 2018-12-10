@@ -9,11 +9,13 @@ import java.util.stream.Collectors;
 import com.google.javascript.jscomp.CompilerOptions;
 import net.cardosi.mojo.options.Gwt3Options;
 import org.apache.maven.artifact.DefaultArtifact;
+import org.apache.maven.execution.MavenSession;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
+import org.apache.maven.shared.dependency.graph.DependencyGraphBuilder;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.repository.RemoteRepository;
@@ -28,6 +30,21 @@ public abstract class AbstractBuilderRunnerMojo extends AbstractJ2CLMojo impleme
 
     @Parameter(defaultValue = "${project}", readonly = true, required = true)
     protected MavenProject project;
+
+    @Parameter( defaultValue = "${session}", readonly = true, required = true )
+    protected MavenSession session;
+
+    /**
+     * Contains the full list of projects in the reactor.
+     */
+    @Parameter( defaultValue = "${reactorProjects}", readonly = true, required = true )
+    protected List<MavenProject> reactorProjects;
+
+    /**
+     * The dependency tree builder to use.
+     */
+    @Component( hint = "default" )
+    protected DependencyGraphBuilder dependencyGraphBuilder;
 
     /**
      * The entry point to Maven Artifact Resolver, i.e. the component doing all the work.
