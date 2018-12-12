@@ -10,7 +10,7 @@ import org.apache.maven.shared.dependency.graph.DependencyNode;
  * Single-time compiler goal
  */
 @Mojo(name = "build", requiresDependencyResolution = ResolutionScope.RUNTIME)
-public class Build extends AbstractBuilderRunnerMojo  {
+public class BuildMojo extends AbstractBuilderRunnerMojo  {
 
     @Override
     protected void internalExecute() throws MojoExecutionException{

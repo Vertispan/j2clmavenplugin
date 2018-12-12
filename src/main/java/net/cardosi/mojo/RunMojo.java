@@ -9,7 +9,7 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
  * Incremental, continuous, compiler
  */
 @Mojo(name = "run", requiresDependencyResolution = ResolutionScope.RUNTIME)
-public class Run extends AbstractBuilderRunnerMojo {
+public class RunMojo extends AbstractBuilderRunnerMojo {
 
     @Override
     protected void internalExecute() throws MojoExecutionException{

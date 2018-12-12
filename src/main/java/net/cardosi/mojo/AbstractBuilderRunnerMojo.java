@@ -8,7 +8,7 @@ import java.util.stream.Collectors;
 
 import com.google.javascript.jscomp.CompilerOptions;
 import net.cardosi.mojo.options.Gwt3Options;
-import org.apache.maven.artifact.DefaultArtifact;
+import org.apache.maven.artifact.Artifact;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -24,7 +24,7 @@ import static net.cardosi.mojo.artifactitems.ArtifactItemUtils.copyArtifactFiles
 import static net.cardosi.mojo.artifactitems.ArtifactItemUtils.getArtifactFiles;
 
 /**
- * Abstract class to be extended by Build/Run mojos
+ * Abstract class to be extended by BuildMojo/RunMojo mojos
  */
 public abstract class AbstractBuilderRunnerMojo extends AbstractJ2CLMojo implements Gwt3Options {
 
@@ -70,7 +70,7 @@ public abstract class AbstractBuilderRunnerMojo extends AbstractJ2CLMojo impleme
             createWorkingDirs();
             Map<String, File> artifactFiles = getArtifactFiles(artifactItems, repoSystem, repoSession, remoteRepos);
             copyArtifactFiles(artifactFiles, getWorkingDirs().get(outputDirectory));
-            final Set<DefaultArtifact> artifacts = project.getArtifacts();
+            final Set<Artifact> artifacts = project.getArtifacts();
             final List<String> dependencies = artifacts.stream().map(artifact -> artifact.getFile().getPath()).collect(Collectors.toList());
             bytecodeClasspath.addAll(dependencies);
             getLog().info("bytecodeClasspath " + bytecodeClasspath);

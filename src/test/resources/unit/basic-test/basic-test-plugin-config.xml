@@ -23,15 +23,13 @@
     <maven.javadoc.plugin.version>3.0.1</maven.javadoc.plugin.version>
     <maven.gpg.plugin.version>1.6</maven.gpg.plugin.version>
     <maven.dependency.tree.version>3.0.1</maven.dependency.tree.version>
-    <takari.lifecycle.plugin.version>1.13.9</takari.lifecycle.plugin.version>
     <!-- Builder dependencies versions -->
     <transpiler.version>0.2-SNAPSHOT</transpiler.version>
     <gwt.incompatible.stripper.version>0.2-SNAPSHOT</gwt.incompatible.stripper.version>
     <closure.compiler.unshaded.version>1.0-SNAPSHOT</closure.compiler.unshaded.version>
     <commons.codec.version>1.11</commons.codec.version>
     <!-- Test -->
-    <org.eclipse.sisu.plexus.version>0.3.3</org.eclipse.sisu.plexus.version>
-    <takari.plugin.testing.version>2.9.2</takari.plugin.testing.version>
+    <maven.plugin.testing.harness.version>3.3.0</maven.plugin.testing.harness.version>
     <junit.version>4.12</junit.version>
     <!-- Dependency management -->
     <maven.shared.utils.version>3.1.0</maven.shared.utils.version>
@@ -85,11 +83,6 @@
       <dependency>
         <groupId>org.apache.maven</groupId>
         <artifactId>maven-artifact</artifactId>
-        <version>${maven.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.maven</groupId>
-        <artifactId>maven-model-builder</artifactId>
         <version>${maven.version}</version>
       </dependency>
       <dependency>
@@ -184,31 +177,15 @@
       <scope>provided</scope>
     </dependency>
     <!-- read Maven project object model files, and assemble inheritence and to retrieve remote models as required.-->
-    <!--<dependency>-->
-      <!--<groupId>org.apache.maven</groupId>-->
-      <!--<artifactId>maven-project</artifactId>-->
-      <!--<version>${maven.project.version}</version>-->
-      <!--<exclusions>-->
-        <!--<exclusion>-->
-          <!--<groupId>org.codehaus.plexus</groupId>-->
-          <!--<artifactId>plexus-container-default</artifactId>-->
-        <!--</exclusion>-->
-        <!--<exclusion>-->
-          <!--<groupId>org.apache.maven</groupId>-->
-          <!--<artifactId>maven-artifact-manager</artifactId>-->
-        <!--</exclusion>-->
-      <!--</exclusions>-->
-    <!--</dependency>-->
+    <dependency>
+      <groupId>org.apache.maven</groupId>
+      <artifactId>maven-project</artifactId>
+      <version>${maven.project.version}</version>
+    </dependency>
     <dependency>
       <groupId>org.apache.maven.shared</groupId>
       <artifactId>maven-artifact-transfer</artifactId>
       <version>${maven.artifact.transfer.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>org.sonatype.sisu</groupId>
-          <artifactId>sisu-inject-plexus</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.maven.resolver</groupId>
@@ -271,42 +248,9 @@
 
     <!-- Test -->
     <dependency>
-      <groupId>org.apache.maven</groupId>
-      <artifactId>maven-core</artifactId>
-      <version>${maven.version}</version>
-    </dependency>
-
-    <dependency>
-      <groupId>org.apache.maven</groupId>
-      <artifactId>maven-compat</artifactId>
-      <version>${maven.version}</version>
-      <scope>test</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>org.apache.maven</groupId>
-      <artifactId>maven-model</artifactId>
-      <version>${maven.version}</version>
-      <scope>test</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>org.eclipse.sisu</groupId>
-      <artifactId>org.eclipse.sisu.plexus</artifactId>
-      <version>0.3.3</version>
-    </dependency>
-
-    <dependency>
-      <groupId>io.takari.maven.plugins</groupId>
-      <artifactId>takari-plugin-testing</artifactId>
-      <version>${takari.plugin.testing.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>io.takari.maven.plugins</groupId>
-      <artifactId>takari-plugin-integration-testing</artifactId>
-      <version>${takari.plugin.testing.version}</version>
-      <type>pom</type>
+      <groupId>org.apache.maven.plugin-testing</groupId>
+      <artifactId>maven-plugin-testing-harness</artifactId>
+      <version>${maven.plugin.testing.harness.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -339,22 +283,6 @@
             </configuration>
             <goals>
               <goal>enforce</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-      <!-- https://github.com/takari/takari-plugin-testing-project/blob/master/testproperties.md -->
-      <plugin>
-        <groupId>io.takari.maven.plugins</groupId>
-        <artifactId>takari-lifecycle-plugin</artifactId>
-        <version>${takari.lifecycle.plugin.version}</version>
-        <extensions>true</extensions>
-        <executions>
-          <execution>
-            <id>testProperties</id>
-            <phase>process-test-resources</phase>
-            <goals>
-              <goal>testProperties</goal>
             </goals>
           </execution>
         </executions>

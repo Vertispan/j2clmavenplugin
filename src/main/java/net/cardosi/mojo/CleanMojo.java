@@ -28,12 +28,12 @@ import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
 
 @Mojo(name = "clean")
-public class Clean extends AbstractJ2CLMojo {
+public class CleanMojo extends AbstractJ2CLMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         try {
-            getLog().info("Clean up J2CL-specific temp files");
+            getLog().info("CleanMojo up J2CL-specific temp files");
             final Map<String, File> workingDirs = getWorkingDirs();
             for (File file : workingDirs.values()) {
                 getLog().info("Deleting if exists: " + file.getPath());

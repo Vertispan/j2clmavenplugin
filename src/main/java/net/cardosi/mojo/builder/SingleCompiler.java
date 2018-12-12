@@ -403,7 +403,7 @@ public class SingleCompiler {
         // collect all js into one artifact (currently jscomp, but it would be wonderful to not pay quite so much for this...)
         List<String> jscompArgs = new ArrayList<>(baseClosureArgs);
 
-        // Build a new compiler for this run, but share the cached js ASTs
+        // BuildMojo a new compiler for this run, but share the cached js ASTs
         Compiler jsCompiler = new Compiler(System.err);
         jsCompiler.setPersistentInputStore(persistentInputStore);
 
