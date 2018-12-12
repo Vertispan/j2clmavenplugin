@@ -16,6 +16,9 @@
 package net.cardosi.mojo;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import org.junit.Assert;
 
@@ -25,6 +28,7 @@ public class AbstractMojoTest {
     protected String baseDir;
     protected String target;
     protected String webappdir;
+    protected String webappLibDir;
     protected String intermediateJsPath;
     protected String generatedClassesDir;
     protected String outputJsPathDir;
@@ -32,6 +36,9 @@ public class AbstractMojoTest {
     protected String sourceDir;
     protected String jsZipCacheDir;
     protected String outputDirectory;
+    protected List<String> bytecodeClasspath;
+    protected List<String> j2clClasspath;
+
 
     public void assertDirectoriesPresent(String... paths) {
         if (paths == null || paths.length <= 0) {
@@ -76,8 +83,9 @@ public class AbstractMojoTest {
     protected void setup(File baseDirFile) {
         this.baseDirFile = baseDirFile;
         baseDir = baseDirFile.getAbsolutePath();
-        target = baseDir + "/test-target";
-        webappdir = target + "/webapps";
+        target = baseDir + "/target";
+        webappdir = target + "/webapp";
+        webappLibDir = webappdir + "/WEB-INF/lib";
         intermediateJsPath = target + "/js-sources";
         generatedClassesDir = target + "/gen-classes";
         outputJsPathDir = webappdir + "/js";
