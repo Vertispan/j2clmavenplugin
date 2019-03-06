@@ -1,5 +1,6 @@
 package net.cardosi.mojo.builder;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.attribute.FileTime;
 import java.util.List;
@@ -35,10 +36,10 @@ public class ListeningCompiler {
 
     private final static Logger LOGGER = Logger.getLogger(ListeningCompiler.class.getName());
 
-    public static void run(Gwt3Options options) throws IOException, InterruptedException, ExecutionException {
+    public static void run(Gwt3Options options, List<File> orderedClasspath) throws IOException, InterruptedException, ExecutionException {
         LOGGER.setLevel(Level.INFO);
         LOGGER.info("Setup SingleCompiler");
-        SingleCompiler.setup(options);
+        SingleCompiler.setup(options, orderedClasspath);
         FileTime lastModified = FileTime.fromMillis(0);
         LOGGER.info("Begin listening");
         while (true) {

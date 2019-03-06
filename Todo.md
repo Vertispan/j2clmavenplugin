@@ -1,6 +1,11 @@
 Thing to do
 ===========
 
+Start listening for modification of _source_ jars: currently the listening is working on source java file.
+
+
+
+
 Deploy modified version of build-tools with different groupid here:
 
 https://repo.vertispan.com/j2cl

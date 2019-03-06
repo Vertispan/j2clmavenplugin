@@ -74,7 +74,9 @@ public abstract class AbstractBuilderRunnerMojo extends AbstractJ2CLMojo impleme
             final List<String> dependencies = artifacts.stream().map(artifact -> artifact.getFile().getPath()).collect(Collectors.toList());
             bytecodeClasspath.addAll(dependencies);
             getLog().info("bytecodeClasspath " + bytecodeClasspath);
-            internalExecute();
+            final List<File> orderedClasspath = DependencyBuilder.getOrderedClasspath(session, dependencyGraphBuilder, project, reactorProjects, null);
+            getLog().info("orderedClasspath " + orderedClasspath);
+            internalExecute(orderedClasspath);
         } catch (Exception e) {
             getLog().error(e);
             throw new MojoExecutionException(e.getMessage());
@@ -156,7 +158,7 @@ public abstract class AbstractBuilderRunnerMojo extends AbstractJ2CLMojo impleme
         return outputJsPathDir;
     }
 
-    protected abstract void internalExecute() throws MojoExecutionException;
+    protected abstract void internalExecute(List<File> orderedClasspath) throws MojoExecutionException;
 
     protected void createWorkingDirs() throws MojoExecutionException {
         final Map<String, File> workingDirs = getWorkingDirs();

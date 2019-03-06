@@ -15,7 +15,12 @@
  */
 package net.cardosi.mojo;
 
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 import org.apache.maven.artifact.resolver.filter.ArtifactFilter;
 import org.apache.maven.artifact.resolver.filter.ScopeArtifactFilter;
@@ -29,6 +34,7 @@ import org.apache.maven.project.ProjectBuildingRequest;
 import org.apache.maven.shared.dependency.graph.DependencyGraphBuilder;
 import org.apache.maven.shared.dependency.graph.DependencyGraphBuilderException;
 import org.apache.maven.shared.dependency.graph.DependencyNode;
+import org.apache.maven.shared.dependency.graph.traversal.CollectingDependencyNodeVisitor;
 
 /**
  * Class used to create a Dependency tree for a given artifact
@@ -40,7 +46,82 @@ public class DependencyBuilder {
      */
     private static Log log = new SystemStreamLog();
 
-    public static DependencyNode getDependencyNode(MavenSession session, DependencyGraphBuilder dependencyGraphBuilder, MavenProject project, List<MavenProject> reactorProjects, String scope) throws MojoExecutionException {
+    /**
+     * Retrieve a <code>List</code> of the dependency files ordered from last children (= without dependency) to root
+     * @param session
+     * @param dependencyGraphBuilder
+     * @param project
+     * @param reactorProjects
+     * @param scope
+     * @return
+     * @throws MojoExecutionException
+     */
+    public static List<File> getOrderedClasspath(MavenSession session, DependencyGraphBuilder dependencyGraphBuilder, MavenProject project, List<MavenProject> reactorProjects, String scope) throws MojoExecutionException {
+        final DependencyNode dependencyNode = getDependencyNode(session, dependencyGraphBuilder, project, reactorProjects, null);
+        List<File> toReturn = new ArrayList<>();
+        recursivelyPopulateList(toReturn, dependencyNode);
+        return getDependencyNodeList(dependencyNode);
+//        recursivelyPopulateList(toReturn, dependencyNode);
+//        return toReturn;
+    }
+
+    // private methods --------------------------------------------------------
+
+    /**
+     * Insert the <code>DependencyNode</code>' artifact <code>File</code> (if not null) to the given <code>List</code>
+     * at the first (index 0) position
+     * @param toPopulate
+     * @param dependencyNode
+     */
+    private static void recursivelyPopulateList(List<File> toPopulate, DependencyNode dependencyNode) {
+        final File nodeFile = dependencyNode.getArtifact().getFile();
+        if (nodeFile != null) {
+            toPopulate.add(nodeFile);
+        }
+        dependencyNode.getChildren().forEach(child -> {
+            File childNodeFile = child.getArtifact().getFile();
+            if (childNodeFile != null) {
+                toPopulate.add(childNodeFile);
+            }
+        });
+        for (DependencyNode child : dependencyNode.getChildren()) {
+            child.getChildren().forEach(nephew -> recursivelyPopulateList(toPopulate, nephew));
+        }
+    }
+
+    /**
+     * Use a <code>CollectingDependencyNodeVisitor</code> to retrieve a list of <code>File</code> of the dependent <code>Artifatcs</code>
+     * @param toVisit
+     * @return
+     * @throws Exception
+     */
+    private static List<File> getDependencyNodeList(DependencyNode toVisit) throws MojoExecutionException {
+        try {
+            CollectingDependencyNodeVisitor visitor = new CollectingDependencyNodeVisitor();
+            toVisit.accept(visitor);
+            List<File> toReturn = visitor.getNodes()
+                    .stream()
+                    .map(dependencyNode -> dependencyNode.getArtifact().getFile())
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+            Collections.reverse(toReturn);
+            return toReturn;
+        } catch (Throwable t) {
+            throw new MojoExecutionException("Failed to get dependencies file list due to " + t.getMessage());
+        }
+    }
+
+    /**
+     * Retrieve the <code>DependencyNode</code> of the given <code>MavenProject</code>
+     * @param session
+     * @param dependencyGraphBuilder
+     * @param project
+     * @param reactorProjects
+     * @param scope
+     * @return
+     * @throws MojoExecutionException
+     */
+    private static DependencyNode getDependencyNode(MavenSession session, DependencyGraphBuilder dependencyGraphBuilder, MavenProject project, List<MavenProject> reactorProjects, String scope) throws MojoExecutionException {
         try {
             // TODO: note that filter does not get applied due to MSHARED-4
             ArtifactFilter artifactFilter = createResolvingArtifactFilter(scope);
@@ -49,13 +130,11 @@ public class DependencyBuilder {
             buildingRequest.setProject(project);
             // non-verbose mode use dependency graph component, which gives consistent results with Maven version
             // running
-            return dependencyGraphBuilder.buildDependencyGraph(buildingRequest, artifactFilter, reactorProjects);
+            return dependencyGraphBuilder.buildDependencyGraph(buildingRequest, null, reactorProjects);
         } catch (DependencyGraphBuilderException exception) {
             throw new MojoExecutionException("Cannot build project dependency graph", exception);
         }
     }
-
-    // private methods --------------------------------------------------------
 
     /**
      * Gets the artifact filter to use when resolving the dependency tree.

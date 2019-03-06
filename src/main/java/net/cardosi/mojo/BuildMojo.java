@@ -1,10 +1,12 @@
 package net.cardosi.mojo;
 
+import java.io.File;
+import java.util.List;
+
 import net.cardosi.mojo.builder.SingleCompiler;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.ResolutionScope;
-import org.apache.maven.shared.dependency.graph.DependencyNode;
 
 /**
  * Single-time compiler goal
@@ -13,11 +15,10 @@ import org.apache.maven.shared.dependency.graph.DependencyNode;
 public class BuildMojo extends AbstractBuilderRunnerMojo  {
 
     @Override
-    protected void internalExecute() throws MojoExecutionException{
+    protected void internalExecute(List<File> orderedClasspath) throws MojoExecutionException{
         getLog().info("Start building...");
         try {
-            final DependencyNode dependencyNode = DependencyBuilder.getDependencyNode(session, dependencyGraphBuilder, project, reactorProjects, null);
-            SingleCompiler.run(this);
+            SingleCompiler.run(this, orderedClasspath);
         } catch (Exception e) {
             getLog().error(e);
             throw new MojoExecutionException(e.getMessage());
