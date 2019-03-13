@@ -1,18 +1,3 @@
-/*
- * Copyright 2018 Red Hat, Inc. and/or its affiliates.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package net.cardosi.mojo.builder;
 
 import java.io.File;
@@ -32,8 +17,10 @@ import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
+import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -56,8 +43,7 @@ import com.google.javascript.jscomp.PersistentInputStore;
 import net.cardosi.mojo.options.Gwt3Options;
 import net.cardosi.mojo.tools.Javac;
 import org.apache.commons.codec.digest.DigestUtils;
-
-import static com.google.common.io.Files.createTempDir;
+import org.apache.maven.project.MavenProject;
 
 /**
  * One-time compiler.
@@ -67,7 +53,7 @@ import static com.google.common.io.Files.createTempDir;
  * <p>
  * For multiple/external usage
  * do invoke SingleCompiler.setup(Gwt3Options) once, and then
- * SingleCompiler.compile(FileTime) to execute a single compilation
+ * SingleCompiler.preCompile(FileTime) to execute a single compilation
  */
 public class SingleCompiler {
 
@@ -84,22 +70,29 @@ public class SingleCompiler {
     private static J2clTranspilerOptions.Builder baseJ2clArgs;
     private static List<String> baseClosureArgs;
     private static PersistentInputStore persistentInputStore;
+    private static Map<String, MavenProject> baseDirProjectMap;
+    private static Set<FrontendUtils.FileInfo> toRecompile = new HashSet<>(); // Using Set to avoid duplication
 
-    public static void run(Gwt3Options options, List<File> orderedClasspath) throws IOException, InterruptedException, ExecutionException {
+    public static void run(Gwt3Options options, List<File> orderedClasspath, File targetPath, Map<String, MavenProject> baseDirProjectMap) throws Exception {
         LOGGER.setLevel(Level.INFO);
         LOGGER.info("Setup");
-        setup(options, orderedClasspath);
+        setup(options, orderedClasspath, targetPath, baseDirProjectMap);
         LOGGER.info("Do compilation");
         List<FrontendUtils.FileInfo> modifiedJavaFiles = getModifiedJavaFiles(FileTime.fromMillis(0));
-        compile(modifiedJavaFiles);
+        try {
+            preCompile(modifiedJavaFiles, targetPath);
+        } catch (Exception e) {
+            LOGGER.severe(e.getMessage());
+        }
     }
 
-    public static void setup(Gwt3Options options, List<File> orderedClasspath) throws IOException, ExecutionException, InterruptedException {
+    public static void setup(Gwt3Options options, List<File> orderedClasspath, File targetPath, Map<String, MavenProject> baseDirProjectMap) throws Exception {
         SingleCompiler.options = options;
+        SingleCompiler.baseDirProjectMap = baseDirProjectMap;
         LOGGER.setLevel(Level.INFO);
         intermediateJsPath = options.getIntermediateJsPath();
         LOGGER.info("intermediate js from j2cl path " + intermediateJsPath);
-        generatedClassesPath = createTempDir();//TODO allow this to be configurable
+        generatedClassesPath = createTempDir(targetPath);//TODO allow this to be configurable
         LOGGER.info("generated source path " + generatedClassesPath);
 
         File classesDirFile = options.getClassesDir();
@@ -109,7 +102,7 @@ public class SingleCompiler {
             orderedClasspath.add(0, new File(path));
         }
 
-        javac = new Javac(generatedClassesPath, orderedClasspath, classesDirFile);
+        javac = new Javac(generatedClassesPath, orderedClasspath, classesDirFile, options.getBootstrapClasspath());
 
         // put all j2clClasspath items into a list, we'll copy each time and add generated js
         baseJ2clArgs = J2clTranspilerOptions.newBuilder()
@@ -118,7 +111,7 @@ public class SingleCompiler {
                 .setDeclareLegacyNamespace(options.isDeclareLegacyNamespaces())
                 .setSources(Collections.emptyList())
                 .setNativeSources(Collections.emptyList())
-//                .setEmitReadableLibraryInfo(false)
+                .setEmitReadableLibraryInfo(false)
                 .setEmitReadableSourceMap(false)
                 .setGenerateKytheIndexingMetadata(false);
 
@@ -166,94 +159,37 @@ public class SingleCompiler {
         baseClosureArgs.add(intermediateJsPath + "/**/*.js");//precludes default package
 
         //pre-transpile all dependency sources to our cache dir, add those cached items to closure args
-        List<String> transpiledDependencies = progressivelyHandleDependencies(orderedClasspath, baseJ2clArgs, persistentInputStore, options.getBytecodeClasspath());
+        List<String> transpiledDependencies = progressivelyHandleDependencies(orderedClasspath, baseJ2clArgs, persistentInputStore, options.getBytecodeClasspath(), targetPath);
         baseClosureArgs.addAll(transpiledDependencies);
     }
 
-    public static void compile(List<FrontendUtils.FileInfo> modifiedJavaFiles) throws IOException {
+    public static void preCompile(List<FrontendUtils.FileInfo> modifiedJavaFiles, File tempDir) throws Exception {
         LOGGER.setLevel(Level.INFO);
-        // collect native js files that we'll pass in a list to the transpiler.
-        List<FrontendUtils.FileInfo> nativeSources = new ArrayList<>();
-        for (String dir : options.getSourceDir()) {
-            Files.find(Paths.get(dir), Integer.MAX_VALUE, (path, attrs) -> shouldZip(path, modifiedJavaFiles)).forEach(file -> {
-                nativeSources.add(FrontendUtils.FileInfo.create(file.toString(), Paths.get(dir).toAbsolutePath().relativize(file.toAbsolutePath()).toString()));
-            });
-        }
+        final List<FrontendUtils.FileInfo> allSourcesToRecompile = getAllSourcesToRecompile(modifiedJavaFiles);
+        //
+        File processedZip = preProcessing(allSourcesToRecompile, tempDir);
+        //
+        compiling(allSourcesToRecompile);
+        //
+        List<FrontendUtils.FileInfo> nativeSources = getNativeSources(allSourcesToRecompile);
+        //
+        copyJs(allSourcesToRecompile);
+        //
+        addGeneratedSources(allSourcesToRecompile);
+        //
+        J2clTranspilerOptions.Builder j2clArgs = getBuilder(nativeSources, processedZip);
+        //
+        transpile(j2clArgs, processedZip, allSourcesToRecompile);
+    }
 
-        LOGGER.info(modifiedJavaFiles.size() + " updated java files");
-//            modifiedJavaFiles.forEach(System.out::println);
-
-        long javacStarted = System.currentTimeMillis();
-
-        if (!javac.compile(modifiedJavaFiles)) {
-            //error occurred, should have been logged, skip the rest of this loop
-            return;
-        }
-        long javacTime = System.currentTimeMillis() - javacStarted;
-
-        // blindly copy any JS in sources that aren't a native.js
-        // TODO be less "blind" about this, only copy changed files?
-        Iterable<String> dirs = () -> Stream.concat(Stream.of(generatedClassesPath.getAbsolutePath()), options.getSourceDir().stream()).iterator();
-        for (String dir : dirs) {
-            Files.find(Paths.get(dir), Integer.MAX_VALUE, (path, attrs) -> jsMatcher.matches(path) && !nativeJsMatcher.matches(path))
-                    .forEach(path -> {
-                        try {
-                            final Path target = Paths.get(options.getIntermediateJsPath(), Paths.get(dir).toAbsolutePath().relativize(path.toAbsolutePath()).toString());
-                            Files.createDirectories(target.getParent());
-                            // using StandardCopyOption.REPLACE_EXISTING seems overly pessimistic, but i can't get it to work without it
-                            Files.copy(path, target, StandardCopyOption.REPLACE_EXISTING);
-                        } catch (IOException e) {
-                            throw new RuntimeException("failed to copy plain js", e);
-                        }
-                    });
-        }
-
-        // add all modified Java files
-        //TODO don't just use all generated classes, but look for changes maybe?
-
-        Files.find(Paths.get(generatedClassesPath.getAbsolutePath()),
-                   Integer.MAX_VALUE,
-                   (filePath, fileAttr) ->
-                           !fileAttr.isDirectory()
-                                   && javaMatcher.matches(filePath)
-                /*TODO check modified?*/
-        ).forEach(file -> modifiedJavaFiles.add(FrontendUtils.FileInfo.create(file.toString(), file.toString())));
-
-        // run preprocessor on changed files
-        File processedZip = File.createTempFile("preprocessed", ".srcjar");
-        try (FileSystem out = FrontendUtils.initZipOutput(processedZip.getAbsolutePath(), new Problems())) {
-            JavaPreprocessor.preprocessFiles(modifiedJavaFiles, out.getPath("/"), new Problems());
-        }
-
-        J2clTranspilerOptions.Builder j2clArgs = baseJ2clArgs.build().toBuilder();
-        if (!nativeSources.isEmpty()) {
-            j2clArgs.setNativeSources(nativeSources);
-        }
-        List<FrontendUtils.FileInfo> processedJavaFiles = FrontendUtils.getAllSources(Collections.singletonList(processedZip.getAbsolutePath()), new Problems())
-                .filter(f -> f.sourcePath().endsWith(".java"))
-                .collect(Collectors.toList());
-        j2clArgs.setSources(processedJavaFiles);
-
-        long j2clStarted = System.currentTimeMillis();
-        Problems transpileResult = transpile(j2clArgs.build());
-
-        processedZip.delete();
-
-        if (transpileResult.reportAndGetExitCode(System.err) != 0) {
-            //print problems
-            return;
-        }
-        long j2clTime = System.currentTimeMillis() - j2clStarted;
-
-        // TODO copy the generated .js files, so that we only feed the updated ones the jscomp, stop messing around with args...
+    public static void closure() throws IOException {
+        // TODO Store/cache results of previous methods to reuse in next one
+        // TODO Move to a specific method so that it is called only when the above are successfully run over the original modified sources and depndent ones
         long jscompStarted = System.currentTimeMillis();
         if (!jscomp(baseClosureArgs, persistentInputStore, intermediateJsPath)) {
             return;
         }
         long jscompTime = System.currentTimeMillis() - jscompStarted;
-
-        LOGGER.info("javac: " + javacTime + "millis");
-        LOGGER.info("j2cl: " + j2clTime + "millis");
         LOGGER.info("jscomp: " + jscompTime + "millis");
     }
 
@@ -280,6 +216,221 @@ public class SingleCompiler {
     }
 
     /**
+     * Preprocess all given sources
+     * @param allSourcesToRecompile
+     * @param tempDir
+     * @throws IOException
+     */
+    private static File preProcessing(final List<FrontendUtils.FileInfo> allSourcesToRecompile, File tempDir) throws IOException {
+        LOGGER.info("preProcessing");
+        // run preprocessor on changed files
+        long startTime = System.currentTimeMillis();
+        File toReturn = File.createTempFile("preprocessed", ".srcjar", tempDir);
+        try (FileSystem out = FrontendUtils.initZipOutput(toReturn.getAbsolutePath(), new Problems())) {
+            JavaPreprocessor.preprocessFiles(allSourcesToRecompile, out.getPath("/"), new Problems());
+        }
+        long endTime = System.currentTimeMillis() - startTime;
+        LOGGER.info("preprocess: " + endTime + "millis");
+        return toReturn;
+    }
+
+    /**
+     * Compile all given sources
+     * @param allSourcesToRecompile
+     * @throws RuntimeException
+     */
+    private static void compiling(final List<FrontendUtils.FileInfo> allSourcesToRecompile) throws RuntimeException {
+        LOGGER.info("Java compiling");
+        long startTime = System.currentTimeMillis();
+        if (!javac.compile(allSourcesToRecompile)) {
+            // Store files to recompile next attempt
+            toRecompile.addAll(allSourcesToRecompile);
+            //error occurred, should have been logged, skip the rest of this loop
+            throw new RuntimeException("Failed to compile " + allSourcesToRecompile.size() + " files");
+        }
+        long endTime = System.currentTimeMillis() - startTime;
+        LOGGER.info("javac: " + endTime + "millis");
+    }
+
+    /**
+     * Retrieve native sources
+     * @param allSourcesToRecompile
+     * @return
+     * @throws IOException
+     */
+    private static List<FrontendUtils.FileInfo> getNativeSources(final List<FrontendUtils.FileInfo> allSourcesToRecompile) throws IOException {
+        LOGGER.info("getNativeSources");
+        long startTime = System.currentTimeMillis();
+        // collect native js files that we'll pass in a list to the transpiler.
+        List<FrontendUtils.FileInfo> toReturn = new ArrayList<>();
+        for (String dir : options.getSourceDir()) {
+            Files.find(Paths.get(dir), Integer.MAX_VALUE, (path, attrs) -> shouldZip(path, allSourcesToRecompile)).forEach(file -> {
+                toReturn.add(FrontendUtils.FileInfo.create(file.toString(), Paths.get(dir).toAbsolutePath().relativize(file.toAbsolutePath()).toString()));
+            });
+        }
+        long endTime = System.currentTimeMillis() - startTime;
+        LOGGER.info("getNativeSources: " + endTime + "millis");
+        return toReturn;
+    }
+
+    /**
+     * Copy js files
+     * @param allSourcesToRecompile
+     * @throws IOException
+     */
+    private static void copyJs(final List<FrontendUtils.FileInfo> allSourcesToRecompile) throws IOException {
+        LOGGER.info("copyJs");
+        long startTime = System.currentTimeMillis();
+        // blindly copy any JS in sources that aren't a native.js
+        // TODO be less "blind" about this, only copy changed files?
+        Iterable<String> dirs = () -> Stream.concat(Stream.of(generatedClassesPath.getAbsolutePath()), options.getSourceDir().stream()).iterator();
+        for (String dir : dirs) {
+            Files.find(Paths.get(dir), Integer.MAX_VALUE, (path, attrs) -> jsMatcher.matches(path) && !nativeJsMatcher.matches(path))
+                    .forEach(path -> {
+                        try {
+                            final Path target = Paths.get(options.getIntermediateJsPath(), Paths.get(dir).toAbsolutePath().relativize(path.toAbsolutePath()).toString());
+                            Files.createDirectories(target.getParent());
+                            // using StandardCopyOption.REPLACE_EXISTING seems overly pessimistic, but i can't get it to work without it
+                            Files.copy(path, target, StandardCopyOption.REPLACE_EXISTING);
+                        } catch (IOException e) {
+                            // Store files to recompile next attempt
+                            toRecompile.addAll(allSourcesToRecompile);
+                            throw new RuntimeException("failed to copy plain js", e);
+                        }
+                    });
+        }
+        long endTime = System.currentTimeMillis() - startTime;
+        LOGGER.info("copyJs: " + endTime + "millis");
+    }
+
+    /**
+     * Add generated sources to given ones
+     * @param allSourcesToRecompile
+     * @throws IOException
+     */
+    private static void addGeneratedSources(final List<FrontendUtils.FileInfo> allSourcesToRecompile) throws IOException {
+        LOGGER.info("addGeneratedSources");
+        long startTime = System.currentTimeMillis();
+        // add all modified Java files
+        //TODO don't just use all generated classes, but look for changes maybe?
+        Files.find(Paths.get(generatedClassesPath.getAbsolutePath()),
+                   Integer.MAX_VALUE,
+                   (filePath, fileAttr) ->
+                           !fileAttr.isDirectory()
+                                   && javaMatcher.matches(filePath)
+                /*TODO check modified?*/
+        ).forEach(file -> allSourcesToRecompile.add(FrontendUtils.FileInfo.create(file.toString(), file.toString())));
+        long endTime = System.currentTimeMillis() - startTime;
+        LOGGER.info("addGeneratedSources: " + endTime + "millis");
+    }
+
+    /**
+     * Retrieves the <code>J2clTranspilerOptions.Builder</code>
+     * @param nativeSources
+     * @param processedZip
+     * @return
+     */
+    private static J2clTranspilerOptions.Builder getBuilder(final List<FrontendUtils.FileInfo> nativeSources, File processedZip) {
+        LOGGER.info("getBuilder");
+        long startTime = System.currentTimeMillis();
+        J2clTranspilerOptions.Builder toReturn = baseJ2clArgs.build().toBuilder();
+        if (!nativeSources.isEmpty()) {
+            toReturn.setNativeSources(nativeSources);
+        }
+        List<FrontendUtils.FileInfo> processedJavaFiles = FrontendUtils.getAllSources(Collections.singletonList(processedZip.getAbsolutePath()), new Problems())
+                .filter(f -> f.sourcePath().endsWith(".java"))
+                .collect(Collectors.toList());
+        toReturn.setSources(processedJavaFiles);
+        long endTime = System.currentTimeMillis() - startTime;
+        LOGGER.info("getBuilder: " + endTime + "millis");
+        return toReturn;
+    }
+
+    /**
+     * Do transpilation
+     * @param builder
+     * @param processedZip
+     * @param allSourcesToRecompile
+     */
+    private static void transpile(J2clTranspilerOptions.Builder builder, File processedZip, final List<FrontendUtils.FileInfo> allSourcesToRecompile) {
+        LOGGER.info("transpile");
+        long startTime = System.currentTimeMillis();
+        Problems transpileResult = transpile(builder.build());
+        processedZip.delete();
+        if (transpileResult.reportAndGetExitCode(System.err) != 0) {
+            String errors = String.join(", ", transpileResult.getErrors());
+            String errorMessage = "Error while transpiling: " + errors;
+            LOGGER.severe(errorMessage);
+            // Store files to recompile next attempt
+            toRecompile.addAll(allSourcesToRecompile);
+            throw new RuntimeException(errorMessage);
+        }
+        long endTime = System.currentTimeMillis() - startTime;
+        LOGGER.info("transpile: " + endTime + "millis");
+    }
+
+    /**
+     * This method retrieves <b>all</b> the java sources to recompile, discovering ones in the same modules and the others in the dependent modules
+     * @param modifiedJavaFiles
+     * @return
+     */
+    private static List<FrontendUtils.FileInfo> getAllSourcesToRecompile(List<FrontendUtils.FileInfo> modifiedJavaFiles) {
+        // Using Set to avoid duplicate
+        final Set<MavenProject> directlyModifiedMavenProjects = retrieveDirectlyModifiedMavenProjects(modifiedJavaFiles);
+        Set<MavenProject> mavenProjectsToRecompile = new HashSet<>(directlyModifiedMavenProjects);
+        directlyModifiedMavenProjects.forEach(modifiedProject -> recursivelyPopulateDownStreamProjects(modifiedProject, mavenProjectsToRecompile));
+        Set<FrontendUtils.FileInfo> toReturn = new HashSet<>(); // Using Set
+        mavenProjectsToRecompile.forEach(mavenProject -> populateAllSourcesInMavenProject(mavenProject, toReturn));
+        toReturn.addAll(toRecompile);
+        toRecompile.clear();
+        return new ArrayList<>(toReturn); // returning List because it is the expected class by other methods
+    }
+
+    /**
+     * Retrieves the <code>MavenProject</code>s the given <b>modifiedJavaFiles</b> belongs to
+     * @param modifiedJavaFiles
+     */
+    private static Set<MavenProject> retrieveDirectlyModifiedMavenProjects(List<FrontendUtils.FileInfo> modifiedJavaFiles) {
+        return baseDirProjectMap.keySet().stream()
+                .filter(baseDir -> modifiedJavaFiles.stream().anyMatch(fileInfo -> fileInfo.sourcePath().startsWith(baseDir)))
+                .map(baseDir -> baseDirProjectMap.get(baseDir))
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * Add all the sources in the given <code>MavenProject</code>
+     * @param modifiedProject
+     * @param toPopulate
+     */
+    private static void populateAllSourcesInMavenProject(MavenProject modifiedProject, Set<FrontendUtils.FileInfo> toPopulate) {
+        modifiedProject.getCompileSourceRoots().forEach(sourcePath -> {
+            try {
+                Files.find(Paths.get(sourcePath),
+                           Integer.MAX_VALUE,
+                           (filePath, fileAttr) -> !fileAttr.isDirectory()
+                                   && javaMatcher.matches(filePath))
+                        .forEach(file -> toPopulate.add(FrontendUtils.FileInfo.create(file.toString(), file.toString())));
+            } catch (IOException e) {
+                LOGGER.severe(e.getMessage());
+            }
+        });
+    }
+
+    /**
+     * Recursively retrieves all the dependency tree
+     * @param modifiedProject
+     * @param toPopulate
+     */
+    private static void recursivelyPopulateDownStreamProjects(MavenProject modifiedProject, Set<MavenProject> toPopulate) {
+        baseDirProjectMap.values().forEach(mavenProject -> mavenProject.getArtifacts().forEach(artifact -> {
+            if (artifact.equals(modifiedProject.getArtifact())) {
+                toPopulate.add(mavenProject);
+                recursivelyPopulateDownStreamProjects(mavenProject, toPopulate);
+            }
+        }));
+    }
+
+    /**
      * This method incrementally transpile the dependencies in the given <code>List</code> classpath, starting from the <b>fixedClassPathElements</b> element (i.e. elements from 0 to fixedClassPathElements -1
      * are always set in the classpath)
      * @param toTranspile
@@ -289,14 +440,13 @@ public class SingleCompiler {
      * @return
      * @throws IOException
      */
-    private static List<String> progressivelyHandleDependencies(List<File> toTranspile, J2clTranspilerOptions.Builder baseJ2clArgs, PersistentInputStore persistentInputStore, List<String> originalClassPath) throws IOException {
+    private static List<String> progressivelyHandleDependencies(List<File> toTranspile, J2clTranspilerOptions.Builder baseJ2clArgs, PersistentInputStore persistentInputStore, List<String> originalClassPath, File tempDir) throws IOException {
         List<String> toReturn = new ArrayList<>();
         for (int i = originalClassPath.size(); i < toTranspile.size(); i++) {
             File toHandle = toTranspile.get(i);
-            List<String> newClasspath = new ArrayList<>();
-            newClasspath.addAll(originalClassPath);
+            List<String> newClasspath = new ArrayList<>(originalClassPath);
             if (isToTranspile(toHandle)) {
-                populateHandleDependencies(toHandle, baseJ2clArgs, persistentInputStore, toReturn);
+                populateHandleDependencies(toHandle, baseJ2clArgs, persistentInputStore, toReturn, tempDir);
                 newClasspath.add(toHandle.getAbsolutePath());
                 baseJ2clArgs.setClasspaths(newClasspath);
             }
@@ -321,7 +471,7 @@ public class SingleCompiler {
         return true;
     }
 
-    private static void populateHandleDependencies(File toHandle, J2clTranspilerOptions.Builder baseJ2clArgs, PersistentInputStore persistentInputStore, List<String> toPopulate) throws IOException {
+    private static void populateHandleDependencies(File toHandle, J2clTranspilerOptions.Builder baseJ2clArgs, PersistentInputStore persistentInputStore, List<String> toPopulate, File tempDir) throws IOException {
         // hash the file, see if we already have one
         String hash = hash(toHandle);
         String jszipOut = options.getJsZipCacheDir() + "/" + hash + "-" + toHandle.getName() + ".js.zip";
@@ -334,7 +484,7 @@ public class SingleCompiler {
             return;//already exists, we'll use it
         }
         // run preprocessor
-        File processed = File.createTempFile("preprocessed", ".srcjar");
+        File processed = File.createTempFile("preprocessed", ".srcjar", tempDir);
         try (FileSystem out = FrontendUtils.initZipOutput(processed.getAbsolutePath(), new Problems())) {
             ImmutableList<FrontendUtils.FileInfo> allSources = FrontendUtils.getAllSources(Collections.singletonList(toHandle.getAbsolutePath()), new Problems())
                     .filter(f -> f.sourcePath().endsWith(".java"))
@@ -348,7 +498,7 @@ public class SingleCompiler {
 
         //TODO javac these first, so we have consistent bytecode, and use that to rebuild the classpath
         J2clTranspilerOptions.Builder pretranspile = baseJ2clArgs.build().toBuilder();
-        // in theory, we only compile with the dependencies for this particular dep
+        // in theory, we only preCompile with the dependencies for this particular dep
         pretranspile.setOutput(FrontendUtils.initZipOutput(jszipOut, new Problems()).getPath("/"));
         pretranspile.setNativeSources(FrontendUtils.getAllSources(Collections.singletonList(toHandle.getAbsolutePath()), new Problems())
                                               .filter(p -> p.sourcePath().endsWith(".native.js"))
@@ -455,6 +605,26 @@ public class SingleCompiler {
             jsCompiler.resetCompilerInput();
         }
         return true;
+    }
+
+    private static File createTempDir(File baseDir) {
+        int TEMP_DIR_ATTEMPTS = 10000;
+        String baseName = System.currentTimeMillis() + "-";
+        for (int counter = 0; counter < TEMP_DIR_ATTEMPTS; counter++) {
+            File tempDir = new File(baseDir, baseName + counter);
+            if (tempDir.mkdir()) {
+                return tempDir;
+            }
+        }
+        throw new IllegalStateException(
+                "Failed to create directory within "
+                        + TEMP_DIR_ATTEMPTS
+                        + " attempts (tried "
+                        + baseName
+                        + "0 to "
+                        + baseName
+                        + (TEMP_DIR_ATTEMPTS - 1)
+                        + ')');
     }
 
     static class InProcessJsCompRunner extends CommandLineRunner {

@@ -1,6 +1,8 @@
 package net.cardosi.mojo;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -31,19 +33,19 @@ public abstract class AbstractBuilderRunnerMojo extends AbstractJ2CLMojo impleme
     @Parameter(defaultValue = "${project}", readonly = true, required = true)
     protected MavenProject project;
 
-    @Parameter( defaultValue = "${session}", readonly = true, required = true )
+    @Parameter(defaultValue = "${session}", readonly = true, required = true)
     protected MavenSession session;
 
     /**
      * Contains the full list of projects in the reactor.
      */
-    @Parameter( defaultValue = "${reactorProjects}", readonly = true, required = true )
+    @Parameter(defaultValue = "${reactorProjects}", readonly = true, required = true)
     protected List<MavenProject> reactorProjects;
 
     /**
      * The dependency tree builder to use.
      */
-    @Component( hint = "default" )
+    @Component(hint = "default")
     protected DependencyGraphBuilder dependencyGraphBuilder;
 
     /**
@@ -69,14 +71,21 @@ public abstract class AbstractBuilderRunnerMojo extends AbstractJ2CLMojo impleme
         try {
             createWorkingDirs();
             Map<String, File> artifactFiles = getArtifactFiles(artifactItems, repoSystem, repoSession, remoteRepos);
-            copyArtifactFiles(artifactFiles, getWorkingDirs().get(outputDirectory));
+            final Map<String, File> workingDirs = getWorkingDirs();
+            copyArtifactFiles(artifactFiles, workingDirs.get(outputDirectory));
             final Set<Artifact> artifacts = project.getArtifacts();
             final List<String> dependencies = artifacts.stream().map(artifact -> artifact.getFile().getPath()).collect(Collectors.toList());
             bytecodeClasspath.addAll(dependencies);
-            getLog().info("bytecodeClasspath " + bytecodeClasspath);
+            getLog().info("raw bytecodeClasspath " + bytecodeClasspath);
+            // We need to remove from bytecodeClasspath the jars of the modules transpiled, so that at each recompilation the updated version is used, and not the original jar
+            bytecodeClasspath = cleanClassPath(artifacts, bytecodeClasspath);
+            getLog().info("cleaned bytecodeClasspath " + bytecodeClasspath);
             final List<File> orderedClasspath = DependencyBuilder.getOrderedClasspath(session, dependencyGraphBuilder, project, reactorProjects, null);
             getLog().info("orderedClasspath " + orderedClasspath);
-            internalExecute(orderedClasspath);
+            final Map<String, MavenProject> baseDirProjectMap = new HashMap<>();
+            reactorProjects.forEach(mavenProject -> mavenProject.getCompileSourceRoots().forEach(sourceRoot -> baseDirProjectMap.put(sourceRoot, mavenProject)));
+            project.getCompileSourceRoots().forEach(sourceRoot -> baseDirProjectMap.put(sourceRoot, project));
+            internalExecute(orderedClasspath, workingDirs.get(targetPath), baseDirProjectMap);
         } catch (Exception e) {
             getLog().error(e);
             throw new MojoExecutionException(e.getMessage());
@@ -101,6 +110,11 @@ public abstract class AbstractBuilderRunnerMojo extends AbstractJ2CLMojo impleme
     @Override
     public List<String> getBytecodeClasspath() {
         return bytecodeClasspath;
+    }
+
+    @Override
+    public File getBootstrapClasspath() {
+        return new File(javacBootClasspath);
     }
 
     @Override
@@ -158,7 +172,7 @@ public abstract class AbstractBuilderRunnerMojo extends AbstractJ2CLMojo impleme
         return outputJsPathDir;
     }
 
-    protected abstract void internalExecute(List<File> orderedClasspath) throws MojoExecutionException;
+    protected abstract void internalExecute(List<File> orderedClasspath, File targetPath, Map<String, MavenProject> baseDirProjectMap) throws MojoExecutionException;
 
     protected void createWorkingDirs() throws MojoExecutionException {
         final Map<String, File> workingDirs = getWorkingDirs();
@@ -168,5 +182,36 @@ public abstract class AbstractBuilderRunnerMojo extends AbstractJ2CLMojo impleme
                 throw new MojoExecutionException("Failed to create " + file.getPath());
             }
         }
+    }
+
+    /**
+     * Remove from given <code>List&lt;String&gt;</code> all the files included in given <code>Set&lt;Artifact&gt;</code>
+     * @param artifacts
+     * @param toClean
+     * @return
+     */
+    private List<String> cleanClassPath(Set<Artifact> artifacts, List<String> toClean) {
+        List<Artifact> toRemove = excludedArtifacts.stream()
+                .map(excludedArtifact -> artifacts
+                        .stream()
+                        .filter(artifact -> artifact.getArtifactId().equals(excludedArtifact.getArtifactId())
+                                && artifact.getGroupId().equals(excludedArtifact.getGroupId())
+                                && artifact.getVersion().equals(excludedArtifact.getVersion()))
+                        .findFirst().orElse(null))
+                .collect(Collectors.toList());
+        final List<String> toReturn = new ArrayList<>();
+        toRemove.forEach(artifact -> {
+            final String absolutePath = artifact.getFile().getAbsolutePath();
+            toReturn.addAll(toClean.stream()
+                                    .map(s -> {
+                                        String cleanedString = s.replace(absolutePath, "").replace("::", ":");
+                                        if (cleanedString.startsWith(":")) {
+                                            cleanedString = cleanedString.substring(1);
+                                        }
+                                        return cleanedString;
+                                    })
+                                    .collect(Collectors.toList()));
+        });
+        return toReturn;
     }
 }

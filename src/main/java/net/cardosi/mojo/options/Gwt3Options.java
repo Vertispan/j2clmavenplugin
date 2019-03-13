@@ -21,6 +21,8 @@ public interface Gwt3Options {
 
     List<String> getBytecodeClasspath();
 
+    File getBootstrapClasspath();
+
     String getJsOutputFile();
 
     List<String> getEntrypoint();

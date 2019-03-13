@@ -26,6 +26,9 @@ public abstract class AbstractJ2CLMojo extends AbstractMojo {
                 "via -src",*/ required = true)
     protected List<String> bytecodeClasspath;
 
+    @Parameter(name = "javacBootClasspath", required = true, defaultValue = "${webapp.libdir}/javac-bootstrap-classpath.jar")
+    protected String javacBootClasspath;
+
     @Parameter(name = "j2clClasspath", /*usage = "specify js archive classpath that won't be " +
                 "transpiled from sources or classpath. If nothing else, should include " +
                 "bootstrap.js.zip and jre.js.zip", */required = true)
@@ -33,7 +36,7 @@ public abstract class AbstractJ2CLMojo extends AbstractMojo {
 
     @Parameter(name = "outputJsPathDir", /*usage = "indicates where to write generated JS sources, sourcemaps, " +
                 "etc. Should be a directory specific to gwt, anything may be overwritten there, " +
-                "but probably should be somewhere your server will pass to the browser",*/ required = true)
+                "but probably should be somewhere your server will pass to the browser",*/ required = true, defaultValue = "${webappdir}/js")
     protected String outputJsPathDir;
 
     @Parameter(name = "classesDir", /* usage = "provide a directory to put compiled bytecode in. " +
@@ -46,7 +49,7 @@ public abstract class AbstractJ2CLMojo extends AbstractMojo {
     protected List<String> entrypoint = new ArrayList<>();
 
     @Parameter(name = "jsZipCacheDir", /*usage = "directory to cache generated jszips in. Should be " +
-                "cleared when j2cl version changes", */required = true)
+                "cleared when j2cl version changes", */required = true, defaultValue = "${project.basedir}/jsZipCache")
     protected String jsZipCacheDir;
 
     //lifted straight from closure for consistency
@@ -109,22 +112,19 @@ public abstract class AbstractJ2CLMojo extends AbstractMojo {
     @Parameter(name = "declareLegacyNamespaces"/*,
                 usage =
                         "Enable goog.module.declareLegacyNamespace() for generated goog.module().",
-                hidden = true*/
-    )
+                hidden = true*/)
     protected boolean declareLegacyNamespaces = false;
 
     @Parameter(name = "intermediateJsPath"/*,
                 usage =
                         "Enable goog.module.declareLegacyNamespace() for generated goog.module().",
-                hidden = true*/, defaultValue = "${basedir}/target/js-sources"
-    )
+                hidden = true*/, defaultValue = "${basedir}/target/js-sources")
     protected String intermediateJsPath;
 
     @Parameter(name = "generatedClassesDir"/*,
                 usage =
                         "Enable goog.module.declareLegacyNamespace() for generated goog.module().",
-                hidden = true*/, defaultValue = "${basedir}/target/gen-classes"
-    )
+                hidden = true*/, defaultValue = "${basedir}/target/gen-classes")
     protected String generatedClassesDir;
 
     /**
@@ -136,12 +136,24 @@ public abstract class AbstractJ2CLMojo extends AbstractMojo {
     /**
      * Path to the <b>directory</b> where additional <b>artifacts</b> must be deployed
      */
-    @Parameter(name = "outputDirectory")
+    @Parameter(name = "outputDirectory", defaultValue = "${project.basedir}/out")
     protected String outputDirectory;
 
+    /**
+     * Path to the <b>target</b> directory
+     */
+    @Parameter(name = "targetPath", readonly = true, defaultValue = "${basedir}/target/")
+    protected String targetPath;
+    /**
+     * Artifacts to exclude from classpath, i.e. the modules whose sources are automatically compiled
+     */
+    @Parameter(name = "excludedArtifacts")
+    protected List<ArtifactItem> excludedArtifacts = new ArrayList<>();
 
     protected Map<String, File> getWorkingDirs() {
         Map<String, File> toReturn = new HashMap<>();
+        getLog().info("targetPath " + targetPath);
+        toReturn.put(targetPath, new File(targetPath));
         getLog().info("intermediateJsPath " + intermediateJsPath);
         toReturn.put(intermediateJsPath, new File(intermediateJsPath));
         getLog().info("generatedClassesDir " + generatedClassesDir);
@@ -156,5 +168,4 @@ public abstract class AbstractJ2CLMojo extends AbstractMojo {
         toReturn.put(outputDirectory, new File(outputDirectory));
         return toReturn;
     }
-
 }

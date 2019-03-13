@@ -1,16 +1,16 @@
 package net.cardosi.mojo.builder;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.attribute.FileTime;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.google.j2cl.frontend.FrontendUtils;
 import net.cardosi.mojo.options.Gwt3Options;
+import org.apache.maven.project.MavenProject;
 
 /**
  * Simple "dev mode" for j2cl+closure, based on the existing bash script. Lots of room for improvement, this
@@ -36,27 +36,31 @@ public class ListeningCompiler {
 
     private final static Logger LOGGER = Logger.getLogger(ListeningCompiler.class.getName());
 
-    public static void run(Gwt3Options options, List<File> orderedClasspath) throws IOException, InterruptedException, ExecutionException {
+    public static void run(Gwt3Options options, List<File> orderedClasspath, File targetPath, Map<String, MavenProject> baseDirProjectMap) throws Exception {
         LOGGER.setLevel(Level.INFO);
         LOGGER.info("Setup SingleCompiler");
-        SingleCompiler.setup(options, orderedClasspath);
+        SingleCompiler.setup(options, orderedClasspath, targetPath, baseDirProjectMap);
         FileTime lastModified = FileTime.fromMillis(0);
         LOGGER.info("Begin listening");
         while (true) {
             // currently polling for changes.
             // block until changes instead? easy to replace with filewatcher, just watch out for java9/osx issues...
-
             long pollStarted = System.currentTimeMillis();
             FileTime newerThan = lastModified;
             List<FrontendUtils.FileInfo> modifiedJavaFiles = SingleCompiler.getModifiedJavaFiles(newerThan);
             long pollTime = System.currentTimeMillis() - pollStarted;
-            // don't replace this until the loop finishes successfully, so we know the last time we started a successful compile
+            // don't replace this until the loop finishes successfully, so we know the last time we started a successful preCompile
             FileTime nextModifiedIfSuccessful = FileTime.fromMillis(System.currentTimeMillis());
             if (modifiedJavaFiles.isEmpty()) {
                 Thread.sleep(100);
                 continue;
             }
-            SingleCompiler.compile(modifiedJavaFiles);
+            try {
+                SingleCompiler.preCompile(modifiedJavaFiles, targetPath);
+                SingleCompiler.closure();
+            } catch (Exception e) {
+                LOGGER.severe(e.getMessage());
+            }
             LOGGER.info("Recompile of " + modifiedJavaFiles.size() + " source classes finished in " + (System.currentTimeMillis() - nextModifiedIfSuccessful.to(TimeUnit.MILLISECONDS)) + "ms");
             LOGGER.info("poll: " + pollTime + "millis");
             lastModified = nextModifiedIfSuccessful;

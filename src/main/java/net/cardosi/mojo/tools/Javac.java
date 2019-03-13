@@ -18,7 +18,7 @@ import com.google.j2cl.frontend.FrontendUtils.FileInfo;
 
 /**
  * Runs javac. Set this up with the appropriate classpath, directory for generated sources to be written,
- * and directory for bytecode to be written, and can be requested to compile any .java file where the
+ * and directory for bytecode to be written, and can be requested to preCompile any .java file where the
  * dependencies are appropriately already available.
  *
  * The classesDirFile generally should be in the classpath list.
@@ -32,8 +32,8 @@ public class Javac {
     JavaCompiler compiler;
     StandardJavaFileManager fileManager;
 
-    public Javac(File generatedClassesPath, List<File> classpath, File classesDirFile) throws IOException {
-        javacOptions = Arrays.asList("-implicit:none");
+    public Javac(File generatedClassesPath, List<File> classpath, File classesDirFile, File bootstrap) throws IOException {
+        javacOptions = Arrays.asList("-implicit:none", "-bootclasspath", bootstrap.toString());
         compiler = ToolProvider.getSystemJavaCompiler();
         fileManager = compiler.getStandardFileManager(null, null, null);
         fileManager.setLocation(StandardLocation.SOURCE_PATH, Collections.emptyList());
@@ -43,7 +43,7 @@ public class Javac {
     }
 
     public boolean compile(List<FileInfo> modifiedJavaFiles) {
-        // compile java files with javac into classesDir
+        // preCompile java files with javac into classesDir
         Iterable<? extends JavaFileObject> modifiedFileObjects = fileManager.getJavaFileObjectsFromStrings(modifiedJavaFiles.stream().map(FileInfo::sourcePath).collect(Collectors.toList()));
         //TODO pass-non null for "classes" to properly kick apt?
         //TODO consider a different classpath for this tasks, so as to not interfere with everything else?
