@@ -80,6 +80,7 @@ public abstract class AbstractBuilderRunnerMojo extends AbstractJ2CLMojo impleme
             // We need to remove from bytecodeClasspath the jars of the modules transpiled, so that at each recompilation the updated version is used, and not the original jar
             bytecodeClasspath = cleanClassPath(artifacts, bytecodeClasspath);
             getLog().info("cleaned bytecodeClasspath " + bytecodeClasspath);
+            // TODO There must be one specific classpath for each module, i.e. create one every time a specific module is built -> propagate to singlecompiler
             final List<File> orderedClasspath = DependencyBuilder.getOrderedClasspath(session, dependencyGraphBuilder, project, reactorProjects, null);
             getLog().info("orderedClasspath " + orderedClasspath);
             final Map<String, MavenProject> baseDirProjectMap = new HashMap<>();

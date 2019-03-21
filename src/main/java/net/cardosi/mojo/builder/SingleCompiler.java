@@ -164,6 +164,7 @@ public class SingleCompiler {
     }
 
     public static void preCompile(List<FrontendUtils.FileInfo> modifiedJavaFiles, File tempDir) throws Exception {
+        // TODO Do that on a per-module basis
         LOGGER.setLevel(Level.INFO);
         final List<FrontendUtils.FileInfo> allSourcesToRecompile = getAllSourcesToRecompile(modifiedJavaFiles);
         //
