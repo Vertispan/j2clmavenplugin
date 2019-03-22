@@ -179,7 +179,7 @@ public abstract class AbstractBuilderRunnerMojo extends AbstractJ2CLMojo impleme
         final Map<String, File> workingDirs = getWorkingDirs();
         for (File file : workingDirs.values()) {
             getLog().debug("Creating if not exists: " + file.getPath());
-            if (!file.exists() && !file.mkdir()) {
+            if (!file.exists() && !file.mkdirs()) {
                 throw new MojoExecutionException("Failed to create " + file.getPath());
             }
         }
