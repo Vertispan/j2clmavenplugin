@@ -33,11 +33,22 @@ public class Javac {
     StandardJavaFileManager fileManager;
 
     public Javac(File generatedClassesPath, List<File> classpath, File classesDirFile, File bootstrap) throws IOException {
-        javacOptions = Arrays.asList("-implicit:none", "-bootclasspath", bootstrap.toString());
+//        for (File file : classpath) {
+//            System.out.println(file.getAbsolutePath() + " " + file.exists() + " " + file.isDirectory());
+//        }
+        if (generatedClassesPath == null) {
+            javacOptions = Arrays.asList("-proc:none", "-implicit:none", "-bootclasspath", bootstrap.toString());
+
+        } else {
+            javacOptions = Arrays.asList("-implicit:none", "-bootclasspath", bootstrap.toString());
+
+        }
         compiler = ToolProvider.getSystemJavaCompiler();
         fileManager = compiler.getStandardFileManager(null, null, null);
         fileManager.setLocation(StandardLocation.SOURCE_PATH, Collections.emptyList());
-        fileManager.setLocation(StandardLocation.SOURCE_OUTPUT, Collections.singleton(generatedClassesPath));
+        if (generatedClassesPath != null) {
+            fileManager.setLocation(StandardLocation.SOURCE_OUTPUT, Collections.singleton(generatedClassesPath));
+        }
         fileManager.setLocation(StandardLocation.CLASS_PATH, classpath);
         fileManager.setLocation(StandardLocation.CLASS_OUTPUT, Collections.singleton(classesDirFile));
     }

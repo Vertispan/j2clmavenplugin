@@ -36,7 +36,7 @@ public class GwtIncompatiblePreprocessor {
 
         List<FileInfo> result = new ArrayList<>();
         File processed = File.createTempFile("preprocessed", ".srcjar");
-        try (FileSystem out = FrontendUtils.initZipOutput(processed.getAbsolutePath(), new Problems())) {
+        try (FileSystem out = FrontendUtils.initZipOutput(processed.getAbsolutePath(), problems)) {
 
             JavaPreprocessor.preprocessFiles(unprocessedFiles, out.getPath("/"), problems);
 
@@ -60,7 +60,9 @@ public class GwtIncompatiblePreprocessor {
                     return FileVisitResult.CONTINUE;
                 }
             });
-            
+        } catch (Throwable t) {
+            t.printStackTrace();
+            problems.getErrors().forEach(System.out::println);
         } finally {
             processed.delete();
         }
