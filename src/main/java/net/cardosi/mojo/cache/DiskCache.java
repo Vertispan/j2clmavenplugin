@@ -4,7 +4,7 @@ import com.google.j2cl.frontend.FrontendUtils;
 import net.cardosi.mojo.Hash;
 import net.cardosi.mojo.tools.GwtIncompatiblePreprocessor;
 import net.cardosi.mojo.tools.Javac;
-import org.apache.commons.io.FileUtils;
+import org.apache.maven.artifact.ArtifactUtils;
 
 import java.io.*;
 import java.net.URI;
@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
@@ -25,7 +26,7 @@ import java.util.zip.ZipFile;
 public class DiskCache {
     private static final PathMatcher javaMatcher = FileSystems.getDefault().getPathMatcher("glob:**/*.java");
 
-    private final ExecutorService s = Executors.newFixedThreadPool(1);
+    private final ExecutorService s = Executors.newFixedThreadPool(1);//TODO make this configurable, confirm it is actually thread-safe
 
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
@@ -55,7 +56,7 @@ public class DiskCache {
 
     public void submit(CachedProject cachedProject) {
         if (cachedProject.getChildren().isEmpty()) {
-            System.out.println("no dependencies " + cachedProject.getArtifactId());
+//            System.out.println("no dependencies, compiling right away " + cachedProject.getArtifactId());
             s.submit(() -> compile(cachedProject));
         }
 
@@ -63,14 +64,27 @@ public class DiskCache {
         CompletableFuture.allOf(cachedProject.getChildren().stream()
                 .map(CachedProject::getCompiledOutput)
                 .toArray(CompletableFuture[]::new)
-        ).thenAcceptAsync(ignore -> compile(cachedProject), s);
+        ).handleAsync((success, failure) -> {
+            if (failure != null) {
+                // at least one of the above failed, so don't actually compile this project, just leave it
+                // until all upstreams are ready to go. If we marked the project as failed, it would in turn
+                // mark its downstreams as failed accordingly, when causes a lot of noise in the log and
+                // hides what wen't wrong
+                System.out.println("Cannot compile " + cachedProject + " due to an earlier failure");
+//                failure.printStackTrace();
+            } else {
+                compile(cachedProject);
+            }
+
+            return null;
+        }, s);
 
     }
 
     private void compile(CachedProject project) {
         lock.readLock().lock();
         try {
-//            System.out.println("Starting compile for " + project);
+//            System.out.println("Starting compile for " + project.getArtifactId() + " dirty:" + project.isDirty());
 
             //build compile classpaths, compute the hash
             //TODO filter to scope=compile
@@ -118,27 +132,42 @@ public class DiskCache {
                 project.getCompiledOutput().completeExceptionally(e);
             }
 
-            System.out.println(project.getArtifact() + " has hash " + hash);
+//            System.out.println(project.getArtifact() + " has hash " + hash);
             File cacheDir = new File(jsZipCacheDir, hash.toString() + "-" + project.getArtifactId());
 
-            //if it exists and is complete, return it right away
-            if (cacheDir.exists()) {
-                System.out.println("already ready " + project.getArtifactId());
-                project.getCompiledOutput().complete(new TranspiledCacheEntry(hash.toString(), project.getArtifactId()));
-                return;
+            File completeMarker = new File(cacheDir, "complete");
+            File failedMarker = new File(cacheDir, "failed");
+
+            //if it exists, return it when ready
+            if (!cacheDir.mkdir()) {
+                // if the directory already exists, then someone else has already started on this piece, wait for the
+                // complete marker to exist.
+                // TODO timeout?
+                Path cacheDirPath = Paths.get(cacheDir.toURI());
+                try (WatchService w = cacheDirPath.getFileSystem().newWatchService()) {
+                    cacheDirPath.register(w, StandardWatchEventKinds.ENTRY_CREATE);
+                    // first check to see if it exists, then wait for next event to occur
+                    do {
+                        if (completeMarker.exists()) {
+//                            System.out.println("already ready " + project.getArtifactId());
+                            project.getCompiledOutput().complete(new TranspiledCacheEntry(hash.toString(), project.getArtifactId()));
+                            return;
+                        }
+                        if (failedMarker.exists()) {
+                            System.out.println("compilation failed in some other thread/process " + project.getArtifactId() + " " + hash);
+                            project.getCompiledOutput().completeExceptionally(new IllegalStateException("Compilation failed in another thread/process"));
+                            return;
+                        }
+                        System.out.println("Waiting 10s and then checking again if other thread/process finished " + project.getArtifactId());
+                        w.poll(10, TimeUnit.SECONDS);
+                    } while (true);
+                } catch (IOException | InterruptedException ex) {
+                    System.out.println("Error while waiting for external thread/process");
+                    ex.printStackTrace();
+                    project.getCompiledOutput().completeExceptionally(ex);
+                    return;
+                }
             }
-            //for debugging just delete so it can all be recreated
-//            try {
-//                FileUtils.deleteDirectory(cacheDir);
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-
-            //else, lock it
-            //TODO
-
-            cacheDir.mkdirs();
-
 
             try {
                 // steps to transpile a given project
@@ -150,21 +179,24 @@ public class DiskCache {
 //            sources = TODO
 //        } else ...
 
-                if (!project.getMavenProject().getCompileSourceRoots().isEmpty()) {
+                if (project.hasSourcesMapped()) {
                     // 1. javac the sources, causing annotation processors to run. This uses the entire compile classpath of the
                     //    project, we just need to generate sources as would happen in the orig project
-                    File annotationSources = new File(cacheDir, "annotationSources");
+                    File annotationSources = new File(cacheDir, "annotation-sources");
                     annotationSources.mkdirs();
                     File plainBytecode = new File(cacheDir, "bytecode");
                     plainBytecode.mkdirs();
                     Javac javac = new Javac(annotationSources, plainClasspath, plainBytecode, bootstrap);
                     List<FrontendUtils.FileInfo> sources = project.getMavenProject().getCompileSourceRoots().stream().flatMap(dir -> getFileInfoInDir(Paths.get(dir), javaMatcher).stream()).collect(Collectors.toList());
                     if (sources.isEmpty()) {
+                        Files.createFile(completeMarker.toPath());
                         project.getCompiledOutput().complete(new TranspiledCacheEntry(hash.toString(), project.getArtifactId()));
                         return;
                     }
                     System.out.println("step 1 " + project.getArtifactId());
                     if (!javac.compile(sources)) {
+                        // so far at least we don't have any whitelist need here, it wouldnt really make sense to let a
+                        // local compile fail
                         throw new IllegalStateException("javac failed, check log");
                     }
                     sourcesToStrip.addAll(getFileInfoInDir(Paths.get(annotationSources.toURI()), javaMatcher));
@@ -175,7 +207,6 @@ public class DiskCache {
                 } else {
                     //unpack the jar's sources
                     File sources = new File(cacheDir, "unpacked-sources");
-
 
                     //collect sources from jar instead
                     try (ZipFile zipInputFile = new ZipFile(project.getArtifact().getFile())) {
@@ -205,11 +236,17 @@ public class DiskCache {
                 Javac javac = new Javac(null, strippedClasspath, strippedBytecode, bootstrap);
                 List<FrontendUtils.FileInfo> sourcesToCompile = getFileInfoInDir(Paths.get(strippedSources.toURI()), javaMatcher);
                 if (sourcesToCompile.isEmpty()) {
+                    Files.createFile(completeMarker.toPath());
                     project.getCompiledOutput().complete(new TranspiledCacheEntry(hash.toString(), project.getArtifactId()));
                     return;
                 }
 //                System.out.println("step 3 " + project.getArtifactId());
-                javac.compile(sourcesToCompile);
+                boolean success = javac.compile(sourcesToCompile);
+                if (!success) {
+                    if (!project.isIgnoreJavacFailure()) {
+                        throw new IllegalStateException("javac failed, check log for details");
+                    }
+                }
                 // 4. j2cl stripped sources with a classpath of other stripped bytecode
                 // TODO support not running the last step if we won't need it in this run, but mark the on-disk cache
                 //      accordingly so we can rebuild if it is needed later
@@ -219,13 +256,15 @@ public class DiskCache {
 
 
                 //mark as done
-                System.out.println("success " + project.getArtifactId());
+//                System.out.println("success " + project.getArtifactId());
+                Files.createFile(completeMarker.toPath());
                 project.getCompiledOutput().complete(new TranspiledCacheEntry(hash.toString(), project.getArtifactId()));
             } catch (Throwable ex) {
-                System.out.println("failure " + project.getArtifactId());
+                System.out.println("failure in " + ArtifactUtils.key(project.getArtifact()));
                 ex.printStackTrace();
                 try {
-                    FileUtils.deleteDirectory(cacheDir);
+                    Files.createFile(failedMarker.toPath());
+//                    FileUtils.deleteDirectory(cacheDir);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -275,14 +314,5 @@ public class DiskCache {
                 return FileVisitResult.CONTINUE;
             }
         });
-    }
-
-
-    public void watch() {
-        try {
-            Thread.sleep(60 * 60 * 1_000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
     }
 }

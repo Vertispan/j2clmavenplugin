@@ -28,6 +28,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -105,20 +106,21 @@ public class ExternalTranspileMojo extends AbstractMojo {
 
     // tools to resolve dependencies
     @Component
-    private RepositorySystem repoSystem;
+    protected RepositorySystem repoSystem;
 
     @Parameter( defaultValue = "${repositorySystemSession}", readonly = true, required = true )
-    private RepositorySystemSession repoSession;
+    protected RepositorySystemSession repoSession;
 
     @Parameter( defaultValue = "${project.remoteProjectRepositories}", readonly = true, required = true )
-    private List<RemoteRepository> repositories;
+    protected List<RemoteRepository> repositories;
+
+    protected boolean forceRecompile = false;//TODO support this so you can see the rest of the exception when resuming later?
+    //TODO alternatively, write failure logs to the fail marker file so we can print them again
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        System.out.println(System.currentTimeMillis());
         PluginDescriptor pluginDescriptor = (PluginDescriptor) getPluginContext().get("pluginDescriptor");
         String pluginVersion = pluginDescriptor.getVersion();
-        System.out.println(pluginVersion);
 
         List<File> extraClasspath = Arrays.asList(
                 getFileWithMavenCoords(jreJar),
@@ -133,23 +135,31 @@ public class ExternalTranspileMojo extends AbstractMojo {
         // for each project in the reactor, check if it is an app we should compile
         // TODO how do we want to pick which one(s) are actual apps?
         LinkedHashMap<Artifact, CachedProject> projects = new LinkedHashMap<>();
+        List<CachedProject> apps = new ArrayList<>();
         for (MavenProject reactorProject : reactorProjects) {
             if (reactorProject.getArtifactId().endsWith("-j2cl")) {
                 try {
                     // Load up all the dependencies in the requested scope for the current project
-                    loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, projectBuilder, request, diskCache, pluginVersion, projects, classpathScope, "* ");
+                    CachedProject p = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, projectBuilder, request, diskCache, pluginVersion, projects, classpathScope, "* ");
+                    apps.add(p);
                 } catch (ProjectBuildingException | IOException e) {
-                    throw new MojoExecutionException("Failed to set up caches", e);
+                    throw new MojoExecutionException("Failed to build project structure", e);
                 }
             }
-
         }
         diskCache.release();
-        System.out.println(System.currentTimeMillis());
 
-//        projects.values().forEach();
+        projects.values().forEach(p -> {
+            if (p.hasSourcesMapped()) {
+                p.watch();
+            }
+        });
 
-        diskCache.watch();
+        try {
+            Thread.sleep(TimeUnit.MINUTES.toMillis(10));
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
 
     }
 
@@ -175,7 +185,7 @@ public class ExternalTranspileMojo extends AbstractMojo {
             Map<Artifact, CachedProject> seen,
             String classpathScope,
             String depth) throws ProjectBuildingException, IOException {
-        System.out.println(depth + artifact);
+//        System.out.println(depth + artifact);
 
         if (seen.containsKey(artifact)) {
 //            System.out.println("  " + depth + "already seen");
@@ -189,7 +199,7 @@ public class ExternalTranspileMojo extends AbstractMojo {
         for (Artifact dependency : currentProject.getArtifacts().stream().sorted().collect(Collectors.toList())) {
             // if it shouldnt be on the classpath, skip it, if it isn't part of the current expected scope, skip it
             if (!dependency.getArtifactHandler().isAddedToClasspath()) {
-//                System.out.println("  " + depth + "dependency isn't added to classpath " + dependency);
+                System.out.println(artifact + " dependency isn't added to classpath " + dependency);
                 continue;
             } else if (!new ScopeArtifactFilter(classpathScope).include(dependency)) {
 //                System.out.println("  " + depth + "dependency isn't in " + classpathScope + " scope " + dependency);
