@@ -229,6 +229,10 @@ public class ExternalTranspileMojo extends AbstractMojo {
         // construct an entry in the project, stick it in the map
         CachedProject p = new CachedProject(diskCache, artifact, currentProject, children);
         seen.put(artifact, p);
+        if (p.getArtifactKey().startsWith("com.google.jsinterop:base")) {
+            //we have a workaround for now
+            p.setIgnoreJavacFailure(true);
+        }
         p.markDirty();
 
         return p;

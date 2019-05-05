@@ -1,6 +1,7 @@
 package net.cardosi.mojo.cache;
 
 import org.apache.maven.artifact.Artifact;
+import org.apache.maven.artifact.ArtifactUtils;
 import org.apache.maven.project.MavenProject;
 
 import java.util.ArrayList;
@@ -70,6 +71,10 @@ public class CachedProject {
         return artifact.getArtifactId();
     }
 
+    public String getArtifactKey() {
+        return ArtifactUtils.key(artifact);
+    }
+
     public Artifact getArtifact() {
         return artifact;
     }
@@ -79,7 +84,7 @@ public class CachedProject {
         return "CachedProject{" +
                 "artifact=" + artifact +
                 ", currentProject=" + currentProject +
-                ", children=" + children.stream().map(CachedProject::getArtifactId).collect(Collectors.joining(", ")) +
+                ", children=" + children.stream().map(CachedProject::getArtifactKey).collect(Collectors.joining(", ")) +
                 ", dirty=" + dirty +
                 '}';
     }

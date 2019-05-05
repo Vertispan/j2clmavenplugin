@@ -56,7 +56,7 @@ public class DiskCache {
 
     public void submit(CachedProject cachedProject) {
         if (cachedProject.getChildren().isEmpty()) {
-//            System.out.println("no dependencies, compiling right away " + cachedProject.getArtifactId());
+//            System.out.println("no dependencies, compiling right away " + cachedProject.getArtifactKey());
             s.submit(() -> compile(cachedProject));
         }
 
@@ -84,7 +84,7 @@ public class DiskCache {
     private void compile(CachedProject project) {
         lock.readLock().lock();
         try {
-//            System.out.println("Starting compile for " + project.getArtifactId() + " dirty:" + project.isDirty());
+//            System.out.println("Starting compile for " + project.getArtifactKey() + " dirty:" + project.isDirty());
 
             //build compile classpaths, compute the hash
             //TODO filter to scope=compile
@@ -149,16 +149,16 @@ public class DiskCache {
                     // first check to see if it exists, then wait for next event to occur
                     do {
                         if (completeMarker.exists()) {
-//                            System.out.println("already ready " + project.getArtifactId());
+//                            System.out.println("already ready " + project.getArtifactKey());
                             project.getCompiledOutput().complete(new TranspiledCacheEntry(hash.toString(), project.getArtifactId()));
                             return;
                         }
                         if (failedMarker.exists()) {
-                            System.out.println("compilation failed in some other thread/process " + project.getArtifactId() + " " + hash);
+                            System.out.println("compilation failed in some other thread/process " + project.getArtifactKey() + " " + hash);
                             project.getCompiledOutput().completeExceptionally(new IllegalStateException("Compilation failed in another thread/process"));
                             return;
                         }
-                        System.out.println("Waiting 10s and then checking again if other thread/process finished " + project.getArtifactId());
+                        System.out.println("Waiting 10s and then checking again if other thread/process finished " + project.getArtifactKey());
                         w.poll(10, TimeUnit.SECONDS);
                     } while (true);
                 } catch (IOException | InterruptedException ex) {
@@ -193,7 +193,7 @@ public class DiskCache {
                         project.getCompiledOutput().complete(new TranspiledCacheEntry(hash.toString(), project.getArtifactId()));
                         return;
                     }
-                    System.out.println("step 1 " + project.getArtifactId());
+//                    System.out.println("step 1 " + project.getArtifactKey());
                     if (!javac.compile(sources)) {
                         // so far at least we don't have any whitelist need here, it wouldnt really make sense to let a
                         // local compile fail
@@ -227,7 +227,7 @@ public class DiskCache {
                 File strippedSources = new File(cacheDir, "stripped");
                 strippedSources.mkdirs();
                 GwtIncompatiblePreprocessor stripper = new GwtIncompatiblePreprocessor(strippedSources);
-//                System.out.println("step 2 " + project.getArtifactId());
+//                System.out.println("step 2 " + project.getArtifactKey());
                 stripper.preprocess(sourcesToStrip);
                 // 3. javac stripped sources with a classpath of other stripped bytecode, we'll add this stripped bytecode
                 //    result to the classpath of step 3 and 4 of other projects. Do not rerun apt this time.
@@ -240,7 +240,7 @@ public class DiskCache {
                     project.getCompiledOutput().complete(new TranspiledCacheEntry(hash.toString(), project.getArtifactId()));
                     return;
                 }
-//                System.out.println("step 3 " + project.getArtifactId());
+//                System.out.println("step 3 " + project.getArtifactKey());
                 boolean success = javac.compile(sourcesToCompile);
                 if (!success) {
                     if (!project.isIgnoreJavacFailure()) {
@@ -256,7 +256,7 @@ public class DiskCache {
 
 
                 //mark as done
-//                System.out.println("success " + project.getArtifactId());
+//                System.out.println("success " + project.getArtifactKey());
                 Files.createFile(completeMarker.toPath());
                 project.getCompiledOutput().complete(new TranspiledCacheEntry(hash.toString(), project.getArtifactId()));
             } catch (Throwable ex) {
