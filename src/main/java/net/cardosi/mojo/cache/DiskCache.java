@@ -3,6 +3,7 @@ package net.cardosi.mojo.cache;
 import com.google.j2cl.frontend.FrontendUtils;
 import net.cardosi.mojo.Hash;
 import net.cardosi.mojo.tools.GwtIncompatiblePreprocessor;
+import net.cardosi.mojo.tools.J2cl;
 import net.cardosi.mojo.tools.Javac;
 import org.apache.maven.artifact.ArtifactUtils;
 
@@ -241,8 +242,8 @@ public class DiskCache {
                     return;
                 }
 //                System.out.println("step 3 " + project.getArtifactKey());
-                boolean success = javac.compile(sourcesToCompile);
-                if (!success) {
+                boolean javacSuccess = javac.compile(sourcesToCompile);
+                if (!javacSuccess) {
                     if (!project.isIgnoreJavacFailure()) {
                         throw new IllegalStateException("javac failed, check log for details");
                     }
@@ -250,8 +251,16 @@ public class DiskCache {
                 // 4. j2cl stripped sources with a classpath of other stripped bytecode
                 // TODO support not running the last step if we won't need it in this run, but mark the on-disk cache
                 //      accordingly so we can rebuild if it is needed later
-//        J2cl j2cl = new J2cl();
-//        j2cl
+                //TODO this can parallelize with step 3, right?
+                File jsOutDir = new File(cacheDir, "js-sources");
+                jsOutDir.mkdirs();
+                J2cl j2cl = new J2cl(strippedClasspath, bootstrap, jsOutDir);
+                List<FrontendUtils.FileInfo> nativeSources = new ArrayList<>();
+                boolean j2clSuccess = j2cl.transpile(sourcesToCompile, nativeSources);
+                if (!j2clSuccess) {
+                    throw new IllegalStateException("j2cl failed, check log for details");
+                }
+
                 // 5. copy other resources into the js dir
 
 
