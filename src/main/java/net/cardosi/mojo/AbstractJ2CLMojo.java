@@ -1,16 +1,13 @@
 package net.cardosi.mojo;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import com.google.javascript.jscomp.CompilerOptions;
+import com.google.javascript.jscomp.DependencyOptions;
 import net.cardosi.mojo.artifactitems.ArtifactItem;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugins.annotations.Parameter;
+
+import java.io.File;
+import java.util.*;
 
 /**
  * Abstract class to define commonly used parameters
@@ -106,7 +103,7 @@ public abstract class AbstractJ2CLMojo extends AbstractMojo {
                         + "and are not modules will be automatically added as "
                         + "--entry_point entries. "//Defaults to NONE."*/
     )
-    protected CompilerOptions.DependencyMode dependencyMode = CompilerOptions.DependencyMode.STRICT;
+    protected DependencyOptions.DependencyMode dependencyMode = DependencyOptions.DependencyMode.PRUNE;
 
     // j2cl-specific flag
     @Parameter(name = "declareLegacyNamespaces"/*,

@@ -9,6 +9,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.google.javascript.jscomp.CompilerOptions;
+import com.google.javascript.jscomp.DependencyOptions;
 import net.cardosi.mojo.options.Gwt3Options;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.execution.MavenSession;
@@ -149,7 +150,7 @@ public abstract class AbstractBuilderRunnerMojo extends AbstractJ2CLMojo impleme
     }
 
     @Override
-    public CompilerOptions.DependencyMode getDependencyMode() {
+    public DependencyOptions.DependencyMode getDependencyMode() {
         return dependencyMode;
     }
 

@@ -23,18 +23,24 @@ public class J2cl {
                         .collect(Collectors.toList())
                 )
                 .setOutput(jsOutDir.toPath())
-                .setDeclareLegacyNamespace(true)//TODO parameterize these?
+                .setDeclareLegacyNamespace(false)//TODO parameterize these?
                 .setEmitReadableLibraryInfo(false)
                 .setEmitReadableSourceMap(false)
                 .setGenerateKytheIndexingMetadata(false);
     }
 
     public boolean transpile(List<FrontendUtils.FileInfo> sourcesToCompile, List<FrontendUtils.FileInfo> nativeSources) {
-        Problems problems = J2clTranspiler.transpile(
-                optionsBuilder
-                        .setSources(sourcesToCompile)
-                        .setNativeSources(nativeSources)
-                        .build());
+        J2clTranspilerOptions options = optionsBuilder
+                .setSources(sourcesToCompile)
+                .setNativeSources(nativeSources)
+                .build();
+        Problems problems;
+        try {
+            problems = J2clTranspiler.transpile(options);
+        } catch (Throwable t) {
+            System.out.println(options);
+            throw t;
+        }
 //        if (problems.hasErrors() || problems.hasWarnings()) {
 //            problems.getErrors().forEach(System.out::println);
 //            problems.getWarnings().forEach(System.out::println);
@@ -42,6 +48,9 @@ public class J2cl {
 //            problems.getInfoMessages().forEach(System.out::println);
 //        }
         problems.getMessages().forEach(System.out::println);
+        if (problems.hasErrors()) {
+            System.out.println(options);
+        }
         return !problems.hasErrors();
     }
 }

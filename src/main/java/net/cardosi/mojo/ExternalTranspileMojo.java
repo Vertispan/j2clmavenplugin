@@ -2,7 +2,6 @@ package net.cardosi.mojo;
 
 import net.cardosi.mojo.cache.CachedProject;
 import net.cardosi.mojo.cache.DiskCache;
-import org.apache.commons.codec.binary.Hex;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.ArtifactUtils;
 import org.apache.maven.artifact.resolver.filter.ScopeArtifactFilter;
@@ -23,10 +22,6 @@ import org.eclipse.aether.resolution.ArtifactResolutionException;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.*;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -80,7 +75,7 @@ public class ExternalTranspileMojo extends AbstractMojo {
      * <li><i>test</i> - system, provided, compile, runtime, test
      * </ul>
      */
-    @Parameter(defaultValue = Artifact.SCOPE_COMPILE_PLUS_RUNTIME, required = true)
+    @Parameter(defaultValue = Artifact.SCOPE_RUNTIME, required = true)
     protected String classpathScope;
 
     @Parameter(defaultValue = "com.vertispan.j2cl:javac-bootstrap-classpath:0.2-SNAPSHOT", required = true)
@@ -88,13 +83,13 @@ public class ExternalTranspileMojo extends AbstractMojo {
 
     @Parameter(defaultValue = "com.vertispan.j2cl:jre:0.2-SNAPSHOT", required = true)
     protected String jreJar;
-    @Parameter(defaultValue = "com.vertispan.j2cl:jre:0.2-SNAPSHOT:jszip", required = true)
+    @Parameter(defaultValue = "com.vertispan.j2cl:jre:zip:jszip:0.2-SNAPSHOT", required = true)
     protected String jreJsZip;
 
-    @Parameter(defaultValue = "com.vertispan.j2cl:bootstrap:0.2-SNAPSHOT:jszip", required = true)
+    @Parameter(defaultValue = "com.vertispan.j2cl:bootstrap:zip:jszip:0.2-SNAPSHOT", required = true)
     protected String bootstrapJsZip;
 
-    @Parameter(defaultValue = "com.vertispan.j2cl:closure-test:0.2-SNAPSHOT:jszip", required = true)
+    @Parameter(defaultValue = "com.vertispan.j2cl:closure-test:zip:jszip:0.2-SNAPSHOT", required = true)
     protected String testJsZip;
 
     @Parameter(defaultValue = "com.vertispan.j2cl:gwt-internal-annotations:0.2-SNAPSHOT", required = true)
@@ -122,13 +117,22 @@ public class ExternalTranspileMojo extends AbstractMojo {
         PluginDescriptor pluginDescriptor = (PluginDescriptor) getPluginContext().get("pluginDescriptor");
         String pluginVersion = pluginDescriptor.getVersion();
 
+        //TODO need to be very careful about allowing these to be configurable, possibly should tie them to the "plugin version" aspect of the hash
+        //     or stitch them into the module's dependencies, that probably makes more sense...
         List<File> extraClasspath = Arrays.asList(
                 getFileWithMavenCoords(jreJar),
                 getFileWithMavenCoords(internalAnnotationsJar),
                 getFileWithMavenCoords(jsinteropAnnotationsJar),
+                getFileWithMavenCoords("javax.annotation:jsr250-api:1.0"),
                 getFileWithMavenCoords("com.vertispan.jsinterop:base:1.0.0-SNAPSHOT")//TODO stop hardcoding this when goog releases a "base" which actually works on both platforms
         );
-        DiskCache diskCache = new DiskCache(pluginVersion, jsZipCacheDir, getFileWithMavenCoords(javacBootstrapClasspathJar), extraClasspath);
+
+        List<File> extraJsZips = Arrays.asList(
+                getFileWithMavenCoords(jreJsZip),
+                getFileWithMavenCoords(bootstrapJsZip)
+        );
+
+        DiskCache diskCache = new DiskCache(pluginVersion, jsZipCacheDir, getFileWithMavenCoords(javacBootstrapClasspathJar), extraClasspath, extraJsZips);
         diskCache.takeLock();
         ProjectBuildingRequest request = new DefaultProjectBuildingRequest(mavenSession.getProjectBuildingRequest());
 
@@ -136,30 +140,36 @@ public class ExternalTranspileMojo extends AbstractMojo {
         // TODO how do we want to pick which one(s) are actual apps?
         LinkedHashMap<Artifact, CachedProject> projects = new LinkedHashMap<>();
         List<CachedProject> apps = new ArrayList<>();
-        for (MavenProject reactorProject : reactorProjects) {
-            if (reactorProject.getArtifactId().endsWith("-j2cl")) {
-                try {
-                    // Load up all the dependencies in the requested scope for the current project
-                    CachedProject p = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, projectBuilder, request, diskCache, pluginVersion, projects, classpathScope, "* ");
-                    apps.add(p);
-                } catch (ProjectBuildingException | IOException e) {
-                    throw new MojoExecutionException("Failed to build project structure", e);
+
+        try {
+            if (reactorProjects.size() == 1) {
+                MavenProject reactorProject = reactorProjects.get(0);
+                apps.add(loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, projectBuilder, request, diskCache, pluginVersion, projects, classpathScope, "* "));
+            } else {
+
+                // TODO better heuristic for j2cl apps in reactor, like reading plugin config in the proj?
+                for (MavenProject reactorProject : reactorProjects) {
+                    if (reactorProject.getArtifactId().endsWith("-j2cl")) {
+                        // Load up all the dependencies in the requested scope for the current project
+                        CachedProject p = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, projectBuilder, request, diskCache, pluginVersion, projects, classpathScope, "* ");
+                        apps.add(p);
+                    }
                 }
             }
+        } catch (ProjectBuildingException | IOException e) {
+            throw new MojoExecutionException("Failed to build project structure", e);
         }
         diskCache.release();
 
-        projects.values().forEach(p -> {
-            if (p.hasSourcesMapped()) {
-                p.watch();
-            }
+        apps.forEach(p -> {
+            p.registerForScope(classpathScope);
         });
 
-        try {
-            Thread.sleep(TimeUnit.MINUTES.toMillis(10));
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+//        try {
+//            Thread.sleep(TimeUnit.MINUTES.toMillis(10));
+//        } catch (InterruptedException e) {
+//            e.printStackTrace();
+//        }
 
     }
 
@@ -213,6 +223,16 @@ public class ExternalTranspileMojo extends AbstractMojo {
             MavenProject inReactor = getReferencedProject(currentProject, dependency);
             if (inReactor != null) {
 //                System.out.println("Found project in reactor matching this " + inReactor);
+
+//                Artifact replacementArtifact = new org.apache.maven.artifact.DefaultArtifact(
+//                        dependency.getGroupId(),
+//                        dependency.getArtifactId(),
+//                        dependency.getVersion(),
+//                        dependency.getScope(),
+//                        dependency.getType(),
+//                        null,
+//                        dependency.getArtifactHandler()
+//                );
                 CachedProject transpiledDep = loadDependenciesIntoCache(dependency, inReactor, projectBuilder, projectBuildingRequest, diskCache, pluginVersion, seen, Artifact.SCOPE_COMPILE, "  " + depth);
                 children.add(transpiledDep);
             } else {

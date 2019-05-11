@@ -27,7 +27,7 @@
     <!-- Builder dependencies versions -->
     <transpiler.version>0.2-SNAPSHOT</transpiler.version>
     <gwt.incompatible.stripper.version>0.2-SNAPSHOT</gwt.incompatible.stripper.version>
-    <closure.compiler.unshaded.version>1.0-SNAPSHOT</closure.compiler.unshaded.version>
+    <closure.compiler.unshaded.version>0.1-SNAPSHOT</closure.compiler.unshaded.version>
     <commons.codec.version>1.11</commons.codec.version>
     <!-- Test -->
     <org.eclipse.sisu.plexus.version>0.3.3</org.eclipse.sisu.plexus.version>
@@ -251,7 +251,7 @@
       <version>${gwt.incompatible.stripper.version}</version>
     </dependency>
     <dependency>
-      <groupId>com.vertispan.javascript</groupId>
+      <groupId>org.treblereel.gwt.javascript</groupId>
       <artifactId>closure-compiler-unshaded</artifactId>
       <version>${closure.compiler.unshaded.version}</version>
       <exclusions>
@@ -441,6 +441,15 @@
       </releases>
       <snapshots>
         <enabled>true</enabled>
+      </snapshots>
+    </repository>
+    <repository>
+      <id>sonatype-snapshots-repo</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+      <snapshots>
+        <enabled>true</enabled>
+        <updatePolicy>daily</updatePolicy>
+        <checksumPolicy>fail</checksumPolicy>
       </snapshots>
     </repository>
   </repositories>
