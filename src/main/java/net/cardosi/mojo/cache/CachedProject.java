@@ -3,6 +3,7 @@ package net.cardosi.mojo.cache;
 import com.google.j2cl.frontend.FrontendUtils;
 import com.google.javascript.jscomp.*;
 import com.google.javascript.jscomp.Compiler;
+import net.cardosi.mojo.ClosureBuildConfiguration;
 import net.cardosi.mojo.Hash;
 import net.cardosi.mojo.tools.GwtIncompatiblePreprocessor;
 import net.cardosi.mojo.tools.J2cl;
@@ -53,7 +54,7 @@ public class CachedProject {
     private final Map<Step, CompletableFuture<TranspiledCacheEntry>> steps = Collections.synchronizedMap(new EnumMap<>(Step.class));
 
     private boolean ignoreJavacFailure;
-    private Set<String> registeredScope = new HashSet<>();
+    private Set<ClosureBuildConfiguration> registeredBuildTerminals = new HashSet<>();
 
     public CachedProject(DiskCache diskCache, Artifact artifact, MavenProject currentProject, List<CachedProject> children) {
         this.diskCache = diskCache;
@@ -83,8 +84,9 @@ public class CachedProject {
 
         dependents.forEach(CachedProject::markDirty);
 
-        if (!registeredScope.isEmpty()) {
-            jscompWithScope(registeredScope);
+        //TODO cache those "compile me" or "test me" values so we don't pass around like this
+        if (!registeredBuildTerminals.isEmpty()) {
+            build();
         }
     }
 
@@ -132,18 +134,20 @@ public class CachedProject {
         this.ignoreJavacFailure = ignoreJavacFailure;
     }
 
-    /**
-     * Indicates that this project should collect its dependencies up to the specified scope (or other higher scopes
-     * if previously specified...), and watch them for changes.
-     */
-    public void registerForScope(String classpathScope) {
-        // Iterate through this project's dependencies, matching only the given scope, and marking that
-        // compilation should begin. If later dirty tracking happens (implying watch() has been called, etc),
-        // this project should recompile (and thus ask for changes from other upstream deps)
-        this.registeredScope.add(classpathScope);
+    public CompletableFuture<TranspiledCacheEntry> registerAsApp(ClosureBuildConfiguration config) {
+        registeredBuildTerminals.add(config);
 
-        jscompWithScope(registeredScope).join();
+        // if we're already compiled to this new terminal, then nothing will happen, otherwise we'll build everything
+        // that needs building
+        return jscompWithScope(config);
     }
+
+    private CompletableFuture<Void> build() {
+        return CompletableFuture.allOf(
+                registeredBuildTerminals.stream().map(cfg -> jscompWithScope(cfg)).toArray(CompletableFuture[]::new)
+        );
+    }
+
 
     private CompletableFuture<TranspiledCacheEntry> getOrCreate(Step step, Function<TranspiledCacheEntry, CompletableFuture<TranspiledCacheEntry>> instructions) {
 //        synchronized (steps) {
@@ -240,7 +244,7 @@ public class CachedProject {
         );
     }
 
-    private CompletableFuture<TranspiledCacheEntry> jscompWithScope(Set<String> registeredScope) {
+    private CompletableFuture<TranspiledCacheEntry> jscompWithScope(ClosureBuildConfiguration config) {
         return getOrCreate(Step.AssembleOutput, () -> {
 
 
@@ -253,7 +257,7 @@ public class CachedProject {
                     children.stream()
                             .filter(child -> {
                                 //if child is in any registeredScope item
-                                return registeredScope.stream().anyMatch(scope -> new ScopeArtifactFilter(scope).include(child.getArtifact()));
+                                return new ScopeArtifactFilter(config.getClasspathScope()).include(child.getArtifact());
                             })
             )
                     .map(child -> child.j2cl())
@@ -284,31 +288,36 @@ public class CachedProject {
                 jscompArgs.add(file.getAbsolutePath());
             });
 
-            //TODO loop here over all requested entrypoints, if any?
-            jscompArgs.add("--entry_point");
-            jscompArgs.add("org.dominokit.samples.App");
+            for (String entrypoint : config.getEntrypoint()) {
+                jscompArgs.add("--entry_point");
+                jscompArgs.add(entrypoint);
+            }
 
-            jscompArgs.add("--define");
-            jscompArgs.add("goog.ENABLE_DEBUG_LOADER=false");
+            CompilationLevel compilationLevel = CompilationLevel.fromString(config.getCompilationLevel());
+            if (compilationLevel == CompilationLevel.BUNDLE) {
+                jscompArgs.add("--define");
+                jscompArgs.add("goog.ENABLE_DEBUG_LOADER=false");
+            }
+            jscompArgs.add("--define=local=en_US");
 
             jscompArgs.add("--compilation_level");
-            jscompArgs.add(CompilationLevel.BUNDLE.name());
+            jscompArgs.add(compilationLevel.name());
 
             jscompArgs.add("--dependency_mode");
             jscompArgs.add(DependencyOptions.DependencyMode.PRUNE.name());
 
-            //TODO --language_out ?
 
+            jscompArgs.add("--language_out");
+            jscompArgs.add("ECMASCRIPT5");
+
+            new File(config.getLauncherDir() + "/" + config.getInitialScriptFilename()).getParentFile().mkdirs();
             jscompArgs.add("--js_output_file");
-            jscompArgs.add("target/app.js");
+            jscompArgs.add(config.getLauncherDir() + "/" + config.getInitialScriptFilename());
 
-//            jscompArgs.add("");
-
-            //TODO externs
-//            jscompArgs.add("--externs");
-//            jscompArgs.add("dominodo-j2cl/src/main/externs/w3c_clipboardevent.js");
-            jscompArgs.add("--externs");
-            jscompArgs.add("dominodo-j2cl/src/main/externs/svg.js");
+            for (String extern : config.getExterns()) {
+                jscompArgs.add("--externs");
+                jscompArgs.add(extern);
+            }
 
             //TODO defines
 

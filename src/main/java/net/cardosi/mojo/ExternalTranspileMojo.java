@@ -2,6 +2,7 @@ package net.cardosi.mojo;
 
 import net.cardosi.mojo.cache.CachedProject;
 import net.cardosi.mojo.cache.DiskCache;
+import net.cardosi.mojo.cache.TranspiledCacheEntry;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.ArtifactUtils;
 import org.apache.maven.artifact.resolver.filter.ScopeArtifactFilter;
@@ -13,6 +14,7 @@ import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugin.descriptor.PluginDescriptor;
 import org.apache.maven.plugins.annotations.*;
 import org.apache.maven.project.*;
+import org.codehaus.plexus.util.xml.Xpp3Dom;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.artifact.DefaultArtifact;
@@ -23,7 +25,7 @@ import org.eclipse.aether.resolution.ArtifactResolutionException;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 /**
@@ -43,9 +45,9 @@ import java.util.stream.Collectors;
  * by writing it to disk in some cheap way so it can be read back in easily. Iterating the project
  * model must already be cheap, so maybe we can just rebuild it from scratch each time?
  */
-@Mojo(name = "transpile", requiresDependencyResolution = ResolutionScope.COMPILE, aggregator = true)
+@Mojo(name = "run", requiresDependencyResolution = ResolutionScope.COMPILE, aggregator = true)
 //@Execute(phase = LifecyclePhase.PROCESS_CLASSES)
-public class ExternalTranspileMojo extends AbstractMojo {
+public class ExternalTranspileMojo extends AbstractMojo implements ClosureBuildConfiguration {
     @Parameter( defaultValue = "${session}", readonly = true )
     protected MavenSession mavenSession;
 
@@ -77,6 +79,21 @@ public class ExternalTranspileMojo extends AbstractMojo {
      */
     @Parameter(defaultValue = Artifact.SCOPE_RUNTIME, required = true)
     protected String classpathScope;
+
+    @Parameter
+    protected List<String> externs = new ArrayList<>();
+
+    @Parameter
+    protected List<String> entrypoint = new ArrayList<>();
+
+    @Parameter
+    protected List<String> define = new ArrayList<>();
+
+    @Parameter(required = true)
+    protected String launcherDir;
+
+    @Parameter(defaultValue = "ADVANCED")
+    protected String compilationLevel;
 
     @Parameter(defaultValue = "com.vertispan.j2cl:javac-bootstrap-classpath:0.2-SNAPSHOT", required = true)
     protected String javacBootstrapClasspathJar;
@@ -140,18 +157,34 @@ public class ExternalTranspileMojo extends AbstractMojo {
         // TODO how do we want to pick which one(s) are actual apps?
         LinkedHashMap<Artifact, CachedProject> projects = new LinkedHashMap<>();
         List<CachedProject> apps = new ArrayList<>();
+        List<CompletableFuture<?>> futures = new ArrayList<>();
 
         try {
             if (reactorProjects.size() == 1) {
                 MavenProject reactorProject = reactorProjects.get(0);
-                apps.add(loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, projectBuilder, request, diskCache, pluginVersion, projects, classpathScope, "* "));
+                CachedProject e = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, projectBuilder, request, diskCache, pluginVersion, projects, classpathScope, "* ");
+                futures.add(e.registerAsApp(this));
+                apps.add(e);
             } else {
 
-                // TODO better heuristic for j2cl apps in reactor, like reading plugin config in the proj?
                 for (MavenProject reactorProject : reactorProjects) {
-                    if (reactorProject.getArtifactId().endsWith("-j2cl")) {
+                    if (project.equals(reactorProject) || reactorProject.getPackaging().equals("pom")) {
+                        //skip the reactor project?
+                        continue;
+                    }
+                    Xpp3Dom goalConfiguration = reactorProject.getGoalConfiguration(pluginDescriptor.getGroupId(), pluginDescriptor.getArtifactId(), null, null);
+                    //TODO what happens when both test and build are defined?
+//                    Plugin j2clPlugin = reactorProject.getBuild().getPluginsAsMap().get("net.cardosi.j2cl:j2cl-maven-plugin");
+                    if (goalConfiguration != null) {
+                        // read out the goals/configs and see what scope to use, what other params to use
+                        //TODo should not use classpathScope here, but instead see what goal we're staring at
+                        XmlDomClosureConfig config = new XmlDomClosureConfig(goalConfiguration, classpathScope, compilationLevel, reactorProject.getArtifactId(), launcherDir);
+
                         // Load up all the dependencies in the requested scope for the current project
-                        CachedProject p = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, projectBuilder, request, diskCache, pluginVersion, projects, classpathScope, "* ");
+                        CachedProject p = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, projectBuilder, request, diskCache, pluginVersion, projects, config.getClasspathScope(), "* ");
+
+                        CompletableFuture<TranspiledCacheEntry> f = p.registerAsApp(config);
+                        futures.add(f);
                         apps.add(p);
                     }
                 }
@@ -161,9 +194,8 @@ public class ExternalTranspileMojo extends AbstractMojo {
         }
         diskCache.release();
 
-        apps.forEach(p -> {
-            p.registerForScope(classpathScope);
-        });
+        // everything below this point is garbage, needs to be rethought
+        futures.forEach(CompletableFuture::join);
 
 //        try {
 //            Thread.sleep(TimeUnit.MINUTES.toMillis(10));
@@ -267,4 +299,33 @@ public class ExternalTranspileMojo extends AbstractMojo {
         return reference;
     }
 
+    @Override
+    public String getClasspathScope() {
+        return classpathScope;
+    }
+
+    @Override
+    public List<String> getEntrypoint() {
+        return entrypoint;
+    }
+
+    @Override
+    public List<String> getExterns() {
+        return externs;
+    }
+
+    @Override
+    public String getLauncherDir() {
+        return launcherDir;
+    }
+
+    @Override
+    public String getInitialScriptFilename() {
+        return "app.js";
+    }
+
+    @Override
+    public String getCompilationLevel() {
+        return compilationLevel;
+    }
 }
