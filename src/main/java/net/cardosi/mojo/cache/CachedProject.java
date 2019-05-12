@@ -298,7 +298,18 @@ public class CachedProject {
                 jscompArgs.add("--define");
                 jscompArgs.add("goog.ENABLE_DEBUG_LOADER=false");
             }
-            jscompArgs.add("--define=local=en_US");
+
+//            jscompArgs.add("--define");
+//            jscompArgs.add("locale=en_US");
+//
+//            jscompArgs.add("--define");
+//            jscompArgs.add("jre.checkedMode=DISABLED");
+//
+//            jscompArgs.add("--define");
+//            jscompArgs.add("jsinterop.checks=DISABLED");
+//
+//            jscompArgs.add("--define");
+//            jscompArgs.add("jre.checks.checkLevel=MINIMAL");
 
             jscompArgs.add("--compilation_level");
             jscompArgs.add(compilationLevel.name());
@@ -310,9 +321,9 @@ public class CachedProject {
             jscompArgs.add("--language_out");
             jscompArgs.add("ECMASCRIPT5");
 
-            new File(config.getLauncherDir() + "/" + config.getInitialScriptFilename()).getParentFile().mkdirs();
+            new File(config.getWebappDirectory() + "/" + config.getInitialScriptFilename()).getParentFile().mkdirs();
             jscompArgs.add("--js_output_file");
-            jscompArgs.add(config.getLauncherDir() + "/" + config.getInitialScriptFilename());
+            jscompArgs.add(config.getWebappDirectory() + "/" + config.getInitialScriptFilename());
 
             for (String extern : config.getExterns()) {
                 jscompArgs.add("--externs");

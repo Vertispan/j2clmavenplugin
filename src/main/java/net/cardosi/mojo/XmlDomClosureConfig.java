@@ -13,21 +13,21 @@ public class XmlDomClosureConfig implements ClosureBuildConfiguration {
     private final String defaultCompilationLevel;
     private final String defaultInitialScriptFilename;
 
-    private final String defaultLaunchDir;
+    private final String defaultWebappDirectory;
 
     /**
      * @param dom the dom from the plugin invocation
      * @param defaultScope the expected scope based on the goal detected
      * @param defaultCompilationLevel the default compilation level based on the goal detected
-     * @param defaultInitialScriptFilename the artifactId
-     * @param defaultLaunchDir the current invocation's launch dir, so we all serve from the same place
+     * @param artifactId the artifactId of the project being wrapped here
+     * @param defaultWebappDirectory the current invocation's launch dir, so we all serve from the same place
      */
-    public XmlDomClosureConfig(Xpp3Dom dom, String defaultScope, String defaultCompilationLevel, String defaultInitialScriptFilename, String defaultLaunchDir) {
+    public XmlDomClosureConfig(Xpp3Dom dom, String defaultScope, String defaultCompilationLevel, String artifactId, String defaultWebappDirectory) {
         this.dom = dom;
         this.defaultScope = defaultScope;
         this.defaultCompilationLevel = defaultCompilationLevel;
-        this.defaultInitialScriptFilename = defaultInitialScriptFilename;
-        this.defaultLaunchDir = defaultLaunchDir;
+        this.defaultInitialScriptFilename = artifactId + "/" + artifactId + ".js";
+        this.defaultWebappDirectory = defaultWebappDirectory;
     }
 
     @Override
@@ -56,10 +56,10 @@ public class XmlDomClosureConfig implements ClosureBuildConfiguration {
     }
 
     @Override
-    public String getLauncherDir() {
+    public String getWebappDirectory() {
         //default probably should override anything in the local DOM..?
-        Xpp3Dom elt = dom.getChild("launcherDir");
-        return elt == null ? defaultLaunchDir : elt.getValue();
+        Xpp3Dom elt = dom.getChild("webappDirectory");
+        return elt == null ? defaultWebappDirectory : elt.getValue();
     }
 
     @Override

@@ -17,7 +17,7 @@ public interface ClosureBuildConfiguration {
 
 //    List<String> getDefines();
 
-    String getLauncherDir();
+    String getWebappDirectory();
 
     String getInitialScriptFilename();
 

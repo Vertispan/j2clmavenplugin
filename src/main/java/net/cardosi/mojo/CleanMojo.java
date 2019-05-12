@@ -15,46 +15,39 @@
  */
 package net.cardosi.mojo;
 
-import java.io.File;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugin.MojoFailureException;
+import org.apache.maven.plugins.annotations.Mojo;
+
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.util.Map;
-
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugin.MojoFailureException;
-import org.apache.maven.plugins.annotations.Mojo;
 
 @Mojo(name = "clean")
-public class CleanMojo extends AbstractJ2CLMojo {
+public class CleanMojo extends AbstractGwt3BuildMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         try {
-            getLog().info("CleanMojo up J2CL-specific temp files");
-            final Map<String, File> workingDirs = getWorkingDirs();
-            for (File file : workingDirs.values()) {
-                getLog().info("Deleting if exists: " + file.getPath());
-                if (file.exists()) {
-                    recursivelyDeleteDir(file.toPath());
-                    getLog().warn("Failed to delete " + file.getPath());
-                }
-            }
+            getLog().info("Deleting GWT3 build cache");
+            recursivelyDeleteDir(gwt3BuildCacheDir.toPath());
         } catch (Throwable t) {
-            throw new MojoFailureException(t.getMessage());
+            throw new MojoFailureException(t.getMessage(), t);
         }
     }
 
     private void recursivelyDeleteDir(Path path) throws IOException {
-        if (Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)) {
-            try (DirectoryStream<Path> entries = Files.newDirectoryStream(path)) {
-                for (Path entry : entries) {
-                    recursivelyDeleteDir(entry);
+        if (Files.exists(path)) {
+            if (Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)) {
+                try (DirectoryStream<Path> entries = Files.newDirectoryStream(path)) {
+                    for (Path entry : entries) {
+                        recursivelyDeleteDir(entry);
+                    }
                 }
             }
+            Files.delete(path);
         }
-        Files.delete(path);
     }
 }
