@@ -95,6 +95,7 @@ public abstract class AbstractGwt3BuildMojo extends AbstractMojo {
     protected static CachedProject loadDependenciesIntoCache(
             Artifact artifact,
             MavenProject currentProject,
+            boolean lookupReactorProjects,
             ProjectBuilder projectBuilder,
             ProjectBuildingRequest projectBuildingRequest,
             DiskCache diskCache,
@@ -127,7 +128,7 @@ public abstract class AbstractGwt3BuildMojo extends AbstractMojo {
             // make a project to reference for this dependency, if possible
             //TODO handle the case where a jar is referenced without a pom by treating it as having no dependencies
 
-            MavenProject inReactor = getReferencedProject(currentProject, dependency);
+            MavenProject inReactor = lookupReactorProjects ? getReferencedProject(currentProject, dependency) : null;
             if (inReactor != null) {
 //                System.out.println("Found project in reactor matching this " + inReactor);
 
@@ -140,15 +141,15 @@ public abstract class AbstractGwt3BuildMojo extends AbstractMojo {
 //                        null,
 //                        dependency.getArtifactHandler()
 //                );
-                CachedProject transpiledDep = loadDependenciesIntoCache(dependency, inReactor, projectBuilder, projectBuildingRequest, diskCache, pluginVersion, seen, Artifact.SCOPE_COMPILE, "  " + depth);
+                CachedProject transpiledDep = loadDependenciesIntoCache(dependency, inReactor, lookupReactorProjects, projectBuilder, projectBuildingRequest, diskCache, pluginVersion, seen, Artifact.SCOPE_COMPILE, "  " + depth);
                 children.add(transpiledDep);
             } else {
                 // non-reactor project, build a project for it
-//                System.out.println("Creating project from artifact " + dependency);
+                System.out.println("Creating project from artifact " + dependency);
                 projectBuildingRequest.setProject(null);
                 projectBuildingRequest.setResolveDependencies(true);
                 MavenProject p = projectBuilder.build(dependency, true, projectBuildingRequest).getProject();
-                CachedProject transpiledDep = loadDependenciesIntoCache(dependency, p, projectBuilder, projectBuildingRequest, diskCache, pluginVersion, seen, Artifact.SCOPE_COMPILE, "  " + depth);
+                CachedProject transpiledDep = loadDependenciesIntoCache(dependency, p, lookupReactorProjects, projectBuilder, projectBuildingRequest, diskCache, pluginVersion, seen, Artifact.SCOPE_COMPILE, "  " + depth);
                 children.add(transpiledDep);
             }
         }

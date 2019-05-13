@@ -99,7 +99,7 @@ public class BuildMojo extends AbstractGwt3BuildMojo implements ClosureBuildConf
         LinkedHashMap<Artifact, CachedProject> projects = new LinkedHashMap<>();
 
         try {
-            CachedProject e = loadDependenciesIntoCache(project.getArtifact(), project, projectBuilder, request, diskCache, pluginVersion, projects, classpathScope, "* ");
+            CachedProject e = loadDependenciesIntoCache(project.getArtifact(), project, false, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, "* ");
             diskCache.release();
             e.registerAsApp(this).join();
         } catch (ProjectBuildingException | IOException e) {

@@ -91,10 +91,10 @@ public class WatchMojo extends AbstractGwt3BuildMojo {
                 if (goalConfiguration != null) {
                     // read out the goals/configs and see what scope to use, what other params to use
                     //TODo should not use classpathScope here, but instead see what goal we're staring at
-                    XmlDomClosureConfig config = new XmlDomClosureConfig(goalConfiguration, "runtime", compilationLevel, reactorProject.getArtifactId(), defaultWebappDirectory);
+                    XmlDomClosureConfig config = new XmlDomClosureConfig(goalConfiguration, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, compilationLevel, reactorProject.getArtifactId(), defaultWebappDirectory);
 
                     // Load up all the dependencies in the requested scope for the current project
-                    CachedProject p = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, projectBuilder, request, diskCache, pluginVersion, projects, config.getClasspathScope(), "* ");
+                    CachedProject p = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, true, projectBuilder, request, diskCache, pluginVersion, projects, config.getClasspathScope(), "* ");
 
                     CompletableFuture<TranspiledCacheEntry> f = p.registerAsApp(config);
                     futures.add(f);
