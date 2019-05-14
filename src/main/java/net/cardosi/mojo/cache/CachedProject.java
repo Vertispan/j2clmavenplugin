@@ -422,7 +422,9 @@ public class CachedProject {
 
             boolean j2clSuccess = j2cl.transpile(sourcesToCompile, nativeSources);
             if (!j2clSuccess) {
-                throw new IllegalStateException("j2cl failed, check log for details");
+                if (!isIgnoreJavacFailure()) {
+                    throw new IllegalStateException("j2cl failed, check log for details");
+                }
             }
 
             //copy over other plain js
