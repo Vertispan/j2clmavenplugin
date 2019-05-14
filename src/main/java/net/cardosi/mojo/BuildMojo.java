@@ -96,7 +96,7 @@ public class BuildMojo extends AbstractGwt3BuildMojo implements ClosureBuildConf
 
         // for each project in the reactor, check if it is an app we should compile
         // TODO how do we want to pick which one(s) are actual apps?
-        LinkedHashMap<Artifact, CachedProject> projects = new LinkedHashMap<>();
+        LinkedHashMap<String, CachedProject> projects = new LinkedHashMap<>();
 
         try {
             CachedProject e = loadDependenciesIntoCache(project.getArtifact(), project, false, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, "* ");

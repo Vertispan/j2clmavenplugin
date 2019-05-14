@@ -46,9 +46,9 @@ public class CachedProject {
     private static final PathMatcher nativeJsMatcher = FileSystems.getDefault().getPathMatcher("glob:**/*.native.js");
 
     private final DiskCache diskCache;
-    private final Artifact artifact;
-    private final MavenProject currentProject;
-    private final List<CachedProject> children;
+    private Artifact artifact;
+    private MavenProject currentProject;
+    private List<CachedProject> children;
     private final List<CachedProject> dependents = new ArrayList<>();
 
     private final Map<Step, CompletableFuture<TranspiledCacheEntry>> steps = Collections.synchronizedMap(new EnumMap<>(Step.class));
@@ -58,10 +58,19 @@ public class CachedProject {
 
     public CachedProject(DiskCache diskCache, Artifact artifact, MavenProject currentProject, List<CachedProject> children) {
         this.diskCache = diskCache;
+        replace(artifact, currentProject, children);
+    }
+
+    public void replace(Artifact artifact, MavenProject currentProject, List<CachedProject> children) {
+        assert this.children == null || (this.children.isEmpty() && this.currentProject.getArtifacts().isEmpty());
+
         this.artifact = artifact;
         this.currentProject = currentProject;
         this.children = children;
-        children.forEach(c -> c.dependents.add(this));
+
+        for (CachedProject child : children) {
+            child.dependents.add(this);
+        }
     }
 
     /**

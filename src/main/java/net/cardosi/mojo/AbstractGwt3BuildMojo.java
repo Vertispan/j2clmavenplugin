@@ -100,14 +100,24 @@ public abstract class AbstractGwt3BuildMojo extends AbstractMojo {
             ProjectBuildingRequest projectBuildingRequest,
             DiskCache diskCache,
             String pluginVersion,
-            Map<Artifact, CachedProject> seen,
+            Map<String, CachedProject> seen,
             String classpathScope,
             String depth) throws ProjectBuildingException, IOException {
 //        System.out.println(depth + artifact);
 
-        if (seen.containsKey(artifact)) {
+        // this is roughly DefaultArtifact.toString, minus scope, since we don't care what the scope is for the purposes of building projects
+        String key = artifact.getGroupId() + ":" + artifact.getArtifactId() + ":" + artifact.getBaseVersion();
+        if (artifact.getClassifier() != null) {
+            key += ":" + artifact.getClassifier();
+        }
+
+        boolean replace = false;
+        if (seen.containsKey(key)) {
 //            System.out.println("  " + depth + "already seen");
-            return seen.get(artifact);
+            if (!seen.get(key).getMavenProject().getArtifacts().isEmpty() || currentProject.getArtifacts().isEmpty()) {
+                return seen.get(key);
+            }
+            replace = true;
         }
 
         List<CachedProject> children = new ArrayList<>();
@@ -148,7 +158,7 @@ public abstract class AbstractGwt3BuildMojo extends AbstractMojo {
                 children.add(transpiledDep);
             } else {
                 // non-reactor project, build a project for it
-                System.out.println("Creating project from artifact " + dependency);
+//                System.out.println("Creating project from artifact " + dependency);
                 projectBuildingRequest.setProject(null);
                 projectBuildingRequest.setResolveDependencies(true);
                 MavenProject p = projectBuilder.build(dependency, true, projectBuildingRequest).getProject();
@@ -158,13 +168,20 @@ public abstract class AbstractGwt3BuildMojo extends AbstractMojo {
         }
 
         // construct an entry in the project, stick it in the map
-        CachedProject p = new CachedProject(diskCache, artifact, currentProject, children);
-        seen.put(artifact, p);
-        if (p.getArtifactKey().startsWith("com.google.jsinterop:base")) {
-            //we have a workaround for now
-            p.setIgnoreJavacFailure(true);
+
+        CachedProject p;
+        if (replace) {
+            p = seen.get(key);
+            p.replace(artifact, currentProject, children);
+        } else {
+            p = new CachedProject(diskCache, artifact, currentProject, children);
+            seen.put(key, p);
+            if (p.getArtifactKey().startsWith("com.google.jsinterop:base")) {
+                //we have a workaround for now
+                p.setIgnoreJavacFailure(true);
+            }
+            p.markDirty();
         }
-        p.markDirty();
 
         return p;
     }

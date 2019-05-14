@@ -68,7 +68,7 @@ public class WatchMojo extends AbstractGwt3BuildMojo {
 
         // for each project in the reactor, check if it is an app we should compile
         // TODO how do we want to pick which one(s) are actual apps?
-        LinkedHashMap<Artifact, CachedProject> projects = new LinkedHashMap<>();
+        LinkedHashMap<String, CachedProject> projects = new LinkedHashMap<>();
         List<CachedProject> apps = new ArrayList<>();
         List<CompletableFuture<?>> futures = new ArrayList<>();
 
