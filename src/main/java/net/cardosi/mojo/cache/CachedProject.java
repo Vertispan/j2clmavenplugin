@@ -261,7 +261,7 @@ public class CachedProject {
                             })
             )
                     .map(child -> child.j2cl())
-                    .collect(Collectors.toList()).stream()
+//                    .collect(Collectors.toList()).stream()
                     .map(CompletableFuture::join)
                     .collect(Collectors.toList());
         }, (reqs, entry) -> {
@@ -389,7 +389,7 @@ public class CachedProject {
                         return new ScopeArtifactFilter(Artifact.SCOPE_COMPILE).include(child.getArtifact());
                     })
                     .map(child -> child.strippedBytecode())
-                    .collect(Collectors.toList()).stream()
+//                    .collect(Collectors.toList()).stream()
                     .map(CompletableFuture::join)
                     .collect(Collectors.toList());
 
@@ -468,7 +468,7 @@ public class CachedProject {
                         return new ScopeArtifactFilter(Artifact.SCOPE_COMPILE).include(child.getArtifact());
                     })
                     .map(child -> child.strippedBytecode())
-                    .collect(Collectors.toList()).stream()
+//                    .collect(Collectors.toList()).stream()
                     .map(CompletableFuture::join)
                     .collect(Collectors.toList());
 
@@ -556,7 +556,7 @@ public class CachedProject {
                     .filter(CachedProject::hasSourcesMapped)
                     .filter(child -> new ScopeArtifactFilter(Artifact.SCOPE_COMPILE).include(child.getArtifact()))
                     .map(CachedProject::generatedSources)
-                    .collect(Collectors.toList()).stream()
+//                    .collect(Collectors.toList()).stream()
                     .map(CompletableFuture::join)
                     .collect(Collectors.toList());
         }, (reactorBytecode, entry) -> {
