@@ -122,6 +122,9 @@ public abstract class AbstractGwt3BuildMojo extends AbstractMojo {
             } else if (!new ScopeArtifactFilter(classpathScope).include(dependency)) {
 //                System.out.println("  " + depth + "dependency isn't in " + classpathScope + " scope " + dependency);
                 continue;
+            } else if (Artifact.SCOPE_SYSTEM.equals(dependency.getScope())) {
+                System.out.println("WARNING: " + artifact + " has a scope=system dependency on " + dependency + ", which will be skipped");
+                continue;
             }
 //            System.out.println("\t" + artifact + " depends on " + dependency);
 
