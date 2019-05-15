@@ -15,10 +15,7 @@ import org.apache.maven.project.ProjectBuildingRequest;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
+import java.util.*;
 
 /**
  * Experiment to transpile a project into the j2cl cache. Before it begins, recursively transpiles
@@ -70,6 +67,9 @@ public class BuildMojo extends AbstractGwt3BuildMojo implements ClosureBuildConf
     @Parameter(defaultValue = "ADVANCED")
     protected String compilationLevel;
 
+    @Parameter
+    protected Map<String, String> defines = new HashMap<>();
+
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         PluginDescriptor pluginDescriptor = (PluginDescriptor) getPluginContext().get("pluginDescriptor");
@@ -98,6 +98,11 @@ public class BuildMojo extends AbstractGwt3BuildMojo implements ClosureBuildConf
         // TODO how do we want to pick which one(s) are actual apps?
         LinkedHashMap<String, CachedProject> projects = new LinkedHashMap<>();
 
+        // if key defines aren't set, assume "prod defaults" - need to doc the heck out of this
+        defines.putIfAbsent("jre.checkedMode", "DISABLED");
+        defines.putIfAbsent("jre.checks.checkLevel", "MINIMAL");
+        defines.putIfAbsent("jsinterop.checks", "DISABLED");
+
         try {
             CachedProject e = loadDependenciesIntoCache(project.getArtifact(), project, false, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, "* ");
             diskCache.release();
@@ -125,6 +130,11 @@ public class BuildMojo extends AbstractGwt3BuildMojo implements ClosureBuildConf
     @Override
     public List<String> getExterns() {
         return externs;
+    }
+
+    @Override
+    public Map<String, String> getDefines() {
+        return defines;
     }
 
     @Override

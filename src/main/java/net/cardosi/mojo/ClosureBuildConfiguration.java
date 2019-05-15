@@ -1,6 +1,7 @@
 package net.cardosi.mojo;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Describes how to run the Closure Compiler in a j2cl-based project, in a way that we can implement
@@ -15,7 +16,7 @@ public interface ClosureBuildConfiguration {
 
     List<String> getExterns();
 
-//    List<String> getDefines();
+    Map<String, String> getDefines();
 
     String getWebappDirectory();
 

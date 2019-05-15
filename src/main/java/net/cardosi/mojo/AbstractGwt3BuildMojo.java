@@ -45,9 +45,6 @@ public abstract class AbstractGwt3BuildMojo extends AbstractMojo {
     @Parameter(defaultValue = "${project.build.directory}/gwt3BuildCache", required = true, property = "gwt3.cache.dir")
     protected File gwt3BuildCacheDir;
 
-    @Parameter
-    protected List<String> define = new ArrayList<>();
-
     @Parameter(defaultValue = "com.vertispan.j2cl:javac-bootstrap-classpath:0.2-SNAPSHOT", required = true)
     protected String javacBootstrapClasspathJar;
 

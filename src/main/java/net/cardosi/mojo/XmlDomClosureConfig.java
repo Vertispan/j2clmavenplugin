@@ -2,9 +2,7 @@ package net.cardosi.mojo;
 
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class XmlDomClosureConfig implements ClosureBuildConfiguration {
@@ -53,6 +51,21 @@ public class XmlDomClosureConfig implements ClosureBuildConfiguration {
         Xpp3Dom externs = dom.getChild("externs");
 
         return externs == null ? Collections.emptyList() : Arrays.stream(externs.getChildren()).map(Xpp3Dom::getValue).collect(Collectors.toList());
+    }
+
+    @Override
+    public Map<String, String> getDefines() {
+        Map<String, String> defines = new HashMap<>();
+
+        Xpp3Dom elt = dom.getChild("defines");
+
+        if (elt != null) {
+            for (Xpp3Dom child : elt.getChildren()) {
+                defines.put(child.getName(), child.getValue());
+            }
+        }
+
+        return defines;
     }
 
     @Override

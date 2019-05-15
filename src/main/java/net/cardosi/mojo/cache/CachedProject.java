@@ -308,17 +308,10 @@ public class CachedProject {
                 jscompArgs.add("goog.ENABLE_DEBUG_LOADER=false");
             }
 
-//            jscompArgs.add("--define");
-//            jscompArgs.add("locale=en_US");
-//
-//            jscompArgs.add("--define");
-//            jscompArgs.add("jre.checkedMode=DISABLED");
-//
-//            jscompArgs.add("--define");
-//            jscompArgs.add("jsinterop.checks=DISABLED");
-//
-//            jscompArgs.add("--define");
-//            jscompArgs.add("jre.checks.checkLevel=MINIMAL");
+            for (Map.Entry<String, String> define : config.getDefines().entrySet()) {
+                jscompArgs.add("--define");
+                jscompArgs.add(define.getKey() + "=" + define.getValue());
+            }
 
             jscompArgs.add("--compilation_level");
             jscompArgs.add(compilationLevel.name());
@@ -338,8 +331,6 @@ public class CachedProject {
                 jscompArgs.add("--externs");
                 jscompArgs.add(extern);
             }
-
-            //TODO defines
 
             //TODO bundles
 
