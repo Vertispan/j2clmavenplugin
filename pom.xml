@@ -300,20 +300,6 @@
       <artifactId>org.eclipse.sisu.plexus</artifactId>
       <version>0.3.3</version>
     </dependency>
-
-    <dependency>
-      <groupId>io.takari.maven.plugins</groupId>
-      <artifactId>takari-plugin-testing</artifactId>
-      <version>${takari.plugin.testing.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>io.takari.maven.plugins</groupId>
-      <artifactId>takari-plugin-integration-testing</artifactId>
-      <version>${takari.plugin.testing.version}</version>
-      <type>pom</type>
-      <scope>test</scope>
-    </dependency>
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
@@ -344,22 +330,6 @@
             </configuration>
             <goals>
               <goal>enforce</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-      <!-- https://github.com/takari/takari-plugin-testing-project/blob/master/testproperties.md -->
-      <plugin>
-        <groupId>io.takari.maven.plugins</groupId>
-        <artifactId>takari-lifecycle-plugin</artifactId>
-        <version>${takari.lifecycle.plugin.version}</version>
-        <extensions>true</extensions>
-        <executions>
-          <execution>
-            <id>testProperties</id>
-            <phase>process-test-resources</phase>
-            <goals>
-              <goal>testProperties</goal>
             </goals>
           </execution>
         </executions>
