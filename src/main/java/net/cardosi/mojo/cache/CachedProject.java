@@ -50,15 +50,21 @@ public class CachedProject {
     private MavenProject currentProject;
     private List<CachedProject> children;
     private final List<CachedProject> dependents = new ArrayList<>();
+    private final List<String> compileSourceRoots;
 
     private final Map<Step, CompletableFuture<TranspiledCacheEntry>> steps = Collections.synchronizedMap(new EnumMap<>(Step.class));
 
     private boolean ignoreJavacFailure;
     private Set<ClosureBuildConfiguration> registeredBuildTerminals = new HashSet<>();
 
-    public CachedProject(DiskCache diskCache, Artifact artifact, MavenProject currentProject, List<CachedProject> children) {
+    public CachedProject(DiskCache diskCache, Artifact artifact, MavenProject currentProject, List<CachedProject> children, List<String> compileSourceRoots) {
         this.diskCache = diskCache;
+        this.compileSourceRoots = compileSourceRoots;
         replace(artifact, currentProject, children);
+    }
+
+    public CachedProject(DiskCache diskCache, Artifact artifact, MavenProject currentProject, List<CachedProject> children) {
+        this(diskCache, artifact, currentProject, children, currentProject.getCompileSourceRoots());
     }
 
     public void replace(Artifact artifact, MavenProject currentProject, List<CachedProject> children) {
@@ -99,8 +105,12 @@ public class CachedProject {
         }
     }
 
+    //TODO instead of these, consider a .test() method instead?
     public MavenProject getMavenProject() {
         return currentProject;
+    }
+    public List<CachedProject> getChildren() {
+        return Collections.unmodifiableList(children);
     }
 
     public String getArtifactId() {
@@ -127,7 +137,7 @@ public class CachedProject {
 
     public boolean hasSourcesMapped() {
         //TODO should eventually support external artifact source dirs so we can watch that instead of using jars
-        return !getMavenProject().getCompileSourceRoots().isEmpty() && !getMavenProject().getTestCompileSourceRoots().isEmpty();
+        return !compileSourceRoots.isEmpty();
     }
 
     public void watch() {
@@ -156,7 +166,6 @@ public class CachedProject {
                 registeredBuildTerminals.stream().map(cfg -> jscompWithScope(cfg)).toArray(CompletableFuture[]::new)
         );
     }
-
 
     private CompletableFuture<TranspiledCacheEntry> getOrCreate(Step step, Function<TranspiledCacheEntry, CompletableFuture<TranspiledCacheEntry>> instructions) {
 //        synchronized (steps) {
@@ -406,7 +415,7 @@ public class CachedProject {
             J2cl j2cl = new J2cl(strippedClasspath, diskCache.getBootstrap(), entry.getTranspiledSourcesDir());
             List<FrontendUtils.FileInfo> nativeSources;
             if (hasSourcesMapped()) {
-                nativeSources = getMavenProject().getCompileSourceRoots().stream().flatMap(dir -> getFileInfoInDir(Paths.get(dir), nativeJsMatcher).stream()).collect(Collectors.toList());
+                nativeSources = compileSourceRoots.stream().flatMap(dir -> getFileInfoInDir(Paths.get(dir), nativeJsMatcher).stream()).collect(Collectors.toList());
             } else {
                 nativeSources = getFileInfoInDir(entry.getUnpackedSources().toPath(), nativeJsMatcher);
             }
@@ -421,7 +430,7 @@ public class CachedProject {
             //copy over other plain js
             Path outSources = entry.getTranspiledSourcesDir().toPath();
             if (hasSourcesMapped()) {
-                getMavenProject().getCompileSourceRoots().stream().forEach(dir ->
+                compileSourceRoots.stream().forEach(dir ->
                         getFileInfoInDir(Paths.get(dir), path -> jsMatcher.matches(path) && !nativeJsMatcher.matches(path))
                                 .stream().map(FrontendUtils.FileInfo::sourcePath).map(Paths::get)
                                 .map(p -> Paths.get(dir).relativize(p))
@@ -519,7 +528,7 @@ public class CachedProject {
             try {
                 if (hasSourcesMapped()) {
                     sourcesToStrip.addAll(getFileInfoInDir(entry.getAnnotationSourcesDir().toPath(), javaMatcher));
-                    sourcesToStrip.addAll(getMavenProject().getCompileSourceRoots().stream().flatMap(dir -> getFileInfoInDir(Paths.get(dir), javaMatcher).stream()).collect(Collectors.toList()));
+                    sourcesToStrip.addAll(compileSourceRoots.stream().flatMap(dir -> getFileInfoInDir(Paths.get(dir), javaMatcher).stream()).collect(Collectors.toList()));
                 } else {
                     //unpack the jar's sources
                     File sources = entry.getUnpackedSources();
@@ -577,7 +586,7 @@ public class CachedProject {
                         .collect(Collectors.toList())
                 );
 
-                List<FrontendUtils.FileInfo> sources = getMavenProject().getCompileSourceRoots().stream().flatMap(dir -> getFileInfoInDir(Paths.get(dir), javaMatcher).stream()).collect(Collectors.toList());
+                List<FrontendUtils.FileInfo> sources = compileSourceRoots.stream().flatMap(dir -> getFileInfoInDir(Paths.get(dir), javaMatcher).stream()).collect(Collectors.toList());
                 if (sources.isEmpty()) {
                     return entry;
                 }
@@ -612,8 +621,8 @@ public class CachedProject {
             hash.append(diskCache.getPluginVersion().getBytes(Charset.forName("UTF-8")));
             hashes.forEach(h -> hash.append(h.getBytes(Charset.forName("UTF-8"))));
             try {
-                if (!getMavenProject().getCompileSourceRoots().isEmpty()) {
-                    for (String compileSourceRoot : getMavenProject().getCompileSourceRoots()) {
+                if (!compileSourceRoots.isEmpty()) {
+                    for (String compileSourceRoot : compileSourceRoots) {
                         appendHashOfAllSources(hash, Paths.get(compileSourceRoot));
                     }
                 } else {
