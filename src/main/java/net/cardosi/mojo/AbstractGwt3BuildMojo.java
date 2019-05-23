@@ -158,6 +158,7 @@ public abstract class AbstractGwt3BuildMojo extends AbstractMojo {
 //                System.out.println("Creating project from artifact " + dependency);
                 projectBuildingRequest.setProject(null);
                 projectBuildingRequest.setResolveDependencies(true);
+                projectBuildingRequest.setRemoteRepositories(null);
                 MavenProject p = projectBuilder.build(dependency, true, projectBuildingRequest).getProject();
                 CachedProject transpiledDep = loadDependenciesIntoCache(dependency, p, lookupReactorProjects, projectBuilder, projectBuildingRequest, diskCache, pluginVersion, seen, Artifact.SCOPE_COMPILE, "  " + depth);
                 children.add(transpiledDep);
