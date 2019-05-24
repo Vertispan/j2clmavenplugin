@@ -1,8 +1,8 @@
 package net.cardosi.mojo.cache;
 
-import com.google.j2cl.frontend.FrontendUtils;
-import com.google.javascript.jscomp.*;
+import com.google.j2cl.common.FrontendUtils;
 import com.google.javascript.jscomp.Compiler;
+import com.google.javascript.jscomp.*;
 import net.cardosi.mojo.ClosureBuildConfiguration;
 import net.cardosi.mojo.Hash;
 import net.cardosi.mojo.tools.GwtIncompatiblePreprocessor;
@@ -22,7 +22,8 @@ import java.nio.charset.Charset;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;

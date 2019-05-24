@@ -1,13 +1,12 @@
 package net.cardosi.mojo.tools;
 
+import com.google.j2cl.common.FrontendUtils;
 import com.google.j2cl.common.Problems;
-import com.google.j2cl.frontend.FrontendUtils;
 import com.google.j2cl.transpiler.J2clTranspiler;
 import com.google.j2cl.transpiler.J2clTranspilerOptions;
 
 import java.io.File;
 import java.util.List;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 

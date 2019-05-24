@@ -1,5 +1,9 @@
 package net.cardosi.mojo.builder;
 
+import com.google.j2cl.common.FrontendUtils;
+import net.cardosi.mojo.options.Gwt3Options;
+import org.apache.maven.project.MavenProject;
+
 import java.io.File;
 import java.nio.file.attribute.FileTime;
 import java.util.List;
@@ -7,10 +11,6 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import com.google.j2cl.frontend.FrontendUtils;
-import net.cardosi.mojo.options.Gwt3Options;
-import org.apache.maven.project.MavenProject;
 
 /**
  * Simple "dev mode" for j2cl+closure, based on the existing bash script. Lots of room for improvement, this

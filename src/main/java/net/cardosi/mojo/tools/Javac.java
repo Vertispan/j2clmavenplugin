@@ -1,20 +1,15 @@
 package net.cardosi.mojo.tools;
 
+import com.google.j2cl.common.FrontendUtils.FileInfo;
+
+import javax.tools.*;
+import javax.tools.JavaCompiler.CompilationTask;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
-
-import javax.tools.JavaCompiler;
-import javax.tools.JavaCompiler.CompilationTask;
-import javax.tools.JavaFileObject;
-import javax.tools.StandardJavaFileManager;
-import javax.tools.StandardLocation;
-import javax.tools.ToolProvider;
-
-import com.google.j2cl.frontend.FrontendUtils.FileInfo;
 
 /**
  * Runs javac. Set this up with the appropriate classpath, directory for generated sources to be written,

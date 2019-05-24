@@ -1,37 +1,9 @@
 package net.cardosi.mojo.builder;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.UncheckedIOException;
-import java.net.URI;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.PathMatcher;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.nio.file.attribute.FileTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
-
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+import com.google.j2cl.common.FrontendUtils;
 import com.google.j2cl.common.Problems;
-import com.google.j2cl.frontend.FrontendUtils;
 import com.google.j2cl.generator.NativeJavaScriptFile;
 import com.google.j2cl.tools.gwtincompatible.JavaPreprocessor;
 import com.google.j2cl.transpiler.J2clTranspiler;
@@ -44,6 +16,19 @@ import net.cardosi.mojo.options.Gwt3Options;
 import net.cardosi.mojo.tools.Javac;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.maven.project.MavenProject;
+
+import java.io.*;
+import java.net.URI;
+import java.nio.file.FileSystem;
+import java.nio.file.*;
+import java.nio.file.attribute.FileTime;
+import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 /**
  * One-time compiler.
