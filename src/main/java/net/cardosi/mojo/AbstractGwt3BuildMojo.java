@@ -45,21 +45,21 @@ public abstract class AbstractGwt3BuildMojo extends AbstractMojo {
     @Parameter(defaultValue = "${project.build.directory}/gwt3BuildCache", required = true, property = "gwt3.cache.dir")
     protected File gwt3BuildCacheDir;
 
-    @Parameter(defaultValue = "com.vertispan.j2cl:javac-bootstrap-classpath:0.2-SNAPSHOT", required = true)
+    @Parameter(defaultValue = "com.vertispan.j2cl:javac-bootstrap-classpath:0.3-SNAPSHOT", required = true)
     protected String javacBootstrapClasspathJar;
 
-    @Parameter(defaultValue = "com.vertispan.j2cl:jre:0.2-SNAPSHOT", required = true)
+    @Parameter(defaultValue = "com.vertispan.j2cl:jre:0.3-SNAPSHOT", required = true)
     protected String jreJar;
-    @Parameter(defaultValue = "com.vertispan.j2cl:jre:zip:jszip:0.2-SNAPSHOT", required = true)
+    @Parameter(defaultValue = "com.vertispan.j2cl:jre:zip:jszip:0.3-SNAPSHOT", required = true)
     protected String jreJsZip;
 
-    @Parameter(defaultValue = "com.vertispan.j2cl:bootstrap:zip:jszip:0.2-SNAPSHOT", required = true)
+    @Parameter(defaultValue = "com.vertispan.j2cl:bootstrap:zip:jszip:0.3-SNAPSHOT", required = true)
     protected String bootstrapJsZip;
 
-    @Parameter(defaultValue = "com.vertispan.j2cl:closure-test:zip:jszip:0.2-SNAPSHOT", required = true)
+    @Parameter(defaultValue = "com.vertispan.j2cl:closure-test:zip:jszip:0.3-SNAPSHOT", required = true)
     protected String testJsZip;
 
-    @Parameter(defaultValue = "com.vertispan.j2cl:gwt-internal-annotations:0.2-SNAPSHOT", required = true)
+    @Parameter(defaultValue = "com.vertispan.j2cl:gwt-internal-annotations:0.3-SNAPSHOT", required = true)
     protected String internalAnnotationsJar;
 
     @Parameter(defaultValue = "com.google.jsinterop:jsinterop-annotations:HEAD-SNAPSHOT", required = true)
