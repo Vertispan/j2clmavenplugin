@@ -34,7 +34,7 @@ import java.util.*;
  * by writing it to disk in some cheap way so it can be read back in easily. Iterating the project
  * model must already be cheap, so maybe we can just rebuild it from scratch each time?
  */
-@Mojo(name = "build", requiresDependencyResolution = ResolutionScope.COMPILE)
+@Mojo(name = "build", requiresDependencyResolution = ResolutionScope.COMPILE_PLUS_RUNTIME)
 //@Execute(phase = LifecyclePhase.PROCESS_CLASSES)
 public class BuildMojo extends AbstractGwt3BuildMojo implements ClosureBuildConfiguration {
 

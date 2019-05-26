@@ -28,7 +28,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-@Mojo(name = "watch", requiresDependencyResolution = ResolutionScope.COMPILE, aggregator = true)
+@Mojo(name = "watch", requiresDependencyResolution = ResolutionScope.TEST, aggregator = true)
 //@Execute(phase = LifecyclePhase.PROCESS_CLASSES)
 public class WatchMojo extends AbstractGwt3BuildMojo {
 

@@ -395,9 +395,9 @@ public class CachedProject {
 
             strippedSources().join();
             return children.stream()
-                    .filter(child -> {
-                        return new ScopeArtifactFilter(Artifact.SCOPE_COMPILE).include(child.getArtifact());
-                    })
+//                    .filter(child -> {
+//                        return new ScopeArtifactFilter(Artifact.SCOPE_COMPILE).include(child.getArtifact());//TODO removing this is wrong, should instead let the whole "project" be scoped
+//                    })
                     .map(child -> child.strippedBytecode())
 //                    .collect(Collectors.toList()).stream()
                     .map(CompletableFuture::join)
@@ -431,7 +431,7 @@ public class CachedProject {
             //copy over other plain js
             Path outSources = entry.getTranspiledSourcesDir().toPath();
             if (hasSourcesMapped()) {
-                compileSourceRoots.stream().forEach(dir ->
+                Stream.concat(compileSourceRoots.stream(), Stream.of(entry.getAnnotationSourcesDir().getAbsolutePath())).forEach(dir ->
                         getFileInfoInDir(Paths.get(dir), path -> jsMatcher.matches(path) && !nativeJsMatcher.matches(path))
                                 .stream().map(FrontendUtils.FileInfo::sourcePath).map(Paths::get)
                                 .map(p -> Paths.get(dir).relativize(p))
@@ -476,9 +476,9 @@ public class CachedProject {
 
             strippedSources().join();
             return children.stream()
-                    .filter(child -> {
-                        return new ScopeArtifactFilter(Artifact.SCOPE_COMPILE).include(child.getArtifact());
-                    })
+//                    .filter(child -> {
+//                        return new ScopeArtifactFilter(Artifact.SCOPE_COMPILE).include(child.getArtifact());//TODO removing this is wrong, should instead let the whole "project" be scoped
+//                    })
                     .map(child -> child.strippedBytecode())
 //                    .collect(Collectors.toList()).stream()
                     .map(CompletableFuture::join)
@@ -566,7 +566,7 @@ public class CachedProject {
         return getOrCreate(Step.ProcessAnnotations, () -> {
             return children.stream()
                     .filter(CachedProject::hasSourcesMapped)
-                    .filter(child -> new ScopeArtifactFilter(Artifact.SCOPE_COMPILE).include(child.getArtifact()))
+//                    .filter(child -> new ScopeArtifactFilter(Artifact.SCOPE_COMPILE).include(child.getArtifact()))//TODO removing this is wrong, should instead let the whole "project" be scoped
                     .map(CachedProject::generatedSources)
 //                    .collect(Collectors.toList()).stream()
                     .map(CompletableFuture::join)
@@ -581,7 +581,7 @@ public class CachedProject {
                 plainClasspath.addAll(reactorBytecode.stream().map(TranspiledCacheEntry::getBytecodeDir).collect(Collectors.toList()));
                 plainClasspath.addAll(children.stream()
                         .filter(proj -> !proj.hasSourcesMapped())
-                        .filter(child -> new ScopeArtifactFilter(Artifact.SCOPE_COMPILE).include(child.getArtifact()))
+//                        .filter(child -> new ScopeArtifactFilter(Artifact.SCOPE_COMPILE).include(child.getArtifact()))//TODO removing this is wrong, should instead let the whole "project" be scoped
                         .map(CachedProject::getArtifact)
                         .map(Artifact::getFile)
                         .collect(Collectors.toList())

@@ -65,6 +65,9 @@ public abstract class AbstractGwt3BuildMojo extends AbstractMojo {
     @Parameter(defaultValue = "com.google.jsinterop:jsinterop-annotations:HEAD-SNAPSHOT", required = true)
     protected String jsinteropAnnotationsJar;
 
+    @Parameter(defaultValue = "com.vertispan.j2cl:junit-annotations:0.3-SNAPSHOT", required = true)
+    protected String junitAnnotations;
+
 
     // tools to resolve dependencies
     @Component
