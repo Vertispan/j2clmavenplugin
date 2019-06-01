@@ -4,10 +4,11 @@ import net.cardosi.mojo.cache.CachedProject;
 import net.cardosi.mojo.cache.DiskCache;
 import net.cardosi.mojo.cache.TranspiledCacheEntry;
 import org.apache.maven.artifact.Artifact;
+import org.apache.maven.model.Plugin;
+import org.apache.maven.model.PluginExecution;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugin.descriptor.PluginDescriptor;
-import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
@@ -16,9 +17,6 @@ import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.ProjectBuildingException;
 import org.apache.maven.project.ProjectBuildingRequest;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
-import org.eclipse.aether.RepositorySystem;
-import org.eclipse.aether.RepositorySystemSession;
-import org.eclipse.aether.repository.RemoteRepository;
 
 import java.io.File;
 import java.io.IOException;
@@ -85,20 +83,39 @@ public class WatchMojo extends AbstractGwt3BuildMojo {
                     //skip the reactor project?
                     continue;
                 }
-                Xpp3Dom goalConfiguration = reactorProject.getGoalConfiguration(pluginDescriptor.getGroupId(), pluginDescriptor.getArtifactId(), null, null);
-                //TODO what happens when both test and build are defined?
-//                    Plugin j2clPlugin = reactorProject.getBuild().getPluginsAsMap().get("net.cardosi.j2cl:j2cl-maven-plugin");
-                if (goalConfiguration != null) {
-                    // read out the goals/configs and see what scope to use, what other params to use
-                    //TODo should not use classpathScope here, but instead see what goal we're staring at
-                    XmlDomClosureConfig config = new XmlDomClosureConfig(goalConfiguration, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, compilationLevel, reactorProject.getArtifactId(), defaultWebappDirectory);
+                Plugin plugin = reactorProject.getPlugin(pluginDescriptor.getPlugin().getKey());
+                if (plugin != null) {
+                    List<PluginExecution> executions = plugin.getExecutions();
+                    for (PluginExecution execution : executions) {
+                        if (execution.getConfiguration() != null) {
+                            // wire up the given goals based on the provided configuration
+                            for (String goal : execution.getGoals()) {
+                                if (goal.equals("test") && shouldCompileTest()) {
+                                    System.out.println("Found test " + execution);
+                                    XmlDomClosureConfig config = new XmlDomClosureConfig((Xpp3Dom) execution.getConfiguration(), Artifact.SCOPE_TEST, compilationLevel, reactorProject.getArtifactId(), defaultWebappDirectory);
+                                    CachedProject source = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, false, projectBuilder, request, diskCache, pluginVersion, projects, config.getClasspathScope(), "* ");
 
-                    // Load up all the dependencies in the requested scope for the current project
-                    CachedProject p = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, true, projectBuilder, request, diskCache, pluginVersion, projects, config.getClasspathScope(), "* ");
+                                    // given that set of tasks, we'll chain one more on the end, and watch _that_ for changes
+                                    List<CachedProject> children = new ArrayList<>(source.getChildren());
+                                    children.add(source);
+                                    CachedProject e = new CachedProject(diskCache, reactorProject.getArtifact(), reactorProject, children, reactorProject.getTestCompileSourceRoots());
 
-                    CompletableFuture<TranspiledCacheEntry> f = p.registerAsApp(config);
-                    futures.add(f);
-                    apps.add(p);
+                                    futures.add(e.registerAsApp(config));
+                                    apps.add(e);
+                                } else if (goal.equals("build") && shouldCompileBuild()) {
+                                    System.out.println("Found build " + execution);
+                                    XmlDomClosureConfig config = new XmlDomClosureConfig((Xpp3Dom) execution.getConfiguration(), Artifact.SCOPE_COMPILE_PLUS_RUNTIME, compilationLevel, reactorProject.getArtifactId(), defaultWebappDirectory);
+
+                                    // Load up all the dependencies in the requested scope for the current project
+                                    CachedProject p = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, true, projectBuilder, request, diskCache, pluginVersion, projects, config.getClasspathScope(), "* ");
+
+                                    CompletableFuture<TranspiledCacheEntry> f = p.registerAsApp(config);
+                                    futures.add(f);
+                                    apps.add(p);
+                                }
+                            }
+                        }
+                    }
                 }
             }
 //            }
@@ -116,5 +133,12 @@ public class WatchMojo extends AbstractGwt3BuildMojo {
 //            e.printStackTrace();
 //        }
 
+    }
+
+    protected boolean shouldCompileTest() {
+        return true;
+    }
+    protected boolean shouldCompileBuild() {
+        return true;
     }
 }
