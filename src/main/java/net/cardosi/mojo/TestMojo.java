@@ -11,6 +11,7 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.DefaultProjectBuildingRequest;
+import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.ProjectBuildingException;
 import org.apache.maven.project.ProjectBuildingRequest;
 import org.apache.maven.shared.utils.io.DirectoryScanner;
@@ -29,7 +30,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Mojo(name = "test", requiresDependencyResolution = ResolutionScope.TEST)
-public class TestMojo extends AbstractGwt3BuildMojo {
+public class TestMojo extends AbstractGwt3BuildMojo implements ClosureBuildConfiguration {
     /**
      * The dependency scope to use for the classpath.
      * <p>The scope should be one of the scopes defined by org.apache.maven.artifact.Artifact. This includes the following:
@@ -107,24 +108,14 @@ public class TestMojo extends AbstractGwt3BuildMojo {
         // TODO how do we want to pick which one(s) are actual apps?
         LinkedHashMap<String, CachedProject> projects = new LinkedHashMap<>();
 
-        // if key defines aren't set, assume "prod defaults" - need to doc the heck out of this
-        defines.putIfAbsent("jre.checkedMode", "DISABLED");
-        defines.putIfAbsent("jre.checks.checkLevel", "MINIMAL");
-        defines.putIfAbsent("jsinterop.checks", "DISABLED");
+        // if key defines aren't set, assume "test defaults" - need to doc the heck out of this
+//        defines.putIfAbsent("jre.checkedMode", "ENABLED");
+//        defines.putIfAbsent("jre.checks.checkLevel", "NORMAL");
+//        defines.putIfAbsent("jsinterop.checks", "ENABLED");
 
         //scan for things that look like tests, hope that they were correctly annotated?
         //TODO when we have more of a "task" layout to build with, look for js tests instead of java ones, since we know they'll work
-        List<String> testEntrypoints;
-        if (tests == null || tests.isEmpty()) {
-            testEntrypoints = project.getTestCompileSourceRoots().stream()
-                    .flatMap(s -> getTestEntrypoints(new File(s), includes, excludes).stream())
-                    .distinct()
-                    .map(f -> f.replaceAll("\\.java$", "").replaceAll("/", "."))
-                    .collect(Collectors.toList());
-        } else {
-            testEntrypoints = tests;
-        }
-        System.out.println(testEntrypoints);
+
 
         try {
             CachedProject source = loadDependenciesIntoCache(project.getArtifact(), project, false, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_TEST, "* ");
@@ -135,8 +126,8 @@ public class TestMojo extends AbstractGwt3BuildMojo {
             CachedProject e = new CachedProject(diskCache, project.getArtifact(), project, children, project.getTestCompileSourceRoots());
 
             diskCache.release();
-            for (String testEntrypoint : testEntrypoints) {
-                TestConfig config = new TestConfig(testEntrypoint);
+
+            for (ClosureBuildConfiguration config : getTestConfigs(this, tests, project, includes, excludes)) {
                 e.registerAsApp(config).join();
 
                 // write a simple html file to that output dir
@@ -188,6 +179,7 @@ public class TestMojo extends AbstractGwt3BuildMojo {
         }
     }
 
+
     private static boolean isSuccess(WebDriver d) {
         return (Boolean) ((JavascriptExecutor) d).executeScript("return window.G_testRunner.isSuccess()");
     }
@@ -196,8 +188,25 @@ public class TestMojo extends AbstractGwt3BuildMojo {
         return (Boolean) ((JavascriptExecutor) d).executeScript("return !!(window.G_testRunner && window.G_testRunner.isFinished())");
     }
 
+    /**
+     * If specific tests are specified, will use them, otherwise will look for the tests through includes/excludes,
+     * and produce a build config each.
+     */
+    public static List<ClosureBuildConfiguration> getTestConfigs(ClosureBuildConfiguration baseConfig, List<String> tests, MavenProject project, List<String> includes, List<String> excludes) {
+        List<String> testEntrypoints;
+        if (tests == null || tests.isEmpty()) {
+            testEntrypoints = project.getTestCompileSourceRoots().stream()
+                    .flatMap(s -> getTestEntrypoints(new File(s), includes, excludes).stream())
+                    .distinct()
+                    .map(f -> f.replaceAll("\\.java$", "").replaceAll("/", "."))
+                    .collect(Collectors.toList());
+        } else {
+            testEntrypoints = tests;
+        }
+        return testEntrypoints.stream().map(name -> new TestConfig(name, baseConfig)).collect(Collectors.toList());
+    }
 
-    public static List<String> getTestEntrypoints(File testSourceDir, List<String> includes, List<String> excludes) {
+    private static List<String> getTestEntrypoints(File testSourceDir, List<String> includes, List<String> excludes) {
         DirectoryScanner scanner = new DirectoryScanner();
         scanner.setBasedir(testSourceDir);
         scanner.setIncludes(includes.toArray(new String[0]));
@@ -209,16 +218,53 @@ public class TestMojo extends AbstractGwt3BuildMojo {
         return Arrays.asList(scanner.getIncludedFiles());
     }
 
-    private class TestConfig implements ClosureBuildConfiguration {
-        private final String test;
+    @Override
+    public String getClasspathScope() {
+        return classpathScope;
+    }
 
-        private TestConfig(String test) {
+    @Override
+    public List<String> getEntrypoint() {
+        throw new UnsupportedOperationException("This method should not be called directly: TestMojo.getEntrypoint");
+    }
+
+    @Override
+    public List<String> getExterns() {
+        return externs;
+    }
+
+    @Override
+    public Map<String, String> getDefines() {
+        return defines;
+    }
+
+    @Override
+    public String getWebappDirectory() {
+        return webappDirectory;
+    }
+
+    @Override
+    public String getInitialScriptFilename() {
+        return initialScriptFilename;
+    }
+
+    @Override
+    public String getCompilationLevel() {
+        return compilationLevel;
+    }
+
+    private static class TestConfig implements ClosureBuildConfiguration {
+        private final String test;
+        private final ClosureBuildConfiguration wrapped;
+
+        private TestConfig(String test, ClosureBuildConfiguration wrapped) {
             this.test = test;
+            this.wrapped = wrapped;
         }
 
         @Override
         public String getClasspathScope() {
-            return classpathScope;
+            return wrapped.getClasspathScope();
         }
 
         @Override
@@ -228,27 +274,27 @@ public class TestMojo extends AbstractGwt3BuildMojo {
 
         @Override
         public List<String> getExterns() {
-            return externs;
+            return wrapped.getExterns();
         }
 
         @Override
         public Map<String, String> getDefines() {
-            return defines;
+            return wrapped.getDefines();
         }
 
         @Override
         public String getWebappDirectory() {
-            return webappDirectory;
+            return wrapped.getWebappDirectory();
         }
 
         @Override
         public String getInitialScriptFilename() {
-            return initialScriptFilename.substring(0, ".js".length()) + "-" + test + ".js";
+            return wrapped.getInitialScriptFilename().substring(0, ".js".length()) + "-" + test + ".js";
         }
 
         @Override
         public String getCompilationLevel() {
-            return compilationLevel;
+            return wrapped.getCompilationLevel();
         }
     }
 }

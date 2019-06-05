@@ -20,12 +20,14 @@ import org.codehaus.plexus.util.xml.Xpp3Dom;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
+/**
+ * Attempts to do the setup for various test and build goals declared in the current project or in child projects,
+ * but also allows the configuration for this goal to further customize them. For example, this goal will be
+ * configured to use a particular compilation level, or directory to copy output to.
+ */
 @Mojo(name = "watch", requiresDependencyResolution = ResolutionScope.TEST, aggregator = true)
 //@Execute(phase = LifecyclePhase.PROCESS_CLASSES)
 public class WatchMojo extends AbstractGwt3BuildMojo {
@@ -34,8 +36,8 @@ public class WatchMojo extends AbstractGwt3BuildMojo {
     protected List<MavenProject> reactorProjects;
 
 
-    @Parameter(required = true)
-    protected String defaultWebappDirectory;
+    @Parameter(required = true, alias = "defaultWebappDirectory")//alias to not break other apps right away...
+    protected String webappDirectory;
 
     @Parameter(defaultValue = "BUNDLE")
     protected String compilationLevel;
@@ -73,12 +75,6 @@ public class WatchMojo extends AbstractGwt3BuildMojo {
         List<CompletableFuture<?>> futures = new ArrayList<>();
 
         try {
-//            if (reactorProjects.size() == 1) {
-//                MavenProject reactorProject = reactorProjects.get(0);
-//                CachedProject e = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, projectBuilder, request, diskCache, pluginVersion, projects, classpathScope, "* ");
-//                futures.add(e.registerAsApp(this));
-//                apps.add(e);
-//            } else {
 
             for (MavenProject reactorProject : reactorProjects) {
                 if (project.equals(reactorProject) || reactorProject.getPackaging().equals("pom")) {
@@ -87,34 +83,43 @@ public class WatchMojo extends AbstractGwt3BuildMojo {
                 }
                 Plugin plugin = reactorProject.getPlugin(pluginDescriptor.getPlugin().getKey());
                 if (plugin != null) {
+                    Xpp3Dom pluginConfiguration = (Xpp3Dom) plugin.getConfiguration();
                     List<PluginExecution> executions = plugin.getExecutions();
                     for (PluginExecution execution : executions) {
-                        if (execution.getConfiguration() != null) {
-                            // wire up the given goals based on the provided configuration
-                            for (String goal : execution.getGoals()) {
-                                if (goal.equals("test") && shouldCompileTest()) {
-                                    System.out.println("Found test " + execution);
-                                    XmlDomClosureConfig config = new XmlDomClosureConfig((Xpp3Dom) execution.getConfiguration(), Artifact.SCOPE_TEST, compilationLevel, reactorProject.getArtifactId(), defaultWebappDirectory);
-                                    CachedProject source = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, false, projectBuilder, request, diskCache, pluginVersion, projects, config.getClasspathScope(), "* ");
+                        // merge the configs
+                        Xpp3Dom configuration = merge(pluginConfiguration, (Xpp3Dom) execution.getConfiguration());
+                        // wire up the given goals based on the provided configuration
+                        for (String goal : execution.getGoals()) {
+                            if (goal.equals("test") && shouldCompileTest()) {
+                                System.out.println("Found test " + execution);
+                                XmlDomClosureConfig config = new XmlDomClosureConfig(configuration, Artifact.SCOPE_TEST, compilationLevel, reactorProject.getArtifactId(), webappDirectory);
+                                CachedProject source = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, false, projectBuilder, request, diskCache, pluginVersion, projects, config.getClasspathScope(), "* ");
 
-                                    // given that set of tasks, we'll chain one more on the end, and watch _that_ for changes
-                                    List<CachedProject> children = new ArrayList<>(source.getChildren());
-                                    children.add(source);
-                                    CachedProject e = new CachedProject(diskCache, reactorProject.getArtifact(), reactorProject, children, reactorProject.getTestCompileSourceRoots());
+                                // given that set of tasks, we'll chain one more on the end, and watch _that_ for changes
+                                List<CachedProject> children = new ArrayList<>(source.getChildren());
+                                children.add(source);
+                                CachedProject e = new CachedProject(diskCache, reactorProject.getArtifact(), reactorProject, children, reactorProject.getTestCompileSourceRoots());
 
-                                    futures.add(e.registerAsApp(config));
-                                    apps.add(e);
-                                } else if (goal.equals("build") && shouldCompileBuild()) {
-                                    System.out.println("Found build " + execution);
-                                    XmlDomClosureConfig config = new XmlDomClosureConfig((Xpp3Dom) execution.getConfiguration(), Artifact.SCOPE_COMPILE_PLUS_RUNTIME, compilationLevel, reactorProject.getArtifactId(), defaultWebappDirectory);
+                                TestMojo.getTestConfigs(config, Collections.emptyList(), reactorProject,
+                                        //TODO read these from the config, that XmlDomClosureConfig looks pretty silly now
+                                        Arrays.asList("**/Test*.java", "**/*Test.java", "**/GwtTest*.java"),
+                                        Collections.emptyList()
+                                )
+                                        .stream()
+                                        .map(e::registerAsApp)
+                                        .forEach(futures::add);
 
-                                    // Load up all the dependencies in the requested scope for the current project
-                                    CachedProject p = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, true, projectBuilder, request, diskCache, pluginVersion, projects, config.getClasspathScope(), "* ");
+                                apps.add(e);
+                            } else if (goal.equals("build") && shouldCompileBuild()) {
+                                System.out.println("Found build " + execution);
+                                XmlDomClosureConfig config = new XmlDomClosureConfig(configuration, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, compilationLevel, reactorProject.getArtifactId(), webappDirectory);
 
-                                    CompletableFuture<TranspiledCacheEntry> f = p.registerAsApp(config);
-                                    futures.add(f);
-                                    apps.add(p);
-                                }
+                                // Load up all the dependencies in the requested scope for the current project
+                                CachedProject p = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, true, projectBuilder, request, diskCache, pluginVersion, projects, config.getClasspathScope(), "* ");
+
+                                CompletableFuture<TranspiledCacheEntry> f = p.registerAsApp(config);
+                                futures.add(f);
+                                apps.add(p);
                             }
                         }
                     }
@@ -135,6 +140,18 @@ public class WatchMojo extends AbstractGwt3BuildMojo {
 //            e.printStackTrace();
 //        }
 
+    }
+
+    private Xpp3Dom merge(Xpp3Dom pluginConfiguration, Xpp3Dom configuration) {
+        if (pluginConfiguration == null) {
+            if (configuration == null) {
+                return new Xpp3Dom("configuration");
+            }
+            return new Xpp3Dom(configuration);
+        } else if (configuration == null) {
+            return new Xpp3Dom(pluginConfiguration);
+        }
+        return Xpp3Dom.mergeXpp3Dom(new Xpp3Dom(configuration), new Xpp3Dom(pluginConfiguration));
     }
 
     protected boolean shouldCompileTest() {
