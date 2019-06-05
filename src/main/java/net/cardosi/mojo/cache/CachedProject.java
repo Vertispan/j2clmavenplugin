@@ -289,29 +289,38 @@ public class CachedProject {
 
             PersistentInputStore persistentInputStore = diskCache.getPersistentInputStore();//TODO scope this per app? is that necessary?
 
+            File closureOutputDir = entry.getClosureOutputDir(config);
+
             Compiler jsCompiler = new Compiler(System.err);
 //            jsCompiler.setPersistentInputStore(persistentInputStore);
 
             List<String> jscompArgs = new ArrayList<>();
+            //TODO pick another location if sourcemaps aren't going to be used
+            File sources = new File(new File(closureOutputDir + "/" + config.getInitialScriptFilename()).getParent(), "sources");
             reqs.stream().map(TranspiledCacheEntry::getTranspiledSourcesDir).map(File::getAbsolutePath).distinct().forEach(dir -> {
+                try {
+                    FileUtils.copyDirectory(new File(dir), sources);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
                 //add this dir as to be compiled
-                jscompArgs.add("--js");
-                jscompArgs.add(dir + "/**/*.js");
+//                jscompArgs.add("--js");
+//                jscompArgs.add(dir + "/**/*.js");
 
                 //TODO copy to somewhere with a consistent path instead so that we don't change the path each recompile,
                 //     then restore the persistent input store
             });
+            // add all to be compiled
+            jscompArgs.add("--js");
+            jscompArgs.add(sources + "/**/*.js");
 
             //TODO scope=runtime jszips
+            //TODO unpack these so we can offer sourcemaps
             diskCache.getExtraJsZips().forEach(file -> {
                 jscompArgs.add("--jszip");
                 jscompArgs.add(file.getAbsolutePath());
             });
-
-            for (String entrypoint : config.getEntrypoint()) {
-                jscompArgs.add("--entry_point");
-                jscompArgs.add(entrypoint);
-            }
 
             CompilationLevel compilationLevel = CompilationLevel.fromString(config.getCompilationLevel());
             if (compilationLevel == CompilationLevel.BUNDLE) {
@@ -324,6 +333,11 @@ public class CachedProject {
                 jscompArgs.add(define.getKey() + "=" + define.getValue());
             }
 
+            for (String extern : config.getExterns()) {
+                jscompArgs.add("--externs");
+                jscompArgs.add(extern);
+            }
+
             jscompArgs.add("--compilation_level");
             jscompArgs.add(compilationLevel.name());
 
@@ -334,19 +348,20 @@ public class CachedProject {
             jscompArgs.add("--language_out");
             jscompArgs.add("ECMASCRIPT5");
 
+            for (String entrypoint : config.getEntrypoint()) {
+                jscompArgs.add("--entry_point");
+                jscompArgs.add(entrypoint);
+            }
+
             try {
-                Files.createDirectories(Paths.get(entry.getClosureOutputDir(config).getAbsolutePath(), config.getInitialScriptFilename()).getParent());
+                Files.createDirectories(Paths.get(closureOutputDir.getAbsolutePath(), config.getInitialScriptFilename()).getParent());
             } catch (IOException e) {
                 throw new UncheckedIOException("Failed to create closure output directory", e);
             }
 
             jscompArgs.add("--js_output_file");
-            jscompArgs.add(entry.getClosureOutputDir(config) + "/" + config.getInitialScriptFilename());
+            jscompArgs.add(closureOutputDir + "/" + config.getInitialScriptFilename());
 
-            for (String extern : config.getExterns()) {
-                jscompArgs.add("--externs");
-                jscompArgs.add(extern);
-            }
 
             //TODO bundles
 
@@ -450,28 +465,28 @@ public class CachedProject {
                         getFileInfoInDir(Paths.get(dir), path -> jsMatcher.matches(path) && !nativeJsMatcher.matches(path))
                                 .stream().map(FrontendUtils.FileInfo::sourcePath).map(Paths::get)
                                 .map(p -> Paths.get(dir).relativize(p))
-                        .forEach(path -> {
-                            try {
-                                Files.createDirectories(outSources.resolve(path).getParent());
-                                Files.copy(Paths.get(dir).resolve(path), outSources.resolve(path));
-                            } catch (IOException e) {
-                                throw new UncheckedIOException(e);
-                            }
-                        })
+                                .forEach(path -> {
+                                    try {
+                                        Files.createDirectories(outSources.resolve(path).getParent());
+                                        Files.copy(Paths.get(dir).resolve(path), outSources.resolve(path));
+                                    } catch (IOException e) {
+                                        throw new UncheckedIOException(e);
+                                    }
+                                })
                 );
             } else {
                 getFileInfoInDir(entry.getUnpackedSources().toPath(), path -> jsMatcher.matches(path) && !nativeJsMatcher.matches(path))
                         .stream()
                         .map(FrontendUtils.FileInfo::sourcePath).map(Paths::get)
                         .map(p -> entry.getUnpackedSources().toPath().relativize(p))
-                .forEach(path -> {
-                    try {
-                        Files.createDirectories(outSources.resolve(path).getParent());
-                        Files.copy(entry.getUnpackedSources().toPath().resolve(path), outSources.resolve(path));
-                    } catch (IOException e) {
-                        throw new UncheckedIOException(e);
-                    }
-                });
+                        .forEach(path -> {
+                            try {
+                                Files.createDirectories(outSources.resolve(path).getParent());
+                                Files.copy(entry.getUnpackedSources().toPath().resolve(path), outSources.resolve(path));
+                            } catch (IOException e) {
+                                throw new UncheckedIOException(e);
+                            }
+                        });
             }
 
             return entry;
@@ -595,11 +610,11 @@ public class CachedProject {
                 List<File> plainClasspath = new ArrayList<>(diskCache.getExtraClasspath());
                 plainClasspath.addAll(reactorBytecode.stream().map(TranspiledCacheEntry::getBytecodeDir).collect(Collectors.toList()));
                 plainClasspath.addAll(children.stream()
-                        .filter(proj -> !proj.hasSourcesMapped())
+                                .filter(proj -> !proj.hasSourcesMapped())
 //                        .filter(child -> new ScopeArtifactFilter(Artifact.SCOPE_COMPILE).include(child.getArtifact()))//TODO removing this is wrong, should instead let the whole "project" be scoped
-                        .map(CachedProject::getArtifact)
-                        .map(Artifact::getFile)
-                        .collect(Collectors.toList())
+                                .map(CachedProject::getArtifact)
+                                .map(Artifact::getFile)
+                                .collect(Collectors.toList())
                 );
 
                 List<FrontendUtils.FileInfo> sources = compileSourceRoots.stream().flatMap(dir -> getFileInfoInDir(Paths.get(dir), javaMatcher).stream()).collect(Collectors.toList());
