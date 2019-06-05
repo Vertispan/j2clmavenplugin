@@ -8,6 +8,7 @@ import net.cardosi.mojo.Hash;
 import net.cardosi.mojo.tools.GwtIncompatiblePreprocessor;
 import net.cardosi.mojo.tools.J2cl;
 import net.cardosi.mojo.tools.Javac;
+import org.apache.commons.io.FileUtils;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.ArtifactUtils;
 import org.apache.maven.artifact.resolver.filter.ScopeArtifactFilter;
@@ -53,7 +54,7 @@ public class CachedProject {
     private final List<CachedProject> dependents = new ArrayList<>();
     private final List<String> compileSourceRoots;
 
-    private final Map<Step, CompletableFuture<TranspiledCacheEntry>> steps = Collections.synchronizedMap(new EnumMap<>(Step.class));
+    private final Map<String, CompletableFuture<TranspiledCacheEntry>> steps = Collections.synchronizedMap(new HashMap<>());
 
     private boolean ignoreJavacFailure;
     private Set<ClosureBuildConfiguration> registeredBuildTerminals = new HashSet<>();
@@ -168,20 +169,20 @@ public class CachedProject {
         );
     }
 
-    private CompletableFuture<TranspiledCacheEntry> getOrCreate(Step step, Function<TranspiledCacheEntry, CompletableFuture<TranspiledCacheEntry>> instructions) {
+    private CompletableFuture<TranspiledCacheEntry> getOrCreate(String step, Function<TranspiledCacheEntry, CompletableFuture<TranspiledCacheEntry>> instructions) {
 //        synchronized (steps) {
 //        System.out.println("requested " + getArtifactKey() + " " + step);
         return steps.computeIfAbsent(step, ignore -> {
-            if (step == Step.Hash) {
+            if (step.equals(Step.Hash.name())) {
                 return instructions.apply(null);
             }
             // first check if it is already on disk (doesn't apply to Hash)
             TranspiledCacheEntry dir = hash().join();
             // try to create the dir - if we succeed, we own the lock, continue
-            File stepDir = new File(dir.getCacheDir(), step.name());
+            File stepDir = new File(dir.getCacheDir(), step);
 
-            File completeMarker = new File(stepDir, step.name() + "-complete");
-            File failedMarker = new File(stepDir, step.name() + "failed");
+            File completeMarker = new File(stepDir, step + "-complete");
+            File failedMarker = new File(stepDir, step + "failed");
 
 //            long start = System.currentTimeMillis();
             if (!stepDir.mkdirs()) {
@@ -237,7 +238,7 @@ public class CachedProject {
 //        }
     }
 
-    private <T> CompletableFuture<TranspiledCacheEntry> getOrCreate(Step step, Supplier<T> dependencies, BiFunction<T, TranspiledCacheEntry, TranspiledCacheEntry> work) {
+    private <T> CompletableFuture<TranspiledCacheEntry> getOrCreate(String step, Supplier<T> dependencies, BiFunction<T, TranspiledCacheEntry, TranspiledCacheEntry> work) {
         return getOrCreate(step, entry -> CompletableFuture
                         .supplyAsync(() -> {
 //                    System.out.println("starting dependency step for " + getArtifactKey() + " " + step);
@@ -264,7 +265,7 @@ public class CachedProject {
     }
 
     private CompletableFuture<TranspiledCacheEntry> jscompWithScope(ClosureBuildConfiguration config) {
-        return getOrCreate(Step.AssembleOutput, () -> {
+        return getOrCreate(Step.AssembleOutput.name() + "-" + config.hash(), () -> {
 
 
             // For each child that matches the specified scopes, ask for the compiled js output. As this is the
@@ -333,9 +334,14 @@ public class CachedProject {
             jscompArgs.add("--language_out");
             jscompArgs.add("ECMASCRIPT5");
 
-            new File(config.getWebappDirectory() + "/" + config.getInitialScriptFilename()).getParentFile().mkdirs();
+            try {
+                Files.createDirectories(Paths.get(entry.getClosureOutputDir(config).getAbsolutePath(), config.getInitialScriptFilename()).getParent());
+            } catch (IOException e) {
+                throw new UncheckedIOException("Failed to create closure output directory", e);
+            }
+
             jscompArgs.add("--js_output_file");
-            jscompArgs.add(config.getWebappDirectory() + "/" + config.getInitialScriptFilename());
+            jscompArgs.add(entry.getClosureOutputDir(config) + "/" + config.getInitialScriptFilename());
 
             for (String extern : config.getExterns()) {
                 jscompArgs.add("--externs");
@@ -369,6 +375,15 @@ public class CachedProject {
 
 
             return entry;
+        }).thenApply(entry -> {
+            //This will unconditionally run after the lambda which may be cached
+            new File(config.getWebappDirectory()).mkdirs();
+            try {
+                FileUtils.copyDirectory(entry.getClosureOutputDir(config), new File(config.getWebappDirectory()));
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+            return entry;
         });
     }
     static class InProcessJsCompRunner extends CommandLineRunner {
@@ -389,7 +404,7 @@ public class CachedProject {
 
 
     private CompletableFuture<TranspiledCacheEntry> j2cl() {
-        return getOrCreate(Step.TranspileSources, () -> {
+        return getOrCreate(Step.TranspileSources.name(), () -> {
 
             // collect all scope=compile dependencies and our own stripped sources
 
@@ -464,7 +479,7 @@ public class CachedProject {
     }
 
     private CompletableFuture<TranspiledCacheEntry> strippedBytecode() {
-        return getOrCreate(Step.GenerateStrippedBytecode, () -> {
+        return getOrCreate(Step.GenerateStrippedBytecode.name(), () -> {
 
             // If there is no sources, or no sources with GwtIncompatible, then just return the original bytecode as-is.
             // This lets us get away with not being able to transpile annotation processors or their dependencies, or
@@ -513,7 +528,7 @@ public class CachedProject {
     }
 
     private CompletableFuture<TranspiledCacheEntry> strippedSources() {
-        return getOrCreate(Step.StripGwtIncompatible, () -> {
+        return getOrCreate(Step.StripGwtIncompatible.name(), () -> {
 
             // We could probably not make this async, since it runs pretty quickly - but should try it to see if
             // it being parallel buys us anything
@@ -563,7 +578,7 @@ public class CachedProject {
     }
 
     private CompletableFuture<TranspiledCacheEntry> generatedSources() {
-        return getOrCreate(Step.ProcessAnnotations, () -> {
+        return getOrCreate(Step.ProcessAnnotations.name(), () -> {
             return children.stream()
                     .filter(CachedProject::hasSourcesMapped)
 //                    .filter(child -> new ScopeArtifactFilter(Artifact.SCOPE_COMPILE).include(child.getArtifact()))//TODO removing this is wrong, should instead let the whole "project" be scoped
@@ -609,7 +624,7 @@ public class CachedProject {
     }
 
     private CompletableFuture<TranspiledCacheEntry> hash() {
-        return getOrCreate(Step.Hash, () -> {
+        return getOrCreate(Step.Hash.name(), () -> {
             // wait for hashes of all dependencies
             return children.stream()//TODO filter to scope=compile?
                     .map(CachedProject::hash)

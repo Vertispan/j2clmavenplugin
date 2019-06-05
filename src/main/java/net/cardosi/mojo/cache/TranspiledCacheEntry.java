@@ -1,5 +1,7 @@
 package net.cardosi.mojo.cache;
 
+import net.cardosi.mojo.ClosureBuildConfiguration;
+
 import java.io.File;
 
 public class TranspiledCacheEntry {
@@ -65,5 +67,9 @@ public class TranspiledCacheEntry {
 
     public File getTranspiledSourcesDir() {
         return dir("transpiled-sources");
+    }
+
+    public File getClosureOutputDir(ClosureBuildConfiguration config) {
+        return dir("closure-output-" + config.hash());
     }
 }
