@@ -12,6 +12,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.ArtifactUtils;
 import org.apache.maven.artifact.resolver.filter.ScopeArtifactFilter;
+import org.apache.maven.model.FileSet;
 import org.apache.maven.project.MavenProject;
 
 import java.io.File;
@@ -616,6 +617,10 @@ public class CachedProject {
                                 .map(Artifact::getFile)
                                 .collect(Collectors.toList())
                 );
+
+                //also add the source dir as if it were on the classpath, as resources
+                plainClasspath.addAll(currentProject.getResources().stream().map(FileSet::getDirectory).map(File::new).collect(Collectors.toList()));
+//                plainClasspath.addAll(compileSourceRoots.stream().map(File::new).collect(Collectors.toList()));
 
                 List<FrontendUtils.FileInfo> sources = compileSourceRoots.stream().flatMap(dir -> getFileInfoInDir(Paths.get(dir), javaMatcher).stream()).collect(Collectors.toList());
                 if (sources.isEmpty()) {
