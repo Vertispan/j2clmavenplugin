@@ -437,25 +437,24 @@ public class CachedProject {
 
         }, (bytecodeDeps, entry) -> {
             List<FrontendUtils.FileInfo> sourcesToCompile = getFileInfoInDir(Paths.get(entry.getStrippedSourcesDir().toURI()), javaMatcher);
-            if (sourcesToCompile.isEmpty()) {
-                return entry;
-            }
-            //invoke j2cl on these sources, classpath
-            List<File> strippedClasspath = new ArrayList<>(bytecodeDeps.stream().map(TranspiledCacheEntry::getStrippedBytecodeDir).collect(Collectors.toList()));
-            strippedClasspath.addAll(diskCache.getExtraClasspath());
+            if (!sourcesToCompile.isEmpty()) {
+                //invoke j2cl on these sources, classpath
+                List<File> strippedClasspath = new ArrayList<>(bytecodeDeps.stream().map(TranspiledCacheEntry::getStrippedBytecodeDir).collect(Collectors.toList()));
+                strippedClasspath.addAll(diskCache.getExtraClasspath());
 
-            J2cl j2cl = new J2cl(strippedClasspath, diskCache.getBootstrap(), entry.getTranspiledSourcesDir());
-            List<FrontendUtils.FileInfo> nativeSources;
-            if (hasSourcesMapped()) {
-                nativeSources = compileSourceRoots.stream().flatMap(dir -> getFileInfoInDir(Paths.get(dir), nativeJsMatcher).stream()).collect(Collectors.toList());
-            } else {
-                nativeSources = getFileInfoInDir(entry.getUnpackedSources().toPath(), nativeJsMatcher);
-            }
+                J2cl j2cl = new J2cl(strippedClasspath, diskCache.getBootstrap(), entry.getTranspiledSourcesDir());
+                List<FrontendUtils.FileInfo> nativeSources;
+                if (hasSourcesMapped()) {
+                    nativeSources = compileSourceRoots.stream().flatMap(dir -> getFileInfoInDir(Paths.get(dir), nativeJsMatcher).stream()).collect(Collectors.toList());
+                } else {
+                    nativeSources = getFileInfoInDir(entry.getUnpackedSources().toPath(), nativeJsMatcher);
+                }
 
-            boolean j2clSuccess = j2cl.transpile(sourcesToCompile, nativeSources);
-            if (!j2clSuccess) {
-                if (!isIgnoreJavacFailure()) {
-                    throw new IllegalStateException("j2cl failed, check log for details");
+                boolean j2clSuccess = j2cl.transpile(sourcesToCompile, nativeSources);
+                if (!j2clSuccess) {
+                    if (!isIgnoreJavacFailure()) {
+                        throw new IllegalStateException("j2cl failed, check log for details");
+                    }
                 }
             }
 
