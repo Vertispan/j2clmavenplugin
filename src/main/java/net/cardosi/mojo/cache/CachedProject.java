@@ -368,7 +368,7 @@ public class CachedProject {
 
             // sanity check args
             jscompArgs.forEach(System.out::println);
-            CommandLineRunner jscompRunner = new InProcessJsCompRunner(jscompArgs.toArray(new String[0]), jsCompiler);
+            InProcessJsCompRunner jscompRunner = new InProcessJsCompRunner(jscompArgs.toArray(new String[0]), jsCompiler);
             if (!jscompRunner.shouldRunCompiler()) {
                 throw new IllegalStateException("Closure Compiler setup error, check log for details");
             }
@@ -379,7 +379,7 @@ public class CachedProject {
             try {
                 jscompRunner.run();
 
-                if (jscompRunner.hasErrors()) {
+                if (jscompRunner.hasErrors() || jscompRunner.exitCode != 0) {
                     throw new IllegalStateException("closure compiler failed, check log for details");
                 }
             } finally {
@@ -405,11 +405,15 @@ public class CachedProject {
     static class InProcessJsCompRunner extends CommandLineRunner {
 
         private final Compiler compiler;
+        private Integer exitCode;
 
         InProcessJsCompRunner(String[] args, Compiler compiler) {
             super(args);
             this.compiler = compiler;
-            setExitCodeReceiver(ignore -> null);
+            setExitCodeReceiver(exitCode -> {
+                this.exitCode = exitCode;
+                return null;
+            });
         }
 
         @Override

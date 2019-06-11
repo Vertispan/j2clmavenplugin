@@ -104,7 +104,7 @@ public class BuildMojo extends AbstractGwt3BuildMojo implements ClosureBuildConf
         defines.putIfAbsent("jsinterop.checks", "DISABLED");
 
         try {
-            CachedProject e = loadDependenciesIntoCache(project.getArtifact(), project, false, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, "* ");
+            CachedProject e = loadDependenciesIntoCache(project.getArtifact(), project, false, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, excludedDependencies, "* ");
             diskCache.release();
             e.registerAsApp(this).join();
         } catch (ProjectBuildingException | IOException e) {

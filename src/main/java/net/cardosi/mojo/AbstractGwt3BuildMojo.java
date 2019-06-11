@@ -68,6 +68,9 @@ public abstract class AbstractGwt3BuildMojo extends AbstractMojo {
     @Parameter(defaultValue = "com.vertispan.j2cl:junit-annotations:0.3-SNAPSHOT", required = true)
     protected String junitAnnotations;
 
+    @Parameter(defaultValue = "com.google.jsinterop:base,com.google.gwt:gwt-user,com.google.gwt:gwt-dev,com.google.gwt:gwt-servlet")
+    protected List<String> excludedDependencies;
+
 
     // tools to resolve dependencies
     @Component
@@ -102,6 +105,7 @@ public abstract class AbstractGwt3BuildMojo extends AbstractMojo {
             String pluginVersion,
             Map<String, CachedProject> seen,
             String classpathScope,
+            List<String> excludedDependencies,
             String depth) throws ProjectBuildingException, IOException {
 //        System.out.println(depth + artifact);
 
@@ -154,7 +158,7 @@ public abstract class AbstractGwt3BuildMojo extends AbstractMojo {
 //                        null,
 //                        dependency.getArtifactHandler()
 //                );
-                CachedProject transpiledDep = loadDependenciesIntoCache(dependency, inReactor, lookupReactorProjects, projectBuilder, projectBuildingRequest, diskCache, pluginVersion, seen, Artifact.SCOPE_COMPILE, "  " + depth);
+                CachedProject transpiledDep = loadDependenciesIntoCache(dependency, inReactor, lookupReactorProjects, projectBuilder, projectBuildingRequest, diskCache, pluginVersion, seen, Artifact.SCOPE_COMPILE, excludedDependencies, "  " + depth);
                 children.add(transpiledDep);
             } else {
                 // non-reactor project, build a project for it
@@ -163,7 +167,7 @@ public abstract class AbstractGwt3BuildMojo extends AbstractMojo {
                 projectBuildingRequest.setResolveDependencies(true);
                 projectBuildingRequest.setRemoteRepositories(null);
                 MavenProject p = projectBuilder.build(dependency, true, projectBuildingRequest).getProject();
-                CachedProject transpiledDep = loadDependenciesIntoCache(dependency, p, lookupReactorProjects, projectBuilder, projectBuildingRequest, diskCache, pluginVersion, seen, Artifact.SCOPE_COMPILE, "  " + depth);
+                CachedProject transpiledDep = loadDependenciesIntoCache(dependency, p, lookupReactorProjects, projectBuilder, projectBuildingRequest, diskCache, pluginVersion, seen, Artifact.SCOPE_COMPILE, excludedDependencies,"  " + depth);
                 children.add(transpiledDep);
             }
         }
@@ -177,10 +181,9 @@ public abstract class AbstractGwt3BuildMojo extends AbstractMojo {
         } else {
             p = new CachedProject(diskCache, artifact, currentProject, children);
             seen.put(key, p);
-            if (p.getArtifactKey().startsWith("com.google.jsinterop:base")) {
-                //we have a workaround for now
-                p.setIgnoreJavacFailure(true);
-            }
+
+            p.setIgnoreJavacFailure(excludedDependencies.stream().anyMatch(dep -> p.getArtifactKey().startsWith(dep)));
+
             p.markDirty();
         }
 
