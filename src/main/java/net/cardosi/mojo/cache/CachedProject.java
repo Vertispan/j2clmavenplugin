@@ -295,9 +295,18 @@ public class CachedProject {
             Compiler jsCompiler = new Compiler(System.err);
 //            jsCompiler.setPersistentInputStore(persistentInputStore);
 
+            CompilationLevel compilationLevel = CompilationLevel.fromString(config.getCompilationLevel());
+
             List<String> jscompArgs = new ArrayList<>();
             //TODO pick another location if sourcemaps aren't going to be used
-            File sources = new File(new File(closureOutputDir + "/" + config.getInitialScriptFilename()).getParent(), "sources");
+
+            File sources;
+            String jsOutputDir = new File(closureOutputDir + "/" + config.getInitialScriptFilename()).getParent();
+            if (compilationLevel == CompilationLevel.BUNDLE) {
+                sources = new File(jsOutputDir, "sources");
+            } else {
+                sources = entry.getClosureOutputDir(config);
+            }
             reqs.stream().map(TranspiledCacheEntry::getTranspiledSourcesDir).map(File::getAbsolutePath).distinct().forEach(dir -> {
                 try {
                     FileUtils.copyDirectory(new File(dir), sources);
@@ -323,7 +332,6 @@ public class CachedProject {
                 jscompArgs.add(file.getAbsolutePath());
             });
 
-            CompilationLevel compilationLevel = CompilationLevel.fromString(config.getCompilationLevel());
             if (compilationLevel == CompilationLevel.BUNDLE) {
                 jscompArgs.add("--define");
                 jscompArgs.add("goog.ENABLE_DEBUG_LOADER=false");

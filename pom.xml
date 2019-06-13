@@ -6,7 +6,7 @@
 
   <groupId>com.vertispan.j2cl</groupId>
   <artifactId>j2cl-maven-plugin</artifactId>
-  <version>0.5-SNAPSHOT</version>
+  <version>0.6-SNAPSHOT</version>
   <packaging>maven-plugin</packaging>
 
   <name>J2CL Maven Plugin</name>
@@ -27,7 +27,7 @@
     <!-- Builder dependencies versions -->
     <transpiler.version>0.3-SNAPSHOT</transpiler.version>
     <gwt.incompatible.stripper.version>0.3-SNAPSHOT</gwt.incompatible.stripper.version>
-    <closure.compiler.unshaded.version>0.1.1-SNAPSHOT</closure.compiler.unshaded.version>
+    <closure.compiler.unshaded.version>0.1.2-SNAPSHOT</closure.compiler.unshaded.version>
     <commons.codec.version>1.11</commons.codec.version>
     <!-- Test -->
     <org.eclipse.sisu.plexus.version>0.3.3</org.eclipse.sisu.plexus.version>
