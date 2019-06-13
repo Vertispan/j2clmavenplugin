@@ -40,9 +40,8 @@ public class DiskCache {
     }
 
 
-    public TranspiledCacheEntry entry(String hash, String artifactId) {
-
-        File cacheDir = new File(jsZipCacheDir, hash + "-" + artifactId);
+    public TranspiledCacheEntry entry(String artifactId, String hash) {
+        File cacheDir = new File(jsZipCacheDir, artifactId + "-" + hash);
         cacheDir.mkdirs();
 
         return new TranspiledCacheEntry(hash, artifactId, cacheDir);

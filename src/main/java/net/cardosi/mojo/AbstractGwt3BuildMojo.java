@@ -158,7 +158,7 @@ public abstract class AbstractGwt3BuildMojo extends AbstractMojo {
 //                        null,
 //                        dependency.getArtifactHandler()
 //                );
-                CachedProject transpiledDep = loadDependenciesIntoCache(dependency, inReactor, lookupReactorProjects, projectBuilder, projectBuildingRequest, diskCache, pluginVersion, seen, Artifact.SCOPE_COMPILE, excludedDependencies, "  " + depth);
+                CachedProject transpiledDep = loadDependenciesIntoCache(dependency, inReactor, lookupReactorProjects, projectBuilder, projectBuildingRequest, diskCache, pluginVersion, seen, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, excludedDependencies, "  " + depth);
                 children.add(transpiledDep);
             } else {
                 // non-reactor project, build a project for it
@@ -167,7 +167,7 @@ public abstract class AbstractGwt3BuildMojo extends AbstractMojo {
                 projectBuildingRequest.setResolveDependencies(true);
                 projectBuildingRequest.setRemoteRepositories(null);
                 MavenProject p = projectBuilder.build(dependency, true, projectBuildingRequest).getProject();
-                CachedProject transpiledDep = loadDependenciesIntoCache(dependency, p, lookupReactorProjects, projectBuilder, projectBuildingRequest, diskCache, pluginVersion, seen, Artifact.SCOPE_COMPILE, excludedDependencies,"  " + depth);
+                CachedProject transpiledDep = loadDependenciesIntoCache(dependency, p, lookupReactorProjects, projectBuilder, projectBuildingRequest, diskCache, pluginVersion, seen, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, excludedDependencies,"  " + depth);
                 children.add(transpiledDep);
             }
         }
