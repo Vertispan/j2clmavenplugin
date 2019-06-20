@@ -11,4 +11,11 @@
         <module>lib</module>
         <module>app</module>
     </modules>
+
+    <repositories>
+        <repository>
+            <id>google-snapshots</id>
+            <url>https://oss.sonatype.org/content/repositories/google-snapshots/</url>
+        </repository>
+    </repositories>
 </project>
