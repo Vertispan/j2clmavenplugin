@@ -455,12 +455,7 @@ public class CachedProject {
                 strippedClasspath.addAll(diskCache.getExtraClasspath());
 
                 J2cl j2cl = new J2cl(strippedClasspath, diskCache.getBootstrap(), entry.getTranspiledSourcesDir());
-                List<FrontendUtils.FileInfo> nativeSources;
-                if (hasSourcesMapped()) {
-                    nativeSources = compileSourceRoots.stream().flatMap(dir -> getFileInfoInDir(Paths.get(dir), nativeJsMatcher).stream()).collect(Collectors.toList());
-                } else {
-                    nativeSources = getFileInfoInDir(entry.getUnpackedSources().toPath(), nativeJsMatcher);
-                }
+                List<FrontendUtils.FileInfo> nativeSources = getFileInfoInDir(entry.getStrippedSourcesDir().toPath(), nativeJsMatcher);
 
                 boolean j2clSuccess = j2cl.transpile(sourcesToCompile, nativeSources);
                 if (!j2clSuccess) {
@@ -472,34 +467,18 @@ public class CachedProject {
 
             //copy over other plain js
             Path outSources = entry.getTranspiledSourcesDir().toPath();
-            if (hasSourcesMapped()) {
-                Stream.concat(compileSourceRoots.stream(), Stream.of(entry.getAnnotationSourcesDir().getAbsolutePath())).forEach(dir ->
-                        getFileInfoInDir(Paths.get(dir), path -> jsMatcher.matches(path) && !nativeJsMatcher.matches(path))
-                                .stream().map(FrontendUtils.FileInfo::sourcePath).map(Paths::get)
-                                .map(p -> Paths.get(dir).relativize(p))
-                                .forEach(path -> {
-                                    try {
-                                        Files.createDirectories(outSources.resolve(path).getParent());
-                                        Files.copy(Paths.get(dir).resolve(path), outSources.resolve(path));
-                                    } catch (IOException e) {
-                                        throw new UncheckedIOException(e);
-                                    }
-                                })
-                );
-            } else {
-                getFileInfoInDir(entry.getUnpackedSources().toPath(), path -> jsMatcher.matches(path) && !nativeJsMatcher.matches(path))
-                        .stream()
-                        .map(FrontendUtils.FileInfo::sourcePath).map(Paths::get)
-                        .map(p -> entry.getUnpackedSources().toPath().relativize(p))
-                        .forEach(path -> {
-                            try {
-                                Files.createDirectories(outSources.resolve(path).getParent());
-                                Files.copy(entry.getUnpackedSources().toPath().resolve(path), outSources.resolve(path));
-                            } catch (IOException e) {
-                                throw new UncheckedIOException(e);
-                            }
-                        });
-            }
+            getFileInfoInDir(entry.getStrippedSourcesDir().toPath(), path -> jsMatcher.matches(path) && !nativeJsMatcher.matches(path))
+                    .stream()
+                    .map(FrontendUtils.FileInfo::sourcePath).map(Paths::get)
+                    .map(p -> entry.getStrippedSourcesDir().toPath().relativize(p))
+                    .forEach(path -> {
+                        try {
+                            Files.createDirectories(outSources.resolve(path).getParent());
+                            Files.copy(entry.getStrippedSourcesDir().toPath().resolve(path), outSources.resolve(path));
+                        } catch (IOException e) {
+                            throw new UncheckedIOException(e);
+                        }
+                    });
 
             return entry;
         });
@@ -570,8 +549,8 @@ public class CachedProject {
 
             try {
                 if (hasSourcesMapped()) {
-                    sourcesToStrip.addAll(getFileInfoInDir(entry.getAnnotationSourcesDir().toPath(), javaMatcher));
-                    sourcesToStrip.addAll(compileSourceRoots.stream().flatMap(dir -> getFileInfoInDir(Paths.get(dir), javaMatcher).stream()).collect(Collectors.toList()));
+                    sourcesToStrip.addAll(getFileInfoInDir(entry.getAnnotationSourcesDir().toPath(), javaMatcher, nativeJsMatcher, jsMatcher));
+                    sourcesToStrip.addAll(compileSourceRoots.stream().flatMap(dir -> getFileInfoInDir(Paths.get(dir), javaMatcher, nativeJsMatcher, jsMatcher).stream()).collect(Collectors.toList()));
                 } else {
                     //unpack the jar's sources
                     File sources = entry.getUnpackedSources();
@@ -717,9 +696,9 @@ public class CachedProject {
         });
     }
 
-    private List<FrontendUtils.FileInfo> getFileInfoInDir(Path dir, PathMatcher matcher) {
+    private List<FrontendUtils.FileInfo> getFileInfoInDir(Path dir, PathMatcher... matcher) {
         try {
-            return Files.find(dir, Integer.MAX_VALUE, ((path, basicFileAttributes) -> matcher.matches(path)))
+            return Files.find(dir, Integer.MAX_VALUE, ((path, basicFileAttributes) -> Arrays.stream(matcher).anyMatch(m -> m.matches(path))))
                     .map(p -> FrontendUtils.FileInfo.create(p.toString(), dir.toAbsolutePath().relativize(p).toString()))
                     .collect(Collectors.toList());
         } catch (IOException e) {
