@@ -68,7 +68,7 @@ public abstract class AbstractGwt3BuildMojo extends AbstractMojo {
     @Parameter(defaultValue = "com.vertispan.j2cl:junit-annotations:0.3-SNAPSHOT", required = true)
     protected String junitAnnotations;
 
-    @Parameter(defaultValue = "com.google.jsinterop:base,com.google.gwt:gwt-user,com.google.gwt:gwt-dev,com.google.gwt:gwt-servlet")
+    @Parameter(defaultValue = "com.google.jsinterop:base,org.realityforge.com.google.jsinterop:base,com.google.gwt:gwt-user,com.google.gwt:gwt-dev,com.google.gwt:gwt-servlet")
     protected List<String> excludedDependencies;
 
 
