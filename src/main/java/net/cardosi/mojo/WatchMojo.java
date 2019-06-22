@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Attempts to do the setup for various test and build goals declared in the current project or in child projects,
@@ -131,14 +132,22 @@ public class WatchMojo extends AbstractGwt3BuildMojo {
         }
         diskCache.release();
 
-        // everything below this point is garbage, needs to be rethought
-        futures.forEach(CompletableFuture::join);
+        for (CachedProject app : projects.values()) {
+            //TODO instead of N threads per project, combine threads?
+            try {
+                app.watch();
+            } catch (IOException ex) {
+                ex.printStackTrace();
+                //TODO fall back to polling or another strategy
+            }
+        }
 
-//        try {
-//            Thread.sleep(TimeUnit.MINUTES.toMillis(10));
-//        } catch (InterruptedException e) {
-//            e.printStackTrace();
-//        }
+        // TODO replace this dumb timer with a System.in loop so we can watch for some commands from the user
+        try {
+            Thread.sleep(TimeUnit.MINUTES.toMillis(30));
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
 
     }
 

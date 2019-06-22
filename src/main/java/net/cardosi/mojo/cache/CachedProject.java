@@ -24,7 +24,9 @@ import java.nio.charset.Charset;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -94,8 +96,21 @@ public class CachedProject {
             if (steps.isEmpty()) {
                 return;
             }
+            // cancel all running work
             for (CompletableFuture<TranspiledCacheEntry> cf : steps.values()) {
-                cf.cancel(true);
+                try {
+                    cf.cancel(true);
+                } catch (Exception e) {
+                    throw new RuntimeException("Failed while canceling?", e);
+                }
+            }
+            // wait for the running work to actually terminate
+            for (CompletableFuture<TranspiledCacheEntry> cf : steps.values()) {
+                try {
+                    cf.join();
+                } catch (Exception ignored) {
+                    // ignore errors, we're expecting this
+                }
             }
             steps.clear();
         }
@@ -143,8 +158,41 @@ public class CachedProject {
         return !compileSourceRoots.isEmpty();
     }
 
-    public void watch() {
-
+    public void watch() throws IOException {
+        Map<FileSystem, List<Path>> fileSystemsToWatch = compileSourceRoots.stream().map(Paths::get).collect(Collectors.groupingBy(Path::getFileSystem));
+        for (Map.Entry<FileSystem, List<Path>> entry : fileSystemsToWatch.entrySet()) {
+            WatchService watchService = entry.getKey().newWatchService();
+            for (Path path : entry.getValue()) {
+                Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
+                    @Override
+                    public FileVisitResult preVisitDirectory(Path path, BasicFileAttributes basicFileAttributes) throws IOException {
+                        path.register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_MODIFY);
+                        return FileVisitResult.CONTINUE;
+                    }
+                });
+                path.register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_MODIFY);
+            }
+            new Thread() {
+                @Override
+                public void run() {
+                    while (true) {
+                        try {
+                            WatchKey key = watchService.poll(10, TimeUnit.SECONDS);
+                            if (key == null) {
+                                continue;
+                            }
+                            //TODO if it was a create, register it (recursively?)
+                            key.pollEvents();//clear the events out
+                            key.reset();//reset to go again
+                            markDirty();
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            return;
+                        }
+                    }
+                }
+            }.start();
+        }
     }
 
     public boolean isIgnoreJavacFailure() {
@@ -186,57 +234,62 @@ public class CachedProject {
             File failedMarker = new File(stepDir, step + "failed");
 
 //            long start = System.currentTimeMillis();
-            if (!stepDir.mkdirs()) {
-                // wait for complete/failed markers, if either exists, we can bail early
-                Path cacheDirPath = Paths.get(dir.getCacheDir().toURI());
-                try (WatchService w = cacheDirPath.getFileSystem().newWatchService()) {
-                    cacheDirPath.register(w, StandardWatchEventKinds.ENTRY_CREATE);
-                    // first check to see if it exists, then wait for next event to occur
-                    do {
-                        if (completeMarker.exists()) {
-//                            System.out.println(getArtifactKey() + " " + step +" ready after " + (System.currentTimeMillis() - start) + "ms of waiting");
-                            return CompletableFuture.completedFuture(dir);
-                        }
-                        if (failedMarker.exists()) {
-                            System.out.println("compilation failed in some other thread/process " + getArtifactKey() + " " + dir.getHash());
-                            CompletableFuture<TranspiledCacheEntry> failure = new CompletableFuture<>();
-                            //TODO read out the actual error from the last attempt
-                            failure.completeExceptionally(new IllegalStateException("Step " + step + " failed in some other process/thread " + getArtifactKey() + " " + dir.getHash()));
-                            return failure;
-                        }
+            return CompletableFuture.<TranspiledCacheEntry>supplyAsync(() -> {
 
-                        // if not, keep waiting and logging
-                        // TODO provide a way to timeout and nuke the dir since no one seems to own it
-                        System.out.println("Waiting 10s and then checking again if other thread/process finished " + getArtifactKey());
-                        w.poll(10, TimeUnit.SECONDS);
-                    } while (true);
-                } catch (IOException | InterruptedException ex) {
-                    System.out.println("Error while waiting for external thread/process");
-                    ex.printStackTrace();
-                    CompletableFuture<TranspiledCacheEntry> failure = new CompletableFuture<>();
-                    failure.completeExceptionally(ex);
-                    return failure;
-                }
-            }
+                while (!stepDir.mkdirs()) {
+                    // wait for complete/failed markers, if either exists, we can bail early
+                    Path cacheDirPath = Paths.get(dir.getCacheDir().toURI());
+                    try (WatchService w = cacheDirPath.getFileSystem().newWatchService()) {
+                        cacheDirPath.register(w, StandardWatchEventKinds.ENTRY_CREATE);
+                        // first check to see if it exists, then wait for next event to occur
+                        do {
+                            if (completeMarker.exists()) {
+                                //                            System.out.println(getArtifactKey() + " " + step +" ready after " + (System.currentTimeMillis() - start) + "ms of waiting");
+                                return dir;
+                            }
+                            if (failedMarker.exists()) {
+                                System.out.println("compilation failed in some other thread/process " + getArtifactKey() + " " + dir.getHash());
+                                //TODO read out the actual error from the last attempt
+                                throw new IllegalStateException("Step " + step + " failed in some other process/thread " + getArtifactKey() + " " + dir.getHash());
+                            }
 
-            return instructions.apply(dir).whenComplete((success, failure) -> {
-                try {
-
-                    if (failure == null) {
-//                        System.out.println("completed " + getArtifactKey() + " " + step + " in " + (System.currentTimeMillis() - start) + "ms of waiting");
-                        Files.createFile(completeMarker.toPath());
-                    } else {
-                        System.out.println("failed " + getArtifactKey() + " " + step);
-                        failure.printStackTrace();
-                        Files.createFile(failedMarker.toPath());
+                            // if not, keep waiting and logging
+                            // TODO provide a way to timeout and nuke the dir since no one seems to own it
+                            System.out.println("Waiting 10s and then checking again if other thread/process finished " + getArtifactKey());
+                            w.poll(10, TimeUnit.SECONDS);
+                        } while (true);
+                    } catch (NoSuchFileException ex) {
+                        //noinspection UnnecessaryContinue
+                        continue;//try to make the directory again - explicit continue for readability
+                    } catch (IOException | InterruptedException ex) {
+                        //TODO expect a funky exception here if the stepDir itself gets deleted since a process was canceled? shouldn't really matter, we'll be interrupted anyway in here
+                        System.out.println("Error while waiting for external thread/process");
+                        ex.printStackTrace();
+                        throw new RuntimeException(ex);
                     }
-                } catch (IOException ex) {
-                    ex.printStackTrace();
-                    throw new UncheckedIOException(ex);
                 }
+                return instructions.apply(dir).whenComplete((success, failure) -> {
+                    try {
+
+                        if (failure == null) {
+//                        System.out.println("completed " + getArtifactKey() + " " + step + " in " + (System.currentTimeMillis() - start) + "ms of waiting");
+                            Files.createFile(completeMarker.toPath());
+                        } else if (failure instanceof CancellationException || (failure instanceof CompletionException && failure.getCause() instanceof CancellationException)) {
+                            // failure since we changed our minds and don't want this now, before it managed to complete, mop up
+                            assert stepDir.listFiles().length == 0;
+                            stepDir.delete();
+                        } else {
+                            System.out.println("failed " + getArtifactKey() + " " + step + " " + failure.getClass() + ":" + failure.getMessage());
+                            failure.printStackTrace();
+                            Files.createFile(failedMarker.toPath());
+                        }
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                        throw new UncheckedIOException(ex);
+                    }
+                }).join();
             });
         });
-//        }
     }
 
     private <T> CompletableFuture<TranspiledCacheEntry> getOrCreate(String step, Supplier<T> dependencies, BiFunction<T, TranspiledCacheEntry, TranspiledCacheEntry> work) {
@@ -585,6 +638,7 @@ public class CachedProject {
 
     private CompletableFuture<TranspiledCacheEntry> generatedSources() {
         return getOrCreate(Step.ProcessAnnotations.name(), () -> {
+            // depend on other projects with sources mapped, and only ask for "generated sources" so that we can get their unstripped bytecode
             return children.stream()
                     .filter(CachedProject::hasSourcesMapped)
 //                    .filter(child -> new ScopeArtifactFilter(Artifact.SCOPE_COMPILE).include(child.getArtifact()))//TODO removing this is wrong, should instead let the whole "project" be scoped
