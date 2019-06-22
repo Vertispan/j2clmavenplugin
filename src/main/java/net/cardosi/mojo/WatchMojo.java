@@ -77,7 +77,7 @@ public class WatchMojo extends AbstractGwt3BuildMojo {
         try {
 
             for (MavenProject reactorProject : reactorProjects) {
-                if (project.equals(reactorProject) || reactorProject.getPackaging().equals("pom")) {
+                if (reactorProject.getPackaging().equals("pom")) {
                     //skip the reactor project?
                     continue;
                 }
