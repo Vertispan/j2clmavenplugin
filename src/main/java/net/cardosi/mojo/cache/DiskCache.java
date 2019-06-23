@@ -9,7 +9,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class DiskCache {
-    private final ExecutorService s = Executors.newFixedThreadPool(1);//TODO make this configurable, confirm it is actually thread-safe
+    private final ExecutorService workPool = Executors.newFixedThreadPool(3);//TODO make this configurable, confirm it is actually thread-safe
+    private final ExecutorService queuingPool = Executors.newFixedThreadPool(100);
 
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
@@ -48,7 +49,11 @@ public class DiskCache {
     }
 
     public ExecutorService pool() {
-        return s;
+        return workPool;
+    }
+
+    public ExecutorService queueingPool() {
+        return queuingPool;
     }
 
     public File getBootstrap() {

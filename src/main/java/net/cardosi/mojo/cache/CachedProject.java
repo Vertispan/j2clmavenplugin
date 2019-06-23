@@ -288,7 +288,7 @@ public class CachedProject {
                         throw new UncheckedIOException(ex);
                     }
                 }).join();
-            });
+            }, diskCache.queueingPool());
         });
     }
 
@@ -302,7 +302,7 @@ public class CachedProject {
 //                        System.out.println("done with dependency step for " + getArtifactKey() + " " + step);
 
                             }
-                        })
+                        }, diskCache.queueingPool())
                         .thenApplyAsync(output -> {
 //                    System.out.println("starting pool work for " + getArtifactKey() + " " + step);
                             long start = System.currentTimeMillis();
