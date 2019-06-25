@@ -36,7 +36,7 @@ import java.util.*;
  */
 @Mojo(name = "build", requiresDependencyResolution = ResolutionScope.COMPILE_PLUS_RUNTIME)
 //@Execute(phase = LifecyclePhase.PROCESS_CLASSES)
-public class BuildMojo extends AbstractGwt3BuildMojo implements ClosureBuildConfiguration {
+public class BuildMojo extends AbstractBuildMojo implements ClosureBuildConfiguration {
 
     /**
      * The dependency scope to use for the classpath.

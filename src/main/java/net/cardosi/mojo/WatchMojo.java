@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit;
  */
 @Mojo(name = "watch", requiresDependencyResolution = ResolutionScope.TEST, aggregator = true)
 //@Execute(phase = LifecyclePhase.PROCESS_CLASSES)
-public class WatchMojo extends AbstractGwt3BuildMojo {
+public class WatchMojo extends AbstractBuildMojo {
 
     @Parameter(defaultValue = "${reactorProjects}", required = true, readonly = true)
     protected List<MavenProject> reactorProjects;

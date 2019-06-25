@@ -6,7 +6,6 @@ import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.ArtifactUtils;
 import org.apache.maven.artifact.resolver.filter.ScopeArtifactFilter;
 import org.apache.maven.execution.MavenSession;
-import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.BuildPluginManager;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Component;
@@ -29,21 +28,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public abstract class AbstractGwt3BuildMojo extends AbstractMojo {
+public abstract class AbstractBuildMojo extends AbstractCacheMojo {
     @Parameter( defaultValue = "${session}", readonly = true )
     protected MavenSession mavenSession;
-
-    @Component
-    protected BuildPluginManager pluginManager;
 
     @Parameter(defaultValue = "${project}", readonly = true, required = true)
     protected MavenProject project;
 
     @Component
     protected ProjectBuilder projectBuilder;
-
-    @Parameter(defaultValue = "${project.build.directory}/gwt3BuildCache", required = true, property = "gwt3.cache.dir")
-    protected File gwt3BuildCacheDir;
 
     @Parameter(defaultValue = "com.vertispan.j2cl:javac-bootstrap-classpath:0.3-SNAPSHOT", required = true)
     protected String javacBootstrapClasspathJar;

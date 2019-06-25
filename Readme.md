@@ -12,29 +12,19 @@ built from here:
 ------------------------
 The plugin has four goals
 
-1. build: it executes a single compilation
+1. `build`: executes a single compilation, typically to produce a JS application or library.
 
-2. run: it starts in listening mode detecting file changing and eventually recompiling them
+2. `test`: compiles and executes j2cl-annotated tests, once.
 
-3. clean: it cleans up all the plugin-specific directories
-
-4. test: compiles and executes j2cl-annotated tests, once
-
-----------------------
-To test it:
-
-1 clone https://github.com/gitgabrio/connected
-
-2 switch to branch j2cl-mavenplugin
-
-3 issue mvn package -Pdevmode
-
-The connected project has been modified so that
-
-1 all the dependencies and compiled classes/js ends up inside target/webapp
-
-2 the jetty server listen for modification and serves target/webapp
-
+3. `watch`: monitor source directories, and when changes happen that affect any `build` or `test`, recompile the 
+required parts of the project
+  
+   * `watch-test`: only rebuild things that affect `test` executions, useful when iterating on tests and avoiding
+    building the application itself
+   * `watch-build`: only rebuild things that affect `build` executions, may save time if tests aren't currently
+    being re-run 
+  
+4. clean: it cleans up all the plugin-specific directories
 
 
 ----

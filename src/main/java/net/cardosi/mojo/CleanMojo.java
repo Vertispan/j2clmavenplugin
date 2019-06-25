@@ -15,7 +15,6 @@
  */
 package net.cardosi.mojo;
 
-import net.cardosi.mojo.cache.DiskCache;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugin.descriptor.PluginDescriptor;
@@ -26,10 +25,24 @@ import org.apache.maven.project.MavenProject;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.List;
+import java.util.regex.Pattern;
 
-@Mojo(name = "clean")
-public class CleanMojo extends AbstractGwt3BuildMojo {
+/**
+ * A goal to clean cached J2cl/GWT3 build outputs. This goal is meant to support the case where the cache
+ * is moved outside of the default location in {@code target}, and handle the cases where the user needs to
+ * manually run clean.
+ *
+ * When working on more than one j2cl-maven-plugin project locally, it can he helpful to specify a global
+ * shared cache that all projects should share, so that when any artifact is built it can be reused.
+ *
+ */
+@Mojo(name = "clean", aggregator = true)
+public class CleanMojo extends AbstractCacheMojo {
 
+    /**
+     * The artifact that should be cleaned. If not specified, all artifacts in the current reactor will be cleaned.
+     * Specify {@code *} to indicate that the entire cache should be cleaned.
+     */
     @Parameter(property = "artifact")
     protected String artifact;
 
@@ -58,7 +71,7 @@ public class CleanMojo extends AbstractGwt3BuildMojo {
             } else {
                 // identify the cache entry we were ask to remove and delete all items found which might
                 // match that
-                    getLog().info("Deleting cache for " + artifact);
+                getLog().info("Deleting cache for " + artifact);
                 deleteArtifact(currentPluginCacheDir, artifact);
             }
         } catch (IOException t) {
@@ -67,9 +80,10 @@ public class CleanMojo extends AbstractGwt3BuildMojo {
     }
 
     private void deleteArtifact(Path baseDir, String artifact) throws IOException {
+        Pattern artifactPattern = Pattern.compile(Pattern.quote(artifact + "-") + "[^-]");
         try (DirectoryStream<Path> entries = Files.newDirectoryStream(baseDir)) {
             for (Path entry : entries) {
-                if (entry.getFileName().toString().startsWith(artifact + "-")) {
+                if (artifactPattern.matcher(entry.getFileName().toString()).matches()) {
                     getLog().info("Deleting directory " + entry);
                     recursivelyDeleteDir(entry);
                 }

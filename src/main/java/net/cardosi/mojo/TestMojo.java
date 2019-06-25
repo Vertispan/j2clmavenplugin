@@ -30,7 +30,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Mojo(name = "test", requiresDependencyResolution = ResolutionScope.TEST)
-public class TestMojo extends AbstractGwt3BuildMojo implements ClosureBuildConfiguration {
+public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfiguration {
     /**
      * The dependency scope to use for the classpath.
      * <p>The scope should be one of the scopes defined by org.apache.maven.artifact.Artifact. This includes the following:
