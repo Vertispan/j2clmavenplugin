@@ -18,28 +18,50 @@ import java.io.IOException;
 import java.util.*;
 
 /**
- * Experiment to transpile a project into the j2cl cache. Before it begins, recursively transpiles
- * dependencies if they are not present in the cache.
- *
- * For consistency, reactor projects will first run source:jar, and then transpile that as external
- * projects have done.
- *
- * Given a g:a:v, first compute its hash, and see if it is present: roughly,
- * hash(j2cl-maven-plugin.version + project.artifacts.map(hash) + source)
- * To do this, we obviously first compute the hashes of all other dependencies recursively. Any
- * item missing from the cache must first be compiled and stored under its hash, then later projects
- * can be hashed and then compiled if needed.
- *
- * The computed cache needs to be shared between instances of this goal and the closure goal, ideally
- * by writing it to disk in some cheap way so it can be read back in easily. Iterating the project
- * model must already be cheap, so maybe we can just rebuild it from scratch each time?
+ * <p>
+     * Transpiles this project and all of its dependencies, then combines them all into a single JS
+     * executable.
+ * </p>
+ * <p>
+ *     Results are cached based on their sources and the soruces of their dependencies, and the final
+ *     output is copied to the specified location by the build configuration. For the project this goal
+ *     is executed on, it will have its annotation processors run, then strip {@code @GwtIncompatible}
+ *     from all sources. These stripped sources then will be transpiled with j2cl, then optimized with
+ *     the Closure Compiler. Dependencies on the other hand, even ones in the current reactor (unlike
+ *     with the watch goal) will be built from their artifact, so sources should be included in some
+ *     form.
+ * </p>
+ * <p>
+ *     The output defaults to assume that output should be generated into the same directory that would
+ *     be used if a war were being generated, through the {@link BuildMojo#webappDirectory} parameter.
+ *     Then, in there, the {@link BuildMojo#initialScriptFilename} specifies the path to the initial
+ *     JS output file. This defaults to the current project's artifactId as a new directory, then inside
+ *     of there the main js file is named for the artifactId again, with a ".js" suffix. This is to keep
+ *     other generated output (split points, resources, sourcemaps) from cluttering up the main war.
+ *     Unfortunately, it also requires that the HTML page which loads the script start in that directory
+ *     in order for Chrome's sourcemap implementation to work correctly.
+ * </p>
+ * <p>
+ *     Entrypoints can be specified by their JS name, indicating where the compiler should start when
+ *     pruning and optimizing the output. This should either be a plain JS/Closure module, or should be a
+ *     Java class with a matching .native.js to instantiate the class on startup.
+ * </p>
+ * <p>
+ *     Closure defines (or J2cl/GWT System Properties) can be provided as well. There are some defaults,
+ *     assuming that a production app should be built to be as small as possible, with many checks turned off:
+ *     <ul>
+ *         <li>jre.checkedMode=DISABLED</li>
+ *         <li>jre.checks.checkLevel=MINIMAL</li>
+ *         <li>jsinterop.checks=DISABLED</li>
+ *     </ul>
+ * </p>
  */
 @Mojo(name = "build", requiresDependencyResolution = ResolutionScope.COMPILE_PLUS_RUNTIME)
 //@Execute(phase = LifecyclePhase.PROCESS_CLASSES)
 public class BuildMojo extends AbstractBuildMojo implements ClosureBuildConfiguration {
 
     /**
-     * The dependency scope to use for the classpath.
+     * The scope to use when picking dependencies to pass to the Closure Compiler.
      * <p>The scope should be one of the scopes defined by org.apache.maven.artifact.Artifact. This includes the following:
      * <ul>
      * <li><i>compile</i> - system, provided, compile
