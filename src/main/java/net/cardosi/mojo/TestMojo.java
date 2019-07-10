@@ -118,7 +118,7 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
 
 
         try {
-            CachedProject source = loadDependenciesIntoCache(project.getArtifact(), project, false, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_TEST, excludedDependencies, "* ");
+            CachedProject source = loadDependenciesIntoCache(project.getArtifact(), project, false, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_TEST, getDependencyReplacements(), "* ");
 
             // given that set of tasks, we'll chain one more on the end, and watch _that_ for changes
             List<CachedProject> children = new ArrayList<>(source.getChildren());
