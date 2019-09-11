@@ -18,6 +18,7 @@ import org.apache.maven.shared.utils.io.DirectoryScanner;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.FluentWait;
 
 import java.io.File;
@@ -151,9 +152,8 @@ public class TestMojo extends AbstractGwt3BuildMojo implements ClosureBuildConfi
                 // assuming that was successful, start htmlunit to run the test
                 WebDriver driver = null;
                 try {
-                    driver = new ChromeDriver();
+                    driver = new ChromeDriver(new ChromeOptions().setHeadless(true));
                     driver.get("file://" + startupHtmlFile);
-
                     // loop and poll if tests are done
                     new FluentWait<>(driver)
                             .withTimeout(Duration.ofMinutes(1))
