@@ -20,7 +20,8 @@ The plugin has four goals
 2. `test`: compiles and executes j2cl-annotated tests, once.
 
 3. `watch`: monitor source directories, and when changes happen that affect any `build` or `test`, recompile the 
-required parts of the project
+required parts of the project. Tests are not (presently) run, but can be run manually by loading the html pages
+that exist for them.
   
 <!--   * `watch-test`: only rebuild things that affect `test` executions, useful when iterating on tests and avoiding
     building the application itself
@@ -168,7 +169,7 @@ This requires running `JavaCompiler` again, this time on the stripped sources. F
 dependencies are all required to have already generated their own stripped bytecode. In Maven terms, we use the 
 "compile+runtime" scope for this step, due to an inconsistency between Maven and Gradle: Maven provides for several
 scopes that describe what the current project will use the sources for, while Gradle-generate pom files prefer to
-describe what downstream projects will use it for. In short, Maven's `compile` scope is too broad for Gradle, as it
+describe what downstream projects will use it for. In short, Maven's "compile" scope is too broad for Gradle, as it
 indicates not only that a given dependency is needed to compile the project's sources, but also that it is needed
 to compile some project which uses this project's output. Gradle instead may emit `scope=runtime` for this case,
 only indicating that in order to run this project, the dependency will be required, and offering no clues for how
