@@ -1,7 +1,7 @@
 defaults: &defaults
     working_directory: ~/repo
     docker:
-      - image: circleci/openjdk:8-jdk
+      - image: circleci/openjdk:8-jdk-stretch
     environment:
       MAVEN_OPTS: -Xmx3200m
       _JAVA_OPTIONS: "-Xms1g -Xmx1g"
@@ -27,5 +27,8 @@ jobs:
             - ~/.m2
           key: v1-dependencies-{{ checksum "pom.xml" }}
 
-      # run tests!
-      - run: mvn integration-test
+      - run:
+          name: Build and push to Artifactory
+          command: |
+            mvn deploy -s .circleci/settings.xml -Dartifactory.username=$ARTIFACTORY_USER -Dartifactory.password=$ARTIFACTORY_APIKEY
+
