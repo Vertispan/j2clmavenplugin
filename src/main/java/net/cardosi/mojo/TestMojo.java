@@ -80,6 +80,9 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
         if (skipTests) {
             return;
         }
+
+        Map<String, String> failedTests = new HashMap<>();
+
         PluginDescriptor pluginDescriptor = (PluginDescriptor) getPluginContext().get("pluginDescriptor");
         String pluginVersion = pluginDescriptor.getVersion();
 
@@ -130,7 +133,7 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
 
             for (ClosureBuildConfiguration config : getTestConfigs(this, tests, project, includes, excludes)) {
                 e.registerAsApp(config).join();
-
+                getLog().info("Test started: " + ((TestConfig)config).getTest());
                 // write a simple html file to that output dir
                 //TODO parallelize this - run once each is done, possibly concurrently
                 //TODO don't fail on the first test that doesn't work
@@ -147,8 +150,6 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
                 } catch (IOException ex) {
                     throw new UncheckedIOException(ex);
                 }
-
-
                 // assuming that was successful, start htmlunit to run the test
                 WebDriver driver = null;
                 try {
@@ -160,14 +161,16 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
                             .withMessage("Tests failed to finish in timeout")
                             .pollingEvery(Duration.ofMillis(100))
                             .until(d -> isFinished(d));
-
                     // check for success
                     if (!isSuccess(driver)) {
-                        System.err.println("At least one test failed, please try manually");
-                        throw new MojoFailureException("At least one test failed, please try again manually: " + startupHtmlFile);
+                        failedTests.put(((TestConfig) config).getTest(), startupHtmlFile);
+                        getLog().error("Test failed!");
                     } else {
-                        System.err.println("Tests passed!");
+                        getLog().info("Test passed!");
                     }
+                } catch (Exception ex) {
+                    failedTests.put(((TestConfig) config).getTest(), startupHtmlFile);
+                    getLog().error("Test failed!");
                 } finally {
                     if (driver != null) {
                         driver.quit();
@@ -176,6 +179,13 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
             }
         } catch (ProjectBuildingException | IOException e) {
             throw new MojoExecutionException("Failed to build project structure", e);
+        }
+
+        if(failedTests.isEmpty()) {
+            getLog().info("All tests were passed successfully!");
+        } else {
+            failedTests.forEach((name, startupHtmlFile) -> getLog().error(String.format("Test %s failed, please try manually %s", name, startupHtmlFile)));
+            throw new MojoFailureException("At least one test failed");
         }
     }
 
@@ -254,6 +264,7 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
     }
 
     private static class TestConfig implements ClosureBuildConfiguration {
+
         private final String test;
         private final ClosureBuildConfiguration wrapped;
 
@@ -295,6 +306,10 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
         @Override
         public String getCompilationLevel() {
             return wrapped.getCompilationLevel();
+        }
+
+        public String getTest() {
+            return test;
         }
     }
 }
