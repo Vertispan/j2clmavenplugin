@@ -31,15 +31,15 @@ public interface ClosureBuildConfiguration {
         //TODO externs need to have their _contents_ hashed instead
 
         Hash hash = new Hash();
-        hash.append(getClasspathScope().getBytes());
-        getEntrypoint().forEach(s -> hash.append(s.getBytes()));
-        getEntrypoint().forEach(s -> hash.append(s.getBytes()));
-        new TreeMap<>(getDefines()).forEach((key, value) -> {
-            hash.append(key.getBytes());
-            hash.append(value.getBytes());
+        hash.append(getClasspathScope());
+        getEntrypoint().forEach(s -> hash.append(s));
+        new TreeMap<>(getDefines())
+                .forEach((key, value) -> {
+                    hash.append(key);
+                    hash.append(value);
         });
         // not considering webappdir or script filename for now, should just copy the output at the end every time
-        hash.append(getCompilationLevel().getBytes());
+        hash.append(getCompilationLevel());
 
         return hash.toString();
     }

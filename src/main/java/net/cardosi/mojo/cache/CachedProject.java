@@ -698,8 +698,8 @@ public class CachedProject {
                     .collect(Collectors.toList());
         }, (hashes, ignore) -> {
             Hash hash = new Hash();
-            hash.append(diskCache.getPluginVersion().getBytes(Charset.forName("UTF-8")));
-            hashes.forEach(h -> hash.append(h.getBytes(Charset.forName("UTF-8"))));
+            hash.append(diskCache.getPluginVersion());
+            hashes.forEach(hash::append);
             try {
                 if (!compileSourceRoots.isEmpty()) {
                     for (String compileSourceRoot : compileSourceRoots) {
