@@ -39,12 +39,12 @@ import java.util.zip.ZipFile;
 
 public class CachedProject {
     private enum Step {
-        Hash,
-        ProcessAnnotations,
-        StripGwtIncompatible,
-        GenerateStrippedBytecode,
-        TranspileSources,
-        AssembleOutput
+        HASH,
+        PROCESS_ANNOTATIONS,
+        STRIP_GWT_INCOMPATIBLE,
+        GENERATE_STRIPPED_BYTECODE,
+        TRANSPILE_SOURCES,
+        ASSEMBLE_OUTPUT
     }
 
     private static final PathMatcher javaMatcher = FileSystems.getDefault().getPathMatcher("glob:**/*.java");
@@ -97,22 +97,8 @@ public class CachedProject {
             if (steps.isEmpty()) {
                 return;
             }
-            // cancel all running work
-            for (CompletableFuture<TranspiledCacheEntry> cf : steps.values()) {
-                try {
-                    cf.cancel(true);
-                } catch (Exception e) {
-                    throw new RuntimeException("Failed while canceling?", e);
-                }
-            }
-            // wait for the running work to actually terminate
-            for (CompletableFuture<TranspiledCacheEntry> cf : steps.values()) {
-                try {
-                    cf.join();
-                } catch (Exception ignored) {
-                    // ignore errors, we're expecting this
-                }
-            }
+            this.cancelOutstandingStepTasks();
+            this.waitForOutstandingStepTasks();
             steps.clear();
         }
 
@@ -123,6 +109,28 @@ public class CachedProject {
             build();
         }
     }
+
+    private void cancelOutstandingStepTasks() {
+        for (CompletableFuture<TranspiledCacheEntry> cf : steps.values()) {
+            try {
+                cf.cancel(true);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed while canceling " + cf, e);
+            }
+        }
+    }
+
+    private void waitForOutstandingStepTasks() {
+        for (CompletableFuture<TranspiledCacheEntry> cf : steps.values()) {
+            try {
+                cf.join();
+            } catch (Exception ignored) {
+                // ignore errors, we're expecting this
+            }
+        }
+    }
+
+    // getters..........................................................................................................
 
     //TODO instead of these, consider a .test() method instead?
     public MavenProject getMavenProject() {
@@ -143,6 +151,8 @@ public class CachedProject {
     public Artifact getArtifact() {
         return artifact;
     }
+
+    // toString.........................................................................................................
 
     @Override
     public String toString() {
@@ -219,22 +229,21 @@ public class CachedProject {
         );
     }
 
-    private CompletableFuture<TranspiledCacheEntry> getOrCreate(String step, Function<TranspiledCacheEntry, CompletableFuture<TranspiledCacheEntry>> instructions) {
-//        synchronized (steps) {
-//        System.out.println("requested " + getArtifactKey() + " " + step);
-        return steps.computeIfAbsent(step, ignore -> {
-            if (step.equals(Step.Hash.name())) {
+    private CompletableFuture<TranspiledCacheEntry> getOrCreate(final Step step,
+                                                                final Function<TranspiledCacheEntry, CompletableFuture<TranspiledCacheEntry>> instructions) {
+        return steps.computeIfAbsent(step.toString(), ignore -> {
+            if (step == Step.HASH) {
                 return instructions.apply(null);
             }
             // first check if it is already on disk (doesn't apply to Hash)
-            TranspiledCacheEntry dir = hash().join();
+            final TranspiledCacheEntry dir = hash().join();
             // try to create the dir - if we succeed, we own the lock, continue
-            File stepDir = new File(dir.getCacheDir(), step);
+            final File stepDir = new File(dir.getCacheDir(), step.toString());
 
-            File completeMarker = new File(stepDir, step + "-complete");
-            File failedMarker = new File(stepDir, step + "failed");
+            final File completeMarker = new File(stepDir, step + "-complete");
+            final File failedMarker = new File(stepDir, step + "failed");
 
-//            long start = System.currentTimeMillis();
+            final long start = System.currentTimeMillis();
             return CompletableFuture.<TranspiledCacheEntry>supplyAsync(() -> {
 
                 while (!stepDir.mkdirs()) {
@@ -245,18 +254,18 @@ public class CachedProject {
                         // first check to see if it exists, then wait for next event to occur
                         do {
                             if (completeMarker.exists()) {
-                                //                            System.out.println(getArtifactKey() + " " + step +" ready after " + (System.currentTimeMillis() - start) + "ms of waiting");
+                                //log(step,  " ready after " + (System.currentTimeMillis() - start) + "ms");
                                 return dir;
                             }
                             if (failedMarker.exists()) {
-                                System.out.println("compilation failed in some other thread/process " + getArtifactKey() + " " + dir.getHash());
+                                log(step, "Compilation failed in other thread/process for " + dir.getHash());
                                 //TODO read out the actual error from the last attempt
                                 throw new IllegalStateException("Step " + step + " failed in some other process/thread " + getArtifactKey() + " " + dir.getHash());
                             }
 
                             // if not, keep waiting and logging
                             // TODO provide a way to timeout and nuke the dir since no one seems to own it
-                            System.out.println("Waiting 10s and then checking again if other thread/process finished " + getArtifactKey());
+                            log(step, "Waiting 10s");
                             w.poll(10, TimeUnit.SECONDS);
                         } while (true);
                     } catch (NoSuchFileException ex) {
@@ -264,23 +273,22 @@ public class CachedProject {
                         continue;//try to make the directory again - explicit continue for readability
                     } catch (IOException | InterruptedException ex) {
                         //TODO expect a funky exception here if the stepDir itself gets deleted since a process was canceled? shouldn't really matter, we'll be interrupted anyway in here
-                        System.out.println("Error while waiting for external thread/process");
+                        log(step, "Error waiting for external thread/process");
                         ex.printStackTrace();
                         throw new RuntimeException(ex);
                     }
                 }
                 return instructions.apply(dir).whenComplete((success, failure) -> {
                     try {
-
                         if (failure == null) {
-//                        System.out.println("completed " + getArtifactKey() + " " + step + " in " + (System.currentTimeMillis() - start) + "ms of waiting");
+                            log(step, "Completed in " +  (System.currentTimeMillis() - start) + " ms");
                             Files.createFile(completeMarker.toPath());
                         } else if (failure instanceof CancellationException || (failure instanceof CompletionException && failure.getCause() instanceof CancellationException)) {
                             // failure since we changed our minds and don't want this now, before it managed to complete, mop up
                             assert stepDir.listFiles().length == 0;
                             stepDir.delete();
                         } else {
-                            System.out.println("failed " + getArtifactKey() + " " + step + " " + failure.getClass() + ":" + failure.getMessage());
+                            log(step, "Failed " + failure.getClass().getName() + ":" + failure.getMessage());
                             failure.printStackTrace();
                             Files.createFile(failedMarker.toPath());
                         }
@@ -293,19 +301,17 @@ public class CachedProject {
         });
     }
 
-    private <T> CompletableFuture<TranspiledCacheEntry> getOrCreate(String step, Supplier<T> dependencies, BiFunction<T, TranspiledCacheEntry, TranspiledCacheEntry> work) {
+    private <T> CompletableFuture<TranspiledCacheEntry> getOrCreate(final Step step,
+                                                                    final Supplier<T> dependencies,
+                                                                    final BiFunction<T,TranspiledCacheEntry, TranspiledCacheEntry> work) {
         return getOrCreate(step, entry -> CompletableFuture
                         .supplyAsync(() -> {
-//                    System.out.println("starting dependency step for " + getArtifactKey() + " " + step);
                             try {
                                 return dependencies.get();
                             } finally {
-//                        System.out.println("done with dependency step for " + getArtifactKey() + " " + step);
-
                             }
                         }, diskCache.queueingPool())
                         .thenApplyAsync(output -> {
-//                    System.out.println("starting pool work for " + getArtifactKey() + " " + step);
                             long start = System.currentTimeMillis();
                             try {
                                 return work.apply(output, entry);
@@ -313,14 +319,16 @@ public class CachedProject {
                                 t.printStackTrace();
                                 throw t;
                             } finally {
-                                System.out.println("done with pool work for " + getArtifactKey() + " " + step + " in " + (System.currentTimeMillis() - start) + "ms");
+                                log(step, "Finished in " + (System.currentTimeMillis() - start) + "ms");
                             }
                         }, diskCache.pool())
         );
     }
 
-    private CompletableFuture<TranspiledCacheEntry> jscompWithScope(ClosureBuildConfiguration config) {
-        return getOrCreate(Step.AssembleOutput.name() + "-" + config.hash(), () -> {
+    private CompletableFuture<TranspiledCacheEntry> jscompWithScope(final ClosureBuildConfiguration config) {
+        final Step step = Step.ASSEMBLE_OUTPUT;
+        return getOrCreate(step,
+                () -> {
 
 
             // For each child that matches the specified scopes, ask for the compiled js output. As this is the
@@ -429,9 +437,10 @@ public class CachedProject {
             //TODO bundles
 
             // sanity check args
-            jscompArgs.forEach(System.out::println);
             InProcessJsCompRunner jscompRunner = new InProcessJsCompRunner(jscompArgs.toArray(new String[0]), jsCompiler);
             if (!jscompRunner.shouldRunCompiler()) {
+                this.logClosureCompilerArguments(step, jscompArgs);
+
                 throw new IllegalStateException("Closure Compiler setup error, check log for details");
             }
 
@@ -442,6 +451,8 @@ public class CachedProject {
                 jscompRunner.run();
 
                 if (jscompRunner.hasErrors() || jscompRunner.exitCode != 0) {
+                    this.logClosureCompilerArguments(step, jscompArgs);
+
                     throw new IllegalStateException("closure compiler failed, check log for details");
                 }
             } finally {
@@ -464,6 +475,13 @@ public class CachedProject {
             return entry;
         });
     }
+
+    private void logClosureCompilerArguments(final Step step,
+                                             final List<String> arguments) {
+        this.log(step, "Closure compiler arguments: " + arguments.stream()
+                .collect(Collectors.joining("\n")));
+    }
+
     static class InProcessJsCompRunner extends CommandLineRunner {
 
         private final Compiler compiler;
@@ -486,7 +504,7 @@ public class CachedProject {
 
 
     private CompletableFuture<TranspiledCacheEntry> j2cl() {
-        return getOrCreate(Step.TranspileSources.name(), () -> {
+        return getOrCreate(Step.TRANSPILE_SOURCES, () -> {
 
             // collect all scope=compile dependencies and our own stripped sources
 
@@ -539,7 +557,10 @@ public class CachedProject {
     }
 
     private CompletableFuture<TranspiledCacheEntry> strippedBytecode() {
-        return getOrCreate(Step.GenerateStrippedBytecode.name(), () -> {
+        final Step step = Step.GENERATE_STRIPPED_BYTECODE;
+
+        return getOrCreate(step,
+                () -> {
 
             // If there is no sources, or no sources with GwtIncompatible, then just return the original bytecode as-is.
             // This lets us get away with not being able to transpile annotation processors or their dependencies, or
@@ -572,10 +593,15 @@ public class CachedProject {
                 if (sourcesToCompile.isEmpty()) {
                     return entry;
                 }
-//                System.out.println("step 3 " + project.getArtifactKey());
+
                 boolean javacSuccess = javac.compile(sourcesToCompile);
                 if (!javacSuccess) {
                     if (!isIgnoreJavacFailure()) {
+                        log(step, "classpath: " + strippedClasspath);
+                        log(step, "bytecode: " + strippedBytecode);
+                        log(step, "bootstrap: " + diskCache.getBootstrap());
+                        log(step, "sources: " + sourcesToCompile);
+
                         throw new IllegalStateException("javac failed, check log for details");
                     }
                 }
@@ -588,7 +614,8 @@ public class CachedProject {
     }
 
     private CompletableFuture<TranspiledCacheEntry> strippedSources() {
-        return getOrCreate(Step.StripGwtIncompatible.name(), () -> {
+        return getOrCreate(Step.STRIP_GWT_INCOMPATIBLE,
+                () -> {
 
             // We could probably not make this async, since it runs pretty quickly - but should try it to see if
             // it being parallel buys us anything
@@ -638,7 +665,8 @@ public class CachedProject {
     }
 
     private CompletableFuture<TranspiledCacheEntry> generatedSources() {
-        return getOrCreate(Step.ProcessAnnotations.name(), () -> {
+        final Step step = Step.PROCESS_ANNOTATIONS;
+        return getOrCreate(step, () -> {
             // depend on other projects with sources mapped, and only ask for "generated sources" so that we can get their unstripped bytecode
             return children.stream()
                     .filter(CachedProject::hasSourcesMapped)
@@ -673,10 +701,15 @@ public class CachedProject {
                 }
                 try {
                     Javac javac = new Javac(annotationSources, plainClasspath, plainBytecode, diskCache.getBootstrap());
-//                    System.out.println("step 1 " + project.getArtifactKey());
                     if (!javac.compile(sources)) {
                         // so far at least we don't have any whitelist need here, it wouldnt really make sense to let a
                         // local compile fail
+                        log(step, "annotationSources: " + annotationSources);
+                        log(step, "classpath: " + plainClasspath);
+                        log(step, "bytecode: " + plainBytecode);
+                        log(step, "bootstrap: " + diskCache.getBootstrap());
+                        log(step, "sources: " + sources);
+
                         throw new IllegalStateException("javac failed, check log");
                     }
                 } catch (IOException e) {
@@ -689,7 +722,7 @@ public class CachedProject {
     }
 
     private CompletableFuture<TranspiledCacheEntry> hash() {
-        return getOrCreate(Step.Hash.name(), () -> {
+        return getOrCreate(Step.HASH, () -> {
             // wait for hashes of all dependencies
             return children.stream()//TODO filter to scope=compile?
                     .map(CachedProject::hash)
@@ -761,5 +794,9 @@ public class CachedProject {
         }
     }
 
+    // LOG..............................................................................................................
 
+    private void log(final Step step, final String message) {
+        System.out.println(this.getArtifactKey() + " " + step + " " + message);
+    }
 }
