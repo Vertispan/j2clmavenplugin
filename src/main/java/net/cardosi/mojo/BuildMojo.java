@@ -81,7 +81,7 @@ public class BuildMojo extends AbstractBuildMojo implements ClosureBuildConfigur
     protected String webappDirectory;
 
     @Parameter
-    protected List<String> externs = new ArrayList<>();
+    protected Set<String> externs = new TreeSet<>();
 
     @Parameter
     protected List<String> entrypoint = new ArrayList<>();
@@ -90,7 +90,7 @@ public class BuildMojo extends AbstractBuildMojo implements ClosureBuildConfigur
     protected String compilationLevel;
 
     @Parameter
-    protected Map<String, String> defines = new HashMap<>();
+    protected Map<String, String> defines = new TreeMap<>();
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
@@ -150,7 +150,7 @@ public class BuildMojo extends AbstractBuildMojo implements ClosureBuildConfigur
     }
 
     @Override
-    public List<String> getExterns() {
+    public Set<String> getExterns() {
         return externs;
     }
 

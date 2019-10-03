@@ -2,6 +2,7 @@ package net.cardosi.mojo;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 
 /**
@@ -15,7 +16,7 @@ public interface ClosureBuildConfiguration {
 
     List<String> getEntrypoint();
 
-    List<String> getExterns();
+    Set<String> getExterns();
 
     Map<String, String> getDefines();
 
@@ -33,7 +34,7 @@ public interface ClosureBuildConfiguration {
         Hash hash = new Hash();
         hash.append(getClasspathScope());
         getEntrypoint().forEach(s -> hash.append(s));
-        new TreeMap<>(getDefines())
+        getDefines()
                 .forEach((key, value) -> {
                     hash.append(key);
                     hash.append(value);

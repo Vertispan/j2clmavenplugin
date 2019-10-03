@@ -53,7 +53,7 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
     protected String webappDirectory;
 
     @Parameter
-    protected List<String> externs = new ArrayList<>();
+    protected Set<String> externs = new TreeSet<>();
 
     @Parameter
     protected List<String> tests;
@@ -62,7 +62,7 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
     protected String compilationLevel;
 
     @Parameter
-    protected Map<String, String> defines = new HashMap<>();
+    protected Map<String, String> defines = new TreeMap<>();
 
     @Parameter(defaultValue = "false", property = "maven.test.skip")
     protected boolean skipTests;
@@ -239,7 +239,7 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
     }
 
     @Override
-    public List<String> getExterns() {
+    public Set<String> getExterns() {
         return externs;
     }
 
@@ -284,7 +284,7 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
         }
 
         @Override
-        public List<String> getExterns() {
+        public Set<String> getExterns() {
             return wrapped.getExterns();
         }
 
