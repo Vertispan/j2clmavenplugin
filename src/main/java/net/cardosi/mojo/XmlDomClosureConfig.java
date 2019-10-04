@@ -47,15 +47,19 @@ public class XmlDomClosureConfig implements ClosureBuildConfiguration {
     }
 
     @Override
-    public List<String> getExterns() {
+    public Set<String> getExterns() {
         Xpp3Dom externs = dom.getChild("externs");
 
-        return externs == null ? Collections.emptyList() : Arrays.stream(externs.getChildren()).map(Xpp3Dom::getValue).collect(Collectors.toList());
+        return externs == null ?
+                Collections.emptySet() :
+                Arrays.stream(externs.getChildren())
+                        .map(Xpp3Dom::getValue)
+                        .collect(Collectors.toCollection(TreeSet::new));
     }
 
     @Override
     public Map<String, String> getDefines() {
-        Map<String, String> defines = new HashMap<>();
+        Map<String, String> defines = new TreeMap<>();
 
         Xpp3Dom elt = dom.getChild("defines");
 
