@@ -27,6 +27,7 @@ import java.util.*;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -57,7 +58,7 @@ public class CachedProject {
     private final List<CachedProject> dependents = new ArrayList<>();
     private final List<String> compileSourceRoots;
 
-    private final Map<String, CompletableFuture<TranspiledCacheEntry>> steps = Collections.synchronizedMap(new HashMap<>());
+    private final Map<String, CompletableFuture<TranspiledCacheEntry>> steps = new ConcurrentHashMap<>();
 
     private boolean ignoreJavacFailure;
     private Set<ClosureBuildConfiguration> registeredBuildTerminals = new HashSet<>();
