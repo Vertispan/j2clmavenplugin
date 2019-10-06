@@ -1,0 +1,23 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>transitive-dependencies</groupId>
+  <artifactId>transitive-dependencies</artifactId>
+  <version>1.0</version>
+  <packaging>pom</packaging>
+
+  <modules>
+    <module>lib2</module>
+    <module>lib1</module>
+    <!-- app depends on lib1 which depends on lib2, but app doesn't directly depend on lib2 -->
+    <module>app</module>
+  </modules>
+
+  <repositories>
+    <repository>
+      <id>google-snapshots</id>
+      <url>https://oss.sonatype.org/content/repositories/google-snapshots/</url>
+    </repository>
+  </repositories>
+</project>
