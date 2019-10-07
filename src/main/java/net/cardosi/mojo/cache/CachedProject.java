@@ -751,6 +751,9 @@ public class CachedProject {
     }
 
     private List<FrontendUtils.FileInfo> getFileInfoInDir(Path dir, PathMatcher... matcher) {
+        if (!Files.exists(dir)) {
+            return Collections.emptyList();
+        }
         try {
             return Files.find(dir, Integer.MAX_VALUE, ((path, basicFileAttributes) -> Arrays.stream(matcher).anyMatch(m -> m.matches(path))))
                     .map(p -> FrontendUtils.FileInfo.create(p.toString(), dir.toAbsolutePath().relativize(p).toString()))
