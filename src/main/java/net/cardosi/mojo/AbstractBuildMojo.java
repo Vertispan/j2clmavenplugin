@@ -61,7 +61,7 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
     @Parameter(defaultValue = "com.vertispan.j2cl:junit-annotations:0.3-SNAPSHOT", required = true)
     protected String junitAnnotations;
 
-    @Parameter(defaultValue = "com.google.jsinterop:base,org.realityforge.com.google.jsinterop:base,com.google.gwt:gwt-user,com.google.gwt:gwt-dev,com.google.gwt:gwt-servlet")
+    @Parameter(defaultValue = "com.google.jsinterop:base,org.realityforge.com.google.jsinterop:base,com.google.gwt:gwt-user,com.google.gwt:gwt-dev,com.google.gwt:gwt-servlet,javax.servlet:javax.servlet-api")
     protected List<String> excludedDependencies;
 
 
@@ -156,12 +156,14 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
             } else {
                 // non-reactor project, build a project for it
 //                System.out.println("Creating project from artifact " + dependency);
-                projectBuildingRequest.setProject(null);
-                projectBuildingRequest.setResolveDependencies(true);
-                projectBuildingRequest.setRemoteRepositories(null);
-                MavenProject p = projectBuilder.build(dependency, true, projectBuildingRequest).getProject();
-                CachedProject transpiledDep = loadDependenciesIntoCache(dependency, p, lookupReactorProjects, projectBuilder, projectBuildingRequest, diskCache, pluginVersion, seen, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, excludedDependencies,"  " + depth);
-                children.add(transpiledDep);
+                if (!excludedDependencies.contains(dependency.getGroupId() + ":" + dependency.getArtifactId())) {
+                    projectBuildingRequest.setProject(null);
+                    projectBuildingRequest.setResolveDependencies(true);
+                    projectBuildingRequest.setRemoteRepositories(null);
+                    MavenProject p = projectBuilder.build(dependency, true, projectBuildingRequest).getProject();
+                    CachedProject transpiledDep = loadDependenciesIntoCache(dependency, p, lookupReactorProjects, projectBuilder, projectBuildingRequest, diskCache, pluginVersion, seen, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, excludedDependencies, "  " + depth);
+                    children.add(transpiledDep);
+                }
             }
         }
 
