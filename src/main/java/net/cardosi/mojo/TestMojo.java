@@ -269,8 +269,9 @@ public class TestMojo
                                   .pollingEvery(Duration.ofMillis(100))
                                   .until(TestMojo::isFinished);
           // check for success
-          this.analyzeLog(driver);
           if (!isSuccess(driver)) {
+            // print the content of the browser console to the log
+            this.analyzeLog(driver);
             failedTests.put(((TestConfig) config).getTest(),
                             startupHtmlFile);
             getLog().error("Test failed! Driver was not returning successful!");
@@ -284,7 +285,7 @@ public class TestMojo
             this.analyzeLog(driver);
           }
           getLog().error("Test failed!");
-          getLog().error(stripText(String.format(ex.getMessage())));
+          getLog().error(pimpOutput(String.format(ex.getMessage())));
         } finally {
           if (driver != null) {
             driver.quit();
@@ -309,6 +310,7 @@ public class TestMojo
   private void analyzeLog(WebDriver driver) {
     logMessageFromDriver(LogType.BROWSER,
                          driver);
+    // in case we got a closure message on the html page, grab it & print it to the log
     if (driver.getPageSource()
               .contains("closureTestRunnerLog")) {
       this.logMessageFromDriverHTML(driver.getPageSource());
@@ -317,16 +319,16 @@ public class TestMojo
 
   private void logMessageFromDriver(String logType,
                                     WebDriver driver) {
-    if (!Objects.isNull(driver)) {
+    if (driver != null) {
       driver.manage()
             .logs()
             .get(logType)
             .getAll()
             .forEach(l -> {
               if (Level.SEVERE.equals(l.getLevel())) {
-                getLog().error(String.format(stripText(l.getMessage())));
+                getLog().error(String.format(pimpOutput(l.getMessage())));
               } else {
-                getLog().info(String.format(stripText(l.getMessage())));
+                getLog().info(String.format(pimpOutput(l.getMessage())));
               }
             });
     }
@@ -338,27 +340,52 @@ public class TestMojo
     Element closureTestRunningLog = document.getElementById("closureTestRunnerLog");
     if (!Objects.isNull(closureTestRunningLog)) {
       closureTestRunningLog.getElementsByTag("div")
-                           .forEach(t -> getLog().error(stripText(t.text())));
+                           .forEach(t -> getLog().error(pimpOutput(t.text())));
     }
   }
 
-  private String stripText(String input) {
+  /**
+   * While grabbing the content from the browser page or content of the console,
+   * the grabbed content is:
+   * <ul>
+   *   <li>put into '"'</li>
+   *   <li>all line feeds are marked with '\n' which will not work on the console</li>
+   *   <li>all &lt; are replaced with 'u003C'.</li>
+   * </ul>
+   * F.e.: a stacktrace is one log line. Without improving the log, the stacktrace will
+   * be logged in one line which made it hard to read.   *
+   * <p/>
+   * This method
+   * <lu>
+   *   <li>removes the '"'</li>
+   *   <li>replaces the '\n' for line feeds with '%n' which will work on the console</li>
+   *   <li>replaces the 'u003C' for line feeds with '&lt;' which will work on the console</li>
+   * </lu>
+   *
+   * @param input log messagae to handle
+   * @return update log message
+   */
+  private String pimpOutput(String input) {
       String text;
+    // use the first '"' as start of content
     if (input.contains("\"")) {
       text = input.substring(input.indexOf("\""));
     } else {
       text = input;
     }
+    // replace all '"'
     while (text.contains("\"")) {
       text = text.replace("\"",
                              "");
     }
+    // replace '/n' with '%n'
     while (text.contains("\\n")) {
       text = text.replace("\\n",
                              "%n");
     }
-    while (text.contains("\\u003")) {
-      text = text.replace("\\u003",
+    // replace 'u003C' with '<'
+    while (text.contains("\\u003C")) {
+      text = text.replace("\\u003C",
                              "<");
     }
     return text;
