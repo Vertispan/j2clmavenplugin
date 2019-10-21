@@ -126,7 +126,7 @@ public class BuildMojo extends AbstractBuildMojo implements ClosureBuildConfigur
         defines.putIfAbsent("jsinterop.checks", "DISABLED");
 
         try {
-            CachedProject e = loadDependenciesIntoCache(project.getArtifact(), project, false, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, excludedDependencies, "* ");
+            CachedProject e = loadDependenciesIntoCache(project.getArtifact(), project, false, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, getDependencyReplacements(), "* ");
             diskCache.release();
             e.registerAsApp(this).join();
         } catch (ProjectBuildingException | IOException e) {
