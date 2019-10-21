@@ -94,7 +94,7 @@ public class WatchMojo extends AbstractBuildMojo {
                             if (goal.equals("test") && shouldCompileTest()) {
                                 System.out.println("Found test " + execution);
                                 XmlDomClosureConfig config = new XmlDomClosureConfig(configuration, Artifact.SCOPE_TEST, compilationLevel, reactorProject.getArtifactId(), webappDirectory);
-                                CachedProject source = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, false, projectBuilder, request, diskCache, pluginVersion, projects, config.getClasspathScope(), getDependencyReplacements(), "* ");
+                                CachedProject source = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, true, projectBuilder, request, diskCache, pluginVersion, projects, config.getClasspathScope(), getDependencyReplacements(), "* ");
 
                                 // given that set of tasks, we'll chain one more on the end, and watch _that_ for changes
                                 List<CachedProject> children = new ArrayList<>(source.getChildren());
