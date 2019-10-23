@@ -427,10 +427,9 @@ public class CachedProject {
 
             //TODO bundles
 
-            // sanity check args
-            jscompArgs.forEach(System.out::println);
             InProcessJsCompRunner jscompRunner = new InProcessJsCompRunner(jscompArgs.toArray(new String[0]), jsCompiler);
             if (!jscompRunner.shouldRunCompiler()) {
+                jscompArgs.forEach(System.out::println);
                 throw new IllegalStateException("Closure Compiler setup error, check log for details");
             }
 
