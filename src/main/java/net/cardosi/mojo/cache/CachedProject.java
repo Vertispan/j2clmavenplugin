@@ -427,10 +427,9 @@ public class CachedProject {
 
             //TODO bundles
 
-            // sanity check args
-            jscompArgs.forEach(System.out::println);
             InProcessJsCompRunner jscompRunner = new InProcessJsCompRunner(jscompArgs.toArray(new String[0]), jsCompiler);
             if (!jscompRunner.shouldRunCompiler()) {
+                jscompArgs.forEach(System.out::println);
                 throw new IllegalStateException("Closure Compiler setup error, check log for details");
             }
 
@@ -751,6 +750,9 @@ public class CachedProject {
     }
 
     private List<FrontendUtils.FileInfo> getFileInfoInDir(Path dir, PathMatcher... matcher) {
+        if (!Files.exists(dir)) {
+            return Collections.emptyList();
+        }
         try {
             return Files.find(dir, Integer.MAX_VALUE, ((path, basicFileAttributes) -> Arrays.stream(matcher).anyMatch(m -> m.matches(path))))
                     .map(p -> FrontendUtils.FileInfo.create(p.toString(), dir.toAbsolutePath().relativize(p).toString()))

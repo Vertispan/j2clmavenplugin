@@ -56,7 +56,7 @@ public class WatchMojo extends AbstractBuildMojo {
                 getFileWithMavenCoords(jsinteropAnnotationsJar),
                 getFileWithMavenCoords("javax.annotation:jsr250-api:1.0"),
                 getFileWithMavenCoords("com.vertispan.jsinterop:base:1.0.0-SNAPSHOT"),//TODO stop hardcoding this when goog releases a "base" which actually works on both platforms
-                getFileWithMavenCoords("com.vertispan.j2cl:junit-processor:0.3-SNAPSHOT"),
+                getFileWithMavenCoords("com.vertispan.j2cl:junit-processor:0.4-SNAPSHOT"),
                 getFileWithMavenCoords(junitAnnotations)
         );
 
@@ -94,7 +94,7 @@ public class WatchMojo extends AbstractBuildMojo {
                             if (goal.equals("test") && shouldCompileTest()) {
                                 System.out.println("Found test " + execution);
                                 XmlDomClosureConfig config = new XmlDomClosureConfig(configuration, Artifact.SCOPE_TEST, compilationLevel, reactorProject.getArtifactId(), webappDirectory);
-                                CachedProject source = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, false, projectBuilder, request, diskCache, pluginVersion, projects, config.getClasspathScope(), getDependencyReplacements(), "* ");
+                                CachedProject source = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, true, projectBuilder, request, diskCache, pluginVersion, projects, config.getClasspathScope(), getDependencyReplacements(), "* ");
 
                                 // given that set of tasks, we'll chain one more on the end, and watch _that_ for changes
                                 List<CachedProject> children = new ArrayList<>(source.getChildren());

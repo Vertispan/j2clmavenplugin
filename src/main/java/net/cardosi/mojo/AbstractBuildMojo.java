@@ -7,6 +7,7 @@ import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.ArtifactUtils;
 import org.apache.maven.artifact.resolver.filter.ScopeArtifactFilter;
 import org.apache.maven.execution.MavenSession;
+import org.apache.maven.plugin.BuildPluginManager;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -25,6 +26,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public abstract class AbstractBuildMojo extends AbstractCacheMojo {
     @Parameter( defaultValue = "${session}", readonly = true )
@@ -36,27 +38,27 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
     @Component
     protected ProjectBuilder projectBuilder;
 
-    @Parameter(defaultValue = "com.vertispan.j2cl:javac-bootstrap-classpath:0.3-SNAPSHOT", required = true)
+    @Parameter(defaultValue = "com.vertispan.j2cl:javac-bootstrap-classpath:0.4-SNAPSHOT", required = true)
     protected String javacBootstrapClasspathJar;
 
-    @Parameter(defaultValue = "com.vertispan.j2cl:jre:0.3-SNAPSHOT", required = true)
+    @Parameter(defaultValue = "com.vertispan.j2cl:jre:0.4-SNAPSHOT", required = true)
     protected String jreJar;
-    @Parameter(defaultValue = "com.vertispan.j2cl:jre:zip:jszip:0.3-SNAPSHOT", required = true)
+    @Parameter(defaultValue = "com.vertispan.j2cl:jre:zip:jszip:0.4-SNAPSHOT", required = true)
     protected String jreJsZip;
 
-    @Parameter(defaultValue = "com.vertispan.j2cl:bootstrap:zip:jszip:0.3-SNAPSHOT", required = true)
+    @Parameter(defaultValue = "com.vertispan.j2cl:bootstrap:zip:jszip:0.4-SNAPSHOT", required = true)
     protected String bootstrapJsZip;
 
-    @Parameter(defaultValue = "com.vertispan.j2cl:closure-test:zip:jszip:0.3-SNAPSHOT", required = true)
+    @Parameter(defaultValue = "com.vertispan.j2cl:closure-test:zip:jszip:0.4-SNAPSHOT", required = true)
     protected String testJsZip;
 
-    @Parameter(defaultValue = "com.vertispan.j2cl:gwt-internal-annotations:0.3-SNAPSHOT", required = true)
+    @Parameter(defaultValue = "com.vertispan.j2cl:gwt-internal-annotations:0.4-SNAPSHOT", required = true)
     protected String internalAnnotationsJar;
 
     @Parameter(defaultValue = "com.google.jsinterop:jsinterop-annotations:HEAD-SNAPSHOT", required = true)
     protected String jsinteropAnnotationsJar;
 
-    @Parameter(defaultValue = "com.vertispan.j2cl:junit-annotations:0.3-SNAPSHOT", required = true)
+    @Parameter(defaultValue = "com.vertispan.j2cl:junit-annotations:0.4-SNAPSHOT", required = true)
     protected String junitAnnotations;
 
     // optional, if not specified, we'll use the defaults
@@ -70,7 +72,6 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
             new DependencyReplacement("com.google.gwt:gwt-dev", null),
             new DependencyReplacement("com.google.gwt:gwt-servlet", null)
     );
-
 
     // tools to resolve dependencies
     @Component
@@ -124,20 +125,22 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
             key += ":" + artifact.getClassifier();
         }
 
-        boolean replaceInTree = false;
+        boolean replace = false;
         if (seen.containsKey(key)) {
 //            System.out.println("  " + depth + "already seen");
             if (!seen.get(key).getMavenProject().getArtifacts().isEmpty() || currentProject.getArtifacts().isEmpty()) {
                 return seen.get(key);
             }
-            replaceInTree = true;
+            replace = true;
         }
 
         List<CachedProject> children = new ArrayList<>();
 
         // stable ordering so hashing makes sense
         //TODO dedup classifiers? probably not, we want to build separately
-        for (Artifact dependency : currentProject.getArtifacts().stream().sorted().collect(Collectors.toList())) {
+        List<Artifact> dependencies = new ArrayList<>(currentProject.getArtifacts().stream().sorted().collect(Collectors.toList()));
+        for (int i = 0; i < dependencies.size(); i++) {
+            Artifact dependency = dependencies.get(i);
             // if it shouldnt be on the classpath, skip it, if it isn't part of the current expected scope, skip it
             if (!dependency.getArtifactHandler().isAddedToClasspath()) {
                 System.out.println(artifact + " dependency isn't added to classpath " + dependency);
@@ -148,27 +151,29 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
             } else if (Artifact.SCOPE_SYSTEM.equals(dependency.getScope())) {
                 System.out.println("WARNING: " + artifact + " has a scope=system dependency on " + dependency + ", which will be skipped");
                 continue;
-            } else if (dependency.getDependencyTrail().size() > 2) {
-                // belongs to a child, not us
-                //TODO revisit and see if we can nuke replaceInTree
-                continue;
             }
-            // if the dependency is set to be replaced, swap it out now
+
+            // we're still interested in it, but it might be something the build has been configured to replace
             Optional<DependencyReplacement> replacement = getReplacement(replacedDependencies, dependency);
+            boolean appendDependencies = false;
             if (replacement.isPresent()) {
-                dependency = replacement.get().getReplacementArtifact();
+                Artifact old = dependency;
+                dependency = replacement.get().getReplacementArtifact(dependency);
                 if (dependency == null) {
+                    System.out.println("Removing dependency " + old + ", no replacement");
                     continue;
                 }
+                System.out.println("Removing dependency " + old + ", replacing with " + dependency);
+                appendDependencies = true;
             }
 //            System.out.println("\t" + artifact + " depends on " + dependency);
 
             // make a project to reference for this dependency, if possible
             //TODO handle the case where a jar is referenced without a pom by treating it as having no dependencies
 
-            MavenProject inReactor = lookupReactorProjects ? getReferencedProject(currentProject, dependency) : null;
-            if (inReactor != null) {
-//                System.out.println("Found project in reactor matching this " + inReactor);
+            MavenProject p = lookupReactorProjects ? getReferencedProject(currentProject, dependency) : null;
+            if (p != null) {
+//                System.out.println("Found project in reactor matching this " + p);
 
 //                Artifact replacementArtifact = new org.apache.maven.artifact.DefaultArtifact(
 //                        dependency.getGroupId(),
@@ -179,7 +184,7 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
 //                        null,
 //                        dependency.getArtifactHandler()
 //                );
-                CachedProject transpiledDep = loadDependenciesIntoCache(dependency, inReactor, lookupReactorProjects, projectBuilder, projectBuildingRequest, diskCache, pluginVersion, seen, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, replacedDependencies, "  " + depth);
+                CachedProject transpiledDep = loadDependenciesIntoCache(dependency, p, lookupReactorProjects, projectBuilder, projectBuildingRequest, diskCache, pluginVersion, seen, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, replacedDependencies, "  " + depth);
                 children.add(transpiledDep);
             } else {
                 // non-reactor project, build a project for it
@@ -187,16 +192,19 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
                 projectBuildingRequest.setProject(null);
                 projectBuildingRequest.setResolveDependencies(true);
                 projectBuildingRequest.setRemoteRepositories(null);
-                MavenProject p = projectBuilder.build(dependency, true, projectBuildingRequest).getProject();
-                CachedProject transpiledDep = loadDependenciesIntoCache(dependency, p, lookupReactorProjects, projectBuilder, projectBuildingRequest, diskCache, pluginVersion, seen, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, replacedDependencies,"  " + depth);
+                p = projectBuilder.build(dependency, true, projectBuildingRequest).getProject();
+                CachedProject transpiledDep = loadDependenciesIntoCache(dependency, p, lookupReactorProjects, projectBuilder, projectBuildingRequest, diskCache, pluginVersion, seen, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, replacedDependencies, "  " + depth);
                 children.add(transpiledDep);
+            }
+            if (appendDependencies) {
+                dependencies.addAll(p.getArtifacts());
             }
         }
 
         // construct an entry in the project, stick it in the map
 
         CachedProject p;
-        if (replaceInTree) {
+        if (replace) {
             p = seen.get(key);
             p.replace(artifact, currentProject, children);
         } else {

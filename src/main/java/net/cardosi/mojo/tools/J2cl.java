@@ -2,6 +2,7 @@ package net.cardosi.mojo.tools;
 
 import com.google.j2cl.common.FrontendUtils;
 import com.google.j2cl.common.Problems;
+import com.google.j2cl.frontend.Frontend;
 import com.google.j2cl.transpiler.J2clTranspiler;
 import com.google.j2cl.transpiler.J2clTranspilerOptions;
 
@@ -17,6 +18,7 @@ public class J2cl {
 
     public J2cl(List<File> strippedClasspath, File bootstrap, File jsOutDir) {
         optionsBuilder = J2clTranspilerOptions.newBuilder()
+                .setFrontend(Frontend.JDT)
                 .setClasspaths(Stream.concat(Stream.of(bootstrap), strippedClasspath.stream())
                         .map(File::getAbsolutePath)
                         .collect(Collectors.toList())

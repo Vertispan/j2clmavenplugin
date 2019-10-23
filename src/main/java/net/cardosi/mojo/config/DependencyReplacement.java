@@ -84,13 +84,26 @@ public class DependencyReplacement {
     }
 
     /**
-     * True of the original coordinates match the given dependency, false otherwise.
+     * True of the original coordinates either match the given dependency, or are a transitive dependency from it.
      */
     public boolean matches(Artifact dependency) {
+        // check if we are an exact match, or if the given dependency is a transitive dependency of what we are removing
+        return matchesExactly(dependency) || dependency.getDependencyTrail().stream().anyMatch(coords -> coords.equals(original) || coords.startsWith(original + ":"));
+    }
+
+    private boolean matchesExactly(Artifact dependency) {
         return ArtifactUtils.versionlessKey(dependency).equals(original);
     }
 
-    public Artifact getReplacementArtifact() {
-        return replacementArtifact;
+    /**
+     * Returns the replacement artifact that this rule provides for the given dependency. This will be null in two cases:
+     *   o  if there is no replacement to provide
+     *   o  if the given dependency is itself a transitive dependency, so we don't directly replace it
+     */
+    public Artifact getReplacementArtifact(Artifact dependency) {
+        if (matchesExactly(dependency)) {
+            return replacementArtifact;
+        }
+        return null;
     }
 }
