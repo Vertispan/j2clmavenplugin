@@ -24,6 +24,7 @@
     <maven.gpg.plugin.version>1.6</maven.gpg.plugin.version>
     <maven.dependency.tree.version>3.0.1</maven.dependency.tree.version>
     <takari.lifecycle.plugin.version>1.13.9</takari.lifecycle.plugin.version>
+    <jsoup.plugin.version>1.12.1</jsoup.plugin.version>
     <!-- Builder dependencies versions -->
     <transpiler.version>0.4-SNAPSHOT</transpiler.version>
     <gwt.incompatible.stripper.version>0.4-SNAPSHOT</gwt.incompatible.stripper.version>
@@ -199,6 +200,12 @@
       <groupId>org.apache.maven.resolver</groupId>
       <artifactId>maven-resolver-impl</artifactId>
       <version>${maven.resolver.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.jsoup</groupId>
+      <artifactId>jsoup</artifactId>
+      <version>${jsoup.plugin.version}</version>
     </dependency>
 
     <!-- Builder dependencies -->
