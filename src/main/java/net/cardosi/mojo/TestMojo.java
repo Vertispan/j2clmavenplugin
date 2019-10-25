@@ -188,7 +188,7 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
                         this.analyzeLog(driver);
                     }
                     getLog().error("Test failed!");
-                    getLog().error(pimpOutput(String.format(ex.getMessage())));
+                    getLog().error(cleanForMavenLog(String.format(ex.getMessage())));
                 } finally {
                     if (driver != null) {
                         driver.quit();
@@ -220,9 +220,9 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
         if (driver != null) {
             driver.manage().logs().get(logType).getAll().forEach(l -> {
                     if (Level.SEVERE.equals(l.getLevel())) {
-                        getLog().error(String.format(pimpOutput(l.getMessage())));
+                        getLog().error(String.format(cleanForMavenLog(l.getMessage())));
                     } else {
-                        getLog().info(String.format(pimpOutput(l.getMessage())));
+                        getLog().info(String.format(cleanForMavenLog(l.getMessage())));
                     }
                 });
         }
@@ -234,7 +234,7 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
         Element closureTestRunningLog = document.getElementById("closureTestRunnerLog");
         if (!Objects.isNull(closureTestRunningLog)) {
             closureTestRunningLog.getElementsByTag("div")
-                .forEach(t -> getLog().error(pimpOutput(t.text())));
+                .forEach(t -> getLog().error(cleanForMavenLog(t.text())));
         }
     }
 
@@ -259,7 +259,7 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
      * @param input log messagae to handle
      * @return update log message
      */
-    private String pimpOutput(String input) {
+    private String cleanForMavenLog(String input) {
         String text;
         // use the first '"' as start of content
         if (input.contains("\"")) {
