@@ -1,6 +1,7 @@
 package net.cardosi.mojo;
 
 import com.google.common.io.CharStreams;
+import java.util.logging.Level;
 import net.cardosi.mojo.cache.CachedProject;
 import net.cardosi.mojo.cache.DiskCache;
 import org.apache.maven.artifact.Artifact;
@@ -15,10 +16,15 @@ import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.ProjectBuildingException;
 import org.apache.maven.project.ProjectBuildingRequest;
 import org.apache.maven.shared.utils.io.DirectoryScanner;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.logging.LogType;
+import org.openqa.selenium.logging.LoggingPreferences;
 import org.openqa.selenium.support.ui.FluentWait;
 
 import java.io.File;
@@ -153,7 +159,13 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
                 // assuming that was successful, start htmlunit to run the test
                 WebDriver driver = null;
                 try {
-                    driver = new ChromeDriver(new ChromeOptions().setHeadless(true));
+                    ChromeOptions chromeOptions = new ChromeOptions();
+                    chromeOptions.setHeadless(true);
+                    LoggingPreferences loggingPreferences = new LoggingPreferences();
+                    loggingPreferences.enable(LogType.BROWSER, Level.ALL);
+                    chromeOptions.setCapability("goog:loggingPrefs",
+                        loggingPreferences);
+                    driver = new ChromeDriver(chromeOptions);
                     driver.get("file://" + startupHtmlFile);
                     // loop and poll if tests are done
                     new FluentWait<>(driver)
@@ -163,6 +175,8 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
                             .until(d -> isFinished(d));
                     // check for success
                     if (!isSuccess(driver)) {
+                        // print the content of the browser console to the log
+                        this.analyzeLog(driver);
                         failedTests.put(((TestConfig) config).getTest(), startupHtmlFile);
                         getLog().error("Test failed!");
                     } else {
@@ -170,7 +184,11 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
                     }
                 } catch (Exception ex) {
                     failedTests.put(((TestConfig) config).getTest(), startupHtmlFile);
+                    if (!Objects.isNull(driver)) {
+                        this.analyzeLog(driver);
+                    }
                     getLog().error("Test failed!");
+                    getLog().error(cleanForMavenLog(String.format(ex.getMessage())));
                 } finally {
                     if (driver != null) {
                         driver.quit();
@@ -189,6 +207,83 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
         }
     }
 
+    private void analyzeLog(WebDriver driver) {
+        logMessageFromDriver(LogType.BROWSER,
+            driver);
+        // in case we got a closure message on the html page, grab it & print it to the log
+        if (driver.getPageSource().contains("closureTestRunnerLog")) {
+            this.logMessageFromDriverHTML(driver.getPageSource());
+        }
+    }
+
+    private void logMessageFromDriver(String logType, WebDriver driver) {
+        if (driver != null) {
+            driver.manage().logs().get(logType).getAll().forEach(l -> {
+                    if (Level.SEVERE.equals(l.getLevel())) {
+                        getLog().error(String.format(cleanForMavenLog(l.getMessage())));
+                    } else {
+                        getLog().info(String.format(cleanForMavenLog(l.getMessage())));
+                    }
+                });
+        }
+    }
+
+    private void logMessageFromDriverHTML(String pageSource) {
+        Document document = Jsoup.parseBodyFragment(pageSource);
+        Element body = document.body();
+        Element closureTestRunningLog = document.getElementById("closureTestRunnerLog");
+        if (!Objects.isNull(closureTestRunningLog)) {
+            closureTestRunningLog.getElementsByTag("div")
+                .forEach(t -> getLog().error(cleanForMavenLog(t.text())));
+        }
+    }
+
+    /**
+     * While grabbing the content from the browser page or content of the console,
+     * the grabbed content is:
+     * <ul>
+     *   <li>put into '"'</li>
+     *   <li>all line feeds are marked with '\n' which will not work on the console</li>
+     *   <li>all &lt; are replaced with 'u003C'.</li>
+     * </ul>
+     * F.e.: a stacktrace is one log line. Without improving the log, the stacktrace will
+     * be logged in one line which made it hard to read.   *
+     * <p/>
+     * This method
+     * <lu>
+     *   <li>removes the '"'</li>
+     *   <li>replaces the '\n' for line feeds with '%n' which will work on the console</li>
+     *   <li>replaces the 'u003C' for line feeds with '&lt;' which will work on the console</li>
+     * </lu>
+     *
+     * @param input log messagae to handle
+     * @return update log message
+     */
+    private String cleanForMavenLog(String input) {
+        String text;
+        // use the first '"' as start of content
+        if (input.contains("\"")) {
+            text = input.substring(input.indexOf("\""));
+        } else {
+            text = input;
+        }
+        // replace all '"'
+        while (text.contains("\"")) {
+            text = text.replace("\"",
+                "");
+        }
+        // replace '/n' with '%n'
+        while (text.contains("\\n")) {
+            text = text.replace("\\n",
+                "%n");
+        }
+        // replace 'u003C' with '<'
+        while (text.contains("\\u003C")) {
+            text = text.replace("\\u003C",
+                "<");
+        }
+        return text;
+    }
 
     private static boolean isSuccess(WebDriver d) {
         return (Boolean) ((JavascriptExecutor) d).executeScript("return window.G_testRunner.isSuccess()");
