@@ -30,15 +30,18 @@ import java.util.concurrent.TimeUnit;
  * configured to use a particular compilation level, or directory to copy output to.
  */
 @Mojo(name = "watch", requiresDependencyResolution = ResolutionScope.TEST, aggregator = true)
-//@Execute(phase = LifecyclePhase.PROCESS_CLASSES)
 public class WatchMojo extends AbstractBuildMojo {
 
     @Parameter(defaultValue = "${reactorProjects}", required = true, readonly = true)
     protected List<MavenProject> reactorProjects;
 
 
-    @Parameter(required = true, alias = "defaultWebappDirectory")//alias to not break other apps right away...
+    @Parameter
     protected String webappDirectory;
+
+    @Parameter(defaultValue = "${project.build.directory}/${project.build.finalName}", readonly = true)
+    protected String defaultWebappDirectory;
+
 
     @Parameter(defaultValue = "BUNDLE")
     protected String compilationLevel;
@@ -47,6 +50,17 @@ public class WatchMojo extends AbstractBuildMojo {
     public void execute() throws MojoExecutionException, MojoFailureException {
         PluginDescriptor pluginDescriptor = (PluginDescriptor) getPluginContext().get("pluginDescriptor");
         String pluginVersion = pluginDescriptor.getVersion();
+
+        if (webappDirectory == null) {
+            if (reactorProjects.size() == 1) {
+                // not actually a reactor project, so we'll use the default
+                getLog().info("Using " + defaultWebappDirectory + " as webappDirectory since goal is running in a non-reactor build and none was set");
+                webappDirectory = defaultWebappDirectory;
+            } else {
+                getLog().error("No webappDirectory parameter was set - this should be defined in the parent pom so that any j2cl module knows where to put its output");
+                throw new MojoFailureException("No webappDirectory parameter was set - this should be defined in the parent pom so that any j2cl module knows where to put its output");
+            }
+        }
 
         //TODO need to be very careful about allowing these to be configurable, possibly should tie them to the "plugin version" aspect of the hash
         //     or stitch them into the module's dependencies, that probably makes more sense...
