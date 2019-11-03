@@ -66,7 +66,7 @@ public class CleanMojo extends AbstractCacheMojo {
 
             } else if (artifact.equals("*")) {
                 // delete all cache entries, regardless of source
-                getLog().info("Deleting entire GWT3 build cache");
+                getLog().info("Deleting entire j2cl-maven-plugin build cache");
                 recursivelyDeleteDir(gwt3BuildCacheDir.toPath());
             } else {
                 // identify the cache entry we were ask to remove and delete all items found which might
@@ -80,12 +80,12 @@ public class CleanMojo extends AbstractCacheMojo {
     }
 
     private void deleteArtifact(Path baseDir, String artifact) throws IOException {
-        Pattern artifactPattern = Pattern.compile(Pattern.quote(artifact + "-") + "[^-]");
+        Pattern artifactPattern = Pattern.compile(Pattern.quote(artifact + "-") + "[^-]+");
         try (DirectoryStream<Path> entries = Files.newDirectoryStream(baseDir)) {
             for (Path entry : entries) {
                 if (artifactPattern.matcher(entry.getFileName().toString()).matches()) {
-                    getLog().info("Deleting directory " + entry);
                     recursivelyDeleteDir(entry);
+                    getLog().info("Deleted directory " + entry);
                 }
             }
         }
