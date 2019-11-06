@@ -108,7 +108,7 @@ public class WatchMojo extends AbstractBuildMojo {
                             if (goal.equals("test") && shouldCompileTest()) {
                                 System.out.println("Found test " + execution);
                                 XmlDomClosureConfig config = new XmlDomClosureConfig(configuration, Artifact.SCOPE_TEST, compilationLevel, reactorProject.getArtifactId(), webappDirectory);
-                                CachedProject source = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, true, projectBuilder, request, diskCache, pluginVersion, projects, config.getClasspathScope(), getDependencyReplacements(), "* ");
+                                CachedProject source = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, true, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_TEST, getDependencyReplacements(), "* ");
 
                                 // given that set of tasks, we'll chain one more on the end, and watch _that_ for changes
                                 List<CachedProject> children = new ArrayList<>(source.getChildren());
@@ -130,7 +130,7 @@ public class WatchMojo extends AbstractBuildMojo {
                                 XmlDomClosureConfig config = new XmlDomClosureConfig(configuration, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, compilationLevel, reactorProject.getArtifactId(), webappDirectory);
 
                                 // Load up all the dependencies in the requested scope for the current project
-                                CachedProject p = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, true, projectBuilder, request, diskCache, pluginVersion, projects, config.getClasspathScope(), getDependencyReplacements(), "* ");
+                                CachedProject p = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, true, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, getDependencyReplacements(), "* ");
 
                                 CompletableFuture<TranspiledCacheEntry> f = p.registerAsApp(config);
                                 futures.add(f);
