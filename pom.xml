@@ -6,7 +6,7 @@
 
   <groupId>com.vertispan.j2cl</groupId>
   <artifactId>j2cl-maven-plugin</artifactId>
-  <version>0.10-SNAPSHOT</version>
+  <version>0.11-SNAPSHOT</version>
   <packaging>maven-plugin</packaging>
 
   <name>J2CL Maven Plugin</name>
@@ -26,9 +26,9 @@
     <takari.lifecycle.plugin.version>1.13.9</takari.lifecycle.plugin.version>
     <jsoup.plugin.version>1.12.1</jsoup.plugin.version>
     <!-- Builder dependencies versions -->
-    <transpiler.version>0.4-SNAPSHOT</transpiler.version>
-    <gwt.incompatible.stripper.version>0.4-SNAPSHOT</gwt.incompatible.stripper.version>
-    <closure.compiler.unshaded.version>0.1.2-SNAPSHOT</closure.compiler.unshaded.version>
+    <transpiler.version>0.5-SNAPSHOT</transpiler.version>
+    <gwt.incompatible.stripper.version>0.5-SNAPSHOT</gwt.incompatible.stripper.version>
+    <closure.compiler.unshaded.version>0.1-SNAPSHOT</closure.compiler.unshaded.version>
     <commons.codec.version>1.11</commons.codec.version>
     <!-- Test -->
     <org.eclipse.sisu.plexus.version>0.3.3</org.eclipse.sisu.plexus.version>
@@ -226,7 +226,7 @@
       <version>${gwt.incompatible.stripper.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.treblereel.gwt.javascript</groupId>
+      <groupId>com.vertispan.javascript</groupId>
       <artifactId>closure-compiler-unshaded</artifactId>
       <version>${closure.compiler.unshaded.version}</version>
       <exclusions>
@@ -241,6 +241,18 @@
         <exclusion>
           <groupId>com.google.protobuf</groupId>
           <artifactId>protobuf-java</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>args4j</groupId>
+          <artifactId>args4j</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.google.jsinterop</groupId>
+          <artifactId>base</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.google.elemental2</groupId>
+          <artifactId>*</artifactId>
         </exclusion>
       </exclusions>
     </dependency>

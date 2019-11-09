@@ -124,6 +124,7 @@ public class BuildMojo extends AbstractBuildMojo implements ClosureBuildConfigur
         defines.putIfAbsent("jre.checkedMode", "DISABLED");
         defines.putIfAbsent("jre.checks.checkLevel", "MINIMAL");
         defines.putIfAbsent("jsinterop.checks", "DISABLED");
+        defines.putIfAbsent("goog.DEBUG", "false");
 
         try {
             CachedProject e = loadDependenciesIntoCache(project.getArtifact(), project, false, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, getDependencyReplacements(), "* ");
