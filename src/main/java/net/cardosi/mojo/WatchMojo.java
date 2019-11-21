@@ -113,7 +113,7 @@ public class WatchMojo extends AbstractBuildMojo {
                                 // given that set of tasks, we'll chain one more on the end, and watch _that_ for changes
                                 List<CachedProject> children = new ArrayList<>(source.getChildren());
                                 children.add(source);
-                                CachedProject e = new CachedProject(diskCache, reactorProject.getArtifact(), reactorProject, children, reactorProject.getTestCompileSourceRoots());
+                                CachedProject e = new CachedProject(diskCache, reactorProject.getArtifact(), reactorProject, children, reactorProject.getTestCompileSourceRoots(), reactorProject.getTestResources());
 
                                 TestMojo.getTestConfigs(config, Collections.emptyList(), reactorProject,
                                         //TODO read these from the config, that XmlDomClosureConfig looks pretty silly now
