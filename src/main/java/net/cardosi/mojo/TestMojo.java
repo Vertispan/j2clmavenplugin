@@ -133,7 +133,7 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
             // given that set of tasks, we'll chain one more on the end, and watch _that_ for changes
             List<CachedProject> children = new ArrayList<>(source.getChildren());
             children.add(source);
-            CachedProject e = new CachedProject(diskCache, project.getArtifact(), project, children, project.getTestCompileSourceRoots());
+            CachedProject e = new CachedProject(diskCache, project.getArtifact(), project, children, project.getTestCompileSourceRoots(), project.getTestResources());
 
             diskCache.release();
 

@@ -13,6 +13,7 @@ import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.ArtifactUtils;
 import org.apache.maven.artifact.resolver.filter.ScopeArtifactFilter;
 import org.apache.maven.model.FileSet;
+import org.apache.maven.model.Resource;
 import org.apache.maven.project.MavenProject;
 
 import java.io.File;
@@ -56,20 +57,22 @@ public class CachedProject {
     private List<CachedProject> children;
     private final List<CachedProject> dependents = new ArrayList<>();
     private final List<String> compileSourceRoots;
+    private final List<Resource> resources;
 
     private final Map<String, CompletableFuture<TranspiledCacheEntry>> steps = Collections.synchronizedMap(new HashMap<>());
 
     private boolean ignoreJavacFailure;
     private Set<ClosureBuildConfiguration> registeredBuildTerminals = new HashSet<>();
 
-    public CachedProject(DiskCache diskCache, Artifact artifact, MavenProject currentProject, List<CachedProject> children, List<String> compileSourceRoots) {
+    public CachedProject(DiskCache diskCache, Artifact artifact, MavenProject currentProject, List<CachedProject> children, List<String> compileSourceRoots, List<Resource> resources) {
         this.diskCache = diskCache;
         this.compileSourceRoots = compileSourceRoots;
+        this.resources = resources;
         replace(artifact, currentProject, children);
     }
 
     public CachedProject(DiskCache diskCache, Artifact artifact, MavenProject currentProject, List<CachedProject> children) {
-        this(diskCache, artifact, currentProject, children, currentProject.getCompileSourceRoots());
+        this(diskCache, artifact, currentProject, children, currentProject.getCompileSourceRoots(), currentProject.getResources());
     }
 
     public void replace(Artifact artifact, MavenProject currentProject, List<CachedProject> children) {
@@ -662,7 +665,7 @@ public class CachedProject {
                 );
 
                 //also add the source dir as if it were on the classpath, as resources
-                plainClasspath.addAll(currentProject.getResources().stream().map(FileSet::getDirectory).map(File::new).collect(Collectors.toList()));
+                plainClasspath.addAll(resources.stream().map(FileSet::getDirectory).map(File::new).collect(Collectors.toList()));
 //                plainClasspath.addAll(compileSourceRoots.stream().map(File::new).collect(Collectors.toList()));
 
                 List<FrontendUtils.FileInfo> sources = compileSourceRoots.stream().flatMap(dir -> getFileInfoInDir(Paths.get(dir), javaMatcher).stream()).collect(Collectors.toList());
