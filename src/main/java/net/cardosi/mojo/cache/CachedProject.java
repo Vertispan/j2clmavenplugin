@@ -413,6 +413,15 @@ public class CachedProject {
             jscompArgs.add("--language_out");
             jscompArgs.add("ECMASCRIPT5");
 
+            jscompArgs.addAll(Arrays.asList(
+                    "--jscomp_off",
+                    "analyzerChecks"
+//                    "--jscomp_off",
+//                    "JSC_UNKNOWN_EXPR_TYPE",
+//                    "--jscomp_off",
+//                    "JSC_STRICT_INEXISTENT_PROPERTY"
+            ));
+
             for (String entrypoint : config.getEntrypoint()) {
                 jscompArgs.add("--entry_point");
                 jscompArgs.add(entrypoint);
@@ -482,6 +491,17 @@ public class CachedProject {
         @Override
         protected Compiler createCompiler() {
             return compiler;
+        }
+
+        @Override
+        protected CompilerOptions createOptions() {
+            CompilerOptions options = super.createOptions();
+
+            options.addWarningsGuard();
+
+            options.setExportTestFunctions(true);
+
+            return options;
         }
     }
 
