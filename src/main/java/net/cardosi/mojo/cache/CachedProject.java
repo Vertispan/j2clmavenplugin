@@ -20,14 +20,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.net.URI;
-import java.nio.charset.Charset;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -57,7 +53,7 @@ public class CachedProject {
     private final List<CachedProject> dependents = new ArrayList<>();
     private final List<String> compileSourceRoots;
 
-    private final Map<String, CompletableFuture<TranspiledCacheEntry>> steps = Collections.synchronizedMap(new HashMap<>());
+    private final Map<String, CompletableFuture<TranspiledCacheEntry>> steps = new ConcurrentHashMap<>();
 
     private boolean ignoreJavacFailure;
     private Set<ClosureBuildConfiguration> registeredBuildTerminals = new HashSet<>();
@@ -319,6 +315,9 @@ public class CachedProject {
     }
 
     private CompletableFuture<TranspiledCacheEntry> jscompWithScope(ClosureBuildConfiguration config) {
+        // first, build the has of this and all dependencies
+        hash().join();
+
         return getOrCreate(Step.AssembleOutput.name() + "-" + config.hash(), () -> {
 
 
