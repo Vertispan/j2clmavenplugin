@@ -21,15 +21,15 @@
     <maven.source.plugin.version>3.0.1</maven.source.plugin.version>
     <maven.javadoc.plugin.version>3.0.1</maven.javadoc.plugin.version>
     <maven.gpg.plugin.version>1.6</maven.gpg.plugin.version>
-    <jsoup.plugin.version>1.12.1</jsoup.plugin.version>
     <!-- Builder dependencies versions -->
-    <transpiler.version>0.6-SNAPSHOT</transpiler.version>
-    <gwt.incompatible.stripper.version>0.6-SNAPSHOT</gwt.incompatible.stripper.version>
+    <j2cl.version>0.6-SNAPSHOT</j2cl.version>
     <closure.compiler.unshaded.version>0.1-SNAPSHOT</closure.compiler.unshaded.version>
     <commons.codec.version>1.11</commons.codec.version>
+    <commons.io.version>2.5</commons.io.version>
     <!-- Test -->
     <junit.version>4.12</junit.version>
     <!-- Dependency management -->
+    <maven.shared.utils.version>3.1.0</maven.shared.utils.version>
     <plexus.component.annotations.version>1.7.1</plexus.component.annotations.version>
     <plexus.utils.version>3.1.0</plexus.utils.version>
     <plexus.classworlds.version>2.5.2</plexus.classworlds.version>
@@ -39,6 +39,9 @@
     <jsr305.version>3.0.2</jsr305.version>
     <commons.lang3.version>3.8.1</commons.lang3.version>
     <slf4j.api.version>1.7.5</slf4j.api.version>
+    <!-- Test goal -->
+    <selenium.version>3.141.59</selenium.version>
+    <jsoup.version>1.12.1</jsoup.version>
     <!-- Configurations -->
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.build.outputEncoding>UTF-8</project.build.outputEncoding>
@@ -115,6 +118,34 @@
       </dependency>
 
       <dependency>
+        <groupId>com.vertispan.javascript</groupId>
+        <artifactId>closure-compiler-unshaded</artifactId>
+        <version>${closure.compiler.unshaded.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>com.google.jsinterop</groupId>
+            <artifactId>jsinterop-annotations</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>args4j</groupId>
+            <artifactId>args4j</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>com.google.jsinterop</groupId>
+            <artifactId>base</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>com.google.elemental2</groupId>
+            <artifactId>*</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+
+      <dependency>
         <groupId>com.google.guava</groupId>
         <artifactId>guava</artifactId>
         <version>${guava.version}</version>
@@ -137,6 +168,22 @@
       </dependency>
 
       <dependency>
+        <groupId>org.seleniumhq.selenium</groupId>
+        <artifactId>selenium-api</artifactId>
+        <version>${selenium.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.seleniumhq.selenium</groupId>
+        <artifactId>selenium-support</artifactId>
+        <version>${selenium.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.seleniumhq.selenium</groupId>
+        <artifactId>selenium-chrome-driver</artifactId>
+        <version>${selenium.version}</version>
+      </dependency>
+
+      <dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-api</artifactId>
         <version>${slf4j.api.version}</version>
@@ -155,20 +202,31 @@
     <dependency>
       <groupId>org.apache.maven</groupId>
       <artifactId>maven-plugin-api</artifactId>
-      <exclusions>
-        <exclusion>
-          <groupId>org.apache.maven</groupId>
-          <artifactId>maven-model</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.maven</groupId>
-          <artifactId>maven-artifact</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.eclipse.sisu</groupId>
-          <artifactId>org.eclipse.sisu.plexus</artifactId>
-        </exclusion>
-      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.maven</groupId>
+      <artifactId>maven-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.maven.shared</groupId>
+      <artifactId>maven-shared-utils</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.maven</groupId>
+      <artifactId>maven-model</artifactId>
+    </dependency>
+    <dependency>
+    <groupId>org.apache.maven</groupId>
+    <artifactId>maven-artifact</artifactId>
+  </dependency>
+    <dependency>
+      <groupId>org.codehaus.plexus</groupId>
+      <artifactId>plexus-utils</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.maven.resolver</groupId>
+      <artifactId>maven-resolver-api</artifactId>
+      <version>${maven.resolver.version}</version>
     </dependency>
 
     <!-- dependencies to annotations -->
@@ -179,38 +237,24 @@
       <scope>provided</scope>
     </dependency>
 
-    <dependency>
-      <groupId>org.apache.maven.shared</groupId>
-      <artifactId>maven-artifact-transfer</artifactId>
-      <version>${maven.artifact.transfer.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.maven.resolver</groupId>
-      <artifactId>maven-resolver-api</artifactId>
-      <version>${maven.resolver.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.maven.resolver</groupId>
-      <artifactId>maven-resolver-impl</artifactId>
-      <version>${maven.resolver.version}</version>
-    </dependency>
 
-    <dependency>
-      <groupId>org.jsoup</groupId>
-      <artifactId>jsoup</artifactId>
-      <version>${jsoup.plugin.version}</version>
-    </dependency>
 
-    <!-- Builder dependencies -->
+    <!-- j2cl dependencies -->
     <dependency>
       <groupId>com.vertispan.j2cl</groupId>
       <artifactId>transpiler</artifactId>
-      <version>${transpiler.version}</version>
+      <version>${j2cl.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.vertispan.j2cl</groupId>
+      <artifactId>gwt-incompatible-stripper</artifactId>
+      <version>${j2cl.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.vertispan.j2cl</groupId>
+      <artifactId>frontend</artifactId>
+      <version>${j2cl.version}</version>
       <exclusions>
-        <exclusion>
-          <groupId>com.google.javascript</groupId>
-          <artifactId>closure-compiler-unshaded</artifactId>
-        </exclusion>
         <exclusion>
           <groupId>com.google.errorprone</groupId>
           <artifactId>javac</artifactId>
@@ -219,78 +263,67 @@
     </dependency>
     <dependency>
       <groupId>com.vertispan.j2cl</groupId>
-      <artifactId>gwt-incompatible-stripper</artifactId>
-      <version>${gwt.incompatible.stripper.version}</version>
+      <artifactId>common</artifactId>
+      <version>${j2cl.version}</version>
     </dependency>
+    <dependency>
+      <groupId>com.vertispan.j2cl</groupId>
+      <artifactId>generator</artifactId>
+      <version>${j2cl.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.google.javascript</groupId>
+          <artifactId>closure-compiler-unshaded</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <!-- closure compiler dependencies -->
     <dependency>
       <groupId>com.vertispan.javascript</groupId>
       <artifactId>closure-compiler-unshaded</artifactId>
-      <version>${closure.compiler.unshaded.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>com.google.jsinterop</groupId>
-          <artifactId>jsinterop-annotations</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>com.google.guava</groupId>
-          <artifactId>guava</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>com.google.protobuf</groupId>
-          <artifactId>protobuf-java</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>args4j</groupId>
-          <artifactId>args4j</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>com.google.jsinterop</groupId>
-          <artifactId>base</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>com.google.elemental2</groupId>
-          <artifactId>*</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>commons-codec</groupId>
       <artifactId>commons-codec</artifactId>
       <version>${commons.codec.version}</version>
     </dependency>
+    <dependency>
+      <groupId>commons-io</groupId>
+      <artifactId>commons-io</artifactId>
+      <version>${commons.io.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+    </dependency>
 
     <!-- test goal dependencies -->
     <dependency>
       <groupId>org.seleniumhq.selenium</groupId>
-      <artifactId>selenium-java</artifactId>
-      <version>3.141.59</version>
-      <exclusions>
-        <exclusion>
-          <groupId>org.apache.commons</groupId>
-          <artifactId>commons-lang3</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.commons</groupId>
-          <artifactId>commons-text</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>com.google.code.findbugs</groupId>
-          <artifactId>jsr305</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>com.google.errorprone</groupId>
-          <artifactId>error_prone_annotations</artifactId>
-        </exclusion>
-      </exclusions>
+      <artifactId>selenium-support</artifactId>
     </dependency>
-
+    <dependency>
+      <groupId>org.seleniumhq.selenium</groupId>
+      <artifactId>selenium-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.seleniumhq.selenium</groupId>
+      <artifactId>selenium-chrome-driver</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.jsoup</groupId>
+      <artifactId>jsoup</artifactId>
+      <version>${jsoup.version}</version>
+    </dependency>
 
     <!-- Test -->
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
+      <scope>test</scope>
     </dependency>
-
   </dependencies>
 
   <build>
