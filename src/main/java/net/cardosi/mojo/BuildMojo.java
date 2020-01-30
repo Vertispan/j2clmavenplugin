@@ -49,13 +49,13 @@ import java.util.*;
  * <p>
  *     Closure defines (or J2cl/GWT System Properties) can be provided as well. There are some defaults,
  *     assuming that a production app should be built to be as small as possible, with many checks turned off:
- *     <ul>
- *         <li>jre.checkedMode=DISABLED</li>
- *         <li>jre.checks.checkLevel=MINIMAL</li>
- *         <li>jsinterop.checks=DISABLED</li>
- *         <li>goog.DEBUG=false</li>
- *     </ul>
  * </p>
+ * <ul>
+ *     <li>jre.checkedMode=DISABLED</li>
+ *     <li>jre.checks.checkLevel=MINIMAL</li>
+ *     <li>jsinterop.checks=DISABLED</li>
+ *     <li>goog.DEBUG=false</li>
+ * </ul>
  */
 @Mojo(name = "build", requiresDependencyResolution = ResolutionScope.COMPILE_PLUS_RUNTIME)
 //@Execute(phase = LifecyclePhase.PROCESS_CLASSES)

@@ -296,6 +296,16 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
     /**
      * If specific tests are specified, will use them, otherwise will look for the tests through includes/excludes,
      * and produce a build config each.
+     *
+     * The approach  to get tests is fundamentally wrong: instead, we need to run the annotation
+     * processor on the current sources (incrementally for j2cl:watch...), read out the test suites that it emitted,
+     * and generate our build config based on that.
+     * @param baseConfig initial config we start from, and use for pom-defined values
+     * @param tests the requested tests. If null or empty, we will (badly) try to generate this list
+     * @param project the project to scan to find tests
+     * @param includes a list of DirectoryScanner-compatible includes to apply to files that we might run as tests
+     * @param excludes a list of DirectoryScanner-compatible excludes to apply to files that we might run as tests, but shouldn't
+     * @return a list of configs that should be compiled (and potentially watched)
      */
     public static List<ClosureBuildConfiguration> getTestConfigs(ClosureBuildConfiguration baseConfig, List<String> tests, MavenProject project, List<String> includes, List<String> excludes) {
         List<String> testEntrypoints;

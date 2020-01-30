@@ -36,6 +36,7 @@ public class DependencyReplacement {
 
     private Artifact replacementArtifact;
 
+    @SuppressWarnings("unused")// created reflectively from the pom.xml
     public DependencyReplacement() {
     }
 
@@ -63,9 +64,9 @@ public class DependencyReplacement {
     /**
      * Given details about the current project and its dependencies, resolves the "replacement" to a specific dependency
      * if ambiguous.
-     * @param repoSession
-     * @param repositories
-     * @param repoSystem
+     * @param repoSession the current RepositorySystemSession
+     * @param repositories the current list of RemoteRepository instances
+     * @param repoSystem the current RepositorySystem
      */
     public void resolve(RepositorySystemSession repoSession, List<RemoteRepository> repositories, RepositorySystem repoSystem) {
         if (replacementArtifact != null || replacement == null) {
@@ -85,6 +86,8 @@ public class DependencyReplacement {
 
     /**
      * True of the original coordinates either match the given dependency, or are a transitive dependency from it.
+     * @param dependency the dependency to test
+     * @return true if this instance matches the given dependency (and so {@link #getReplacementArtifact} should be called)
      */
     public boolean matches(Artifact dependency) {
         // check if we are an exact match, or if the given dependency is a transitive dependency of what we are removing
@@ -99,6 +102,9 @@ public class DependencyReplacement {
      * Returns the replacement artifact that this rule provides for the given dependency. This will be null in two cases:
      *   o  if there is no replacement to provide
      *   o  if the given dependency is itself a transitive dependency, so we don't directly replace it
+     *
+     * @param dependency the dependency to examine and optionally replace
+     * @return null to remove the dependency, otherwise the new dependency to add to the project
      */
     public Artifact getReplacementArtifact(Artifact dependency) {
         if (matchesExactly(dependency)) {
