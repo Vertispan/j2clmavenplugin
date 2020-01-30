@@ -53,6 +53,7 @@ import java.util.*;
  *         <li>jre.checkedMode=DISABLED</li>
  *         <li>jre.checks.checkLevel=MINIMAL</li>
  *         <li>jsinterop.checks=DISABLED</li>
+ *         <li>goog.DEBUG=false</li>
  *     </ul>
  * </p>
  */
