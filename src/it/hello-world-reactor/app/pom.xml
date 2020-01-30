@@ -30,9 +30,6 @@
                         <goals>
                             <goal>build</goal>
                         </goals>
-                        <configuration>
-                            <entrypoint>j2cl.samples.app</entrypoint>
-                        </configuration>
                     </execution>
                 </executions>
             </plugin>

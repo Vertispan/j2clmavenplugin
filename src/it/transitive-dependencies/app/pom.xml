@@ -30,9 +30,6 @@
             <goals>
               <goal>build</goal>
             </goals>
-            <configuration>
-              <entrypoint>example.helloworld.App</entrypoint>
-            </configuration>
           </execution>
         </executions>
       </plugin>

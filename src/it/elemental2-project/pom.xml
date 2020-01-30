@@ -1,0 +1,100 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>elemental2-project</groupId>
+    <artifactId>elemental2-project</artifactId>
+    <version>1.0</version>
+
+    <properties>
+        <elemental2.version>1.0.0</elemental2.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.google.elemental2</groupId>
+            <artifactId>elemental2-core</artifactId>
+            <version>${elemental2.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.elemental2</groupId>
+            <artifactId>elemental2-dom</artifactId>
+            <version>${elemental2.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.elemental2</groupId>
+            <artifactId>elemental2-indexeddb</artifactId>
+            <version>${elemental2.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.elemental2</groupId>
+            <artifactId>elemental2-media</artifactId>
+            <version>${elemental2.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.elemental2</groupId>
+            <artifactId>elemental2-promise</artifactId>
+            <version>${elemental2.version}</version>
+        </dependency>
+        <!-- commented out until svg externs are included in closure-compiler's default externs -->
+        <!--<dependency>-->
+            <!--<groupId>com.google.elemental2</groupId>-->
+            <!--<artifactId>elemental2-svg</artifactId>-->
+            <!--<version>${elemental2.version}</version>-->
+        <!--</dependency>-->
+        <dependency>
+            <groupId>com.google.elemental2</groupId>
+            <artifactId>elemental2-webgl</artifactId>
+            <version>${elemental2.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.elemental2</groupId>
+            <artifactId>elemental2-webstorage</artifactId>
+            <version>${elemental2.version}</version>
+        </dependency>
+        <!-- commented out until https://github.com/google/elemental2/pull/142 is released -->
+        <!--<dependency>-->
+            <!--<groupId>com.google.elemental2</groupId>-->
+            <!--<artifactId>elemental2-webassembly</artifactId>-->
+            <!--<version>${elemental2.version}</version>-->
+        <!--</dependency>-->
+
+    </dependencies>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>@project.groupId@</groupId>
+                <artifactId>@project.artifactId@</artifactId>
+                <version>@project.version@</version>
+                <executions>
+                    <execution>
+                        <id>compile</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>build</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.6.1</version>
+                    <configuration>
+                        <source>1.8</source>
+                        <target>1.8</target>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+    <repositories>
+        <repository>
+            <id>google-snapshots</id>
+            <url>https://oss.sonatype.org/content/repositories/google-snapshots/</url>
+        </repository>
+    </repositories>
+</project>

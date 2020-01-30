@@ -1,5 +1,8 @@
 package net.cardosi.mojo.cache;
 
+import com.google.common.base.Preconditions;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.j2cl.common.FrontendUtils;
 import com.google.javascript.jscomp.*;
 import net.cardosi.mojo.ClosureBuildConfiguration;
@@ -31,13 +34,21 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 public class CachedProject {
+    public static final String BUNDLE_JAR = "BUNDLE_JAR";
+    private static final String BUNDLE_JAR_BASE_FILE = "j2cl-base.js";
     private enum Step {
         Hash,
         ProcessAnnotations,
         StripGwtIncompatible,
         GenerateStrippedBytecode,
         TranspileSources,
-        AssembleOutput
+
+        AssembleOutput,
+
+        // these names could be clearer
+        JsChecker,
+        ProjectBundle,
+        ChunkBundle,
     }
 
     private static final PathMatcher javaMatcher = FileSystems.getDefault().getPathMatcher("glob:**/*.java");
@@ -200,8 +211,17 @@ public class CachedProject {
     }
 
     private CompletableFuture<Void> build() {
+        long start = System.currentTimeMillis();
+
         return CompletableFuture.allOf(
-                registeredBuildTerminals.stream().map(Supplier::get).toArray(CompletableFuture[]::new)
+                registeredBuildTerminals.stream()
+                        .map(Supplier::get)
+                        .peek(f -> {
+                            f.thenAcceptAsync(entry -> {
+                                System.out.println(entry.getArtifactId() + " rebuild complete in " + (System.currentTimeMillis() - start) + "ms");
+                            });
+                        })
+                        .toArray(CompletableFuture[]::new)
         );
     }
 
@@ -322,7 +342,7 @@ public class CachedProject {
     }
 
     private CompletableFuture<TranspiledCacheEntry> jscompWithScope(ClosureBuildConfiguration config) {
-        // first, build the has of this and all dependencies
+        // first, build the hash of this project and all dependencies
         hash().join();
 
         return getOrCreate(Step.AssembleOutput.name() + "-" + config.hash(), () -> {
@@ -386,7 +406,7 @@ public class CachedProject {
 
             boolean success = closureCompiler.compile(
                     compilationLevel,
-                    DependencyOptions.DependencyMode.PRUNE,
+                    config.getDependencyMode(),
                     sources,
                     diskCache.getExtraJsZips(),
                     config.getEntrypoint(),
@@ -414,6 +434,259 @@ public class CachedProject {
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
             }
+            return entry;
+        });
+    }
+
+    /**
+     * An extremely parallelizable but extremely unoptimized way to build an application. This method causes the output
+     * JS file to be generated as just a list of other JS files to load in order, one per classpath entry. Those entries
+     * can then be built entirely unoptimized and unpruned, so that most of the build output can be cached rather than
+     * regenerated as aspects of the application changes.
+     */
+    public CompletableFuture<TranspiledCacheEntry> registerAsChunkedApp(ClosureBuildConfiguration config) {
+        // Produce some one-time results for the whole build, like the JRE guts, pre-bundled.
+        // We can achieve this by doing a tiny closure build of just the JRE+bootstrap as one item (which
+        // could be separately cached, eventually)
+        Closure closureCompiler = new Closure();
+
+        File dir = Paths.get(config.getWebappDirectory(), config.getInitialScriptFilename()).getParent().toFile();
+
+        // be sure we have the directory
+        dir.mkdirs();
+
+        Preconditions.checkArgument(config.getDependencyMode() == DependencyOptions.DependencyMode.SORT_ONLY, "With compilationLevel=" + BUNDLE_JAR + " only dependencyMode=SORT_ONLY is supported");
+
+        boolean success = closureCompiler.compile(
+                CompilationLevel.BUNDLE,
+                DependencyOptions.DependencyMode.SORT_ONLY,
+                null,
+                diskCache.getExtraJsZips(),
+                Collections.emptyList(),
+                Collections.emptyMap(),
+                config.getExterns(),
+                diskCache.getPersistentInputStore(),
+                true,//TODO parameterize, but we'll just make it true for now
+                config.getRewritePolyfills(),
+                dir.getAbsolutePath() + "/" + BUNDLE_JAR_BASE_FILE
+        );
+
+        if (!success) {
+            // can't begin the regular compile since the base JS won't work, give up
+            CompletableFuture<TranspiledCacheEntry> fail = new CompletableFuture<>();
+            fail.completeExceptionally(new IllegalStateException("Failed to transpile JRE, can't start up"));
+            return fail;
+        }
+
+        Supplier<CompletableFuture<TranspiledCacheEntry>> supplier = () -> bundleJarApplication(config);
+        registeredBuildTerminals.add(supplier);
+        return supplier.get();
+    }
+
+    private Stream<CachedProject> flattenDependenciesDepthFirst(CachedProject project, String classpathScope, List<CachedProject> onlyInclude) {
+        return Stream.of(
+                project.children.stream()
+                        .filter(onlyInclude::contains)
+                        .filter(child -> new ScopeArtifactFilter(classpathScope).include(child.getArtifact()))
+                        .flatMap(child -> flattenDependenciesDepthFirst(child, Artifact.SCOPE_RUNTIME, onlyInclude)),
+                Stream.of(project)
+        ).flatMap(Function.identity());
+    }
+
+    /**
+     * Does the actual work of compiling/updating an application using BUNDLE_JAR, producing a bootstrap file, ensuring
+     * all dependencies are up to date. The JRE, closure wiring, and defines have already been built by this point,
+     * into a file named {@link #BUNDLE_JAR_BASE_FILE}, and this cannot change while the build is running.
+     */
+    private CompletableFuture<TranspiledCacheEntry> bundleJarApplication(ClosureBuildConfiguration config) {
+        File initialScriptFile = Paths.get(config.getWebappDirectory(), config.getInitialScriptFilename()).toFile();
+
+        File outDir = initialScriptFile.getParentFile();
+
+        //incorporate the config into the hash, since we might change config without changing sources
+        return getOrCreate(Step.ChunkBundle.name() + "-" + config.hash(), () -> {
+            standaloneBundle();//limit our scope
+            return children.stream()
+                    .filter(child -> {
+                        //if child is in any registeredScope item
+                        return new ScopeArtifactFilter(config.getClasspathScope()).include(child.getArtifact());
+                    })
+                    .map(p -> p.standaloneBundle())// for children, we use just the runtime classpath
+                    .map(CompletableFuture::join)
+                    .collect(Collectors.toList());
+        }, (bundles, entry) -> {
+            // This is the cachable part of the task - nothing to do here, unless we want to copy everything twice.
+            // See the unconditionally-running section below.
+
+            return entry;
+        }).thenApply(entry -> {
+            // This will unconditionally run after the lambda, which may be cached. We will copy any _changed_
+            // standaloneBundle output, and then generate the HTML file that serves as the import to it all. In theory
+            // we could cache the HTML file, but a) it will be fairly small and cheap to generate, and b) we will
+            // have to copy it regardles of cache anyway, in case the webappDirectory was recently cleaned.
+
+            // Collect the dependencies we care about
+            // (we assume that j2cl-base.js already exists and that no one is cleaning _while_ we're running)
+            Stream<CachedProject> orderedDependencies = flattenDependenciesDepthFirst(this, config.getClasspathScope(), children).distinct();
+            List<CachedProject> orderedDependenciesList = orderedDependencies.collect(Collectors.toList());
+
+            // For each dependency that we need at runtime, if its main artifact doesn't exist in the webapp dir,
+            // copy it
+            //TODO okay for now i'm blindly copying, fix this by testing instead
+            try {
+                for (CachedProject dep : orderedDependenciesList) {
+                    File dir = dep.standaloneBundle().join().getProjBundleDir();//this is already computed, we should never actually block here
+                    FileUtils.copyDirectory(dir, outDir);
+                }
+            } catch (IOException e) {
+                throw new UncheckedIOException("Failed in copying output to webapp directory " + config.getWebappDirectory(), e);
+            }
+
+
+            try {
+                Gson gson = new GsonBuilder().setPrettyPrinting().create();
+                String scriptsArray = gson.toJson(Stream.concat(
+                        Stream.of(BUNDLE_JAR_BASE_FILE),//jre and wiring and defines, already in the dir
+                        flattenDependenciesDepthFirst(this, config.getClasspathScope(), children)
+                                .distinct()
+                                .map(p -> p.getArtifactId() + "-" + p.hash().join().getHash() + ".bundle.js")// each of our bundles, copied above
+                ).collect(Collectors.toList()));
+                Map<String, Object> defines = new LinkedHashMap<>(config.getDefines());
+                // unconditionally set this to false, so that our dependency order works, since we're always in BUNDLE now
+                defines.put("goog.ENABLE_DEBUG_LOADER", false);
+
+                // defines are global, outside the IIFE
+                String defineLine = "var CLOSURE_UNCOMPILED_DEFINES = " + gson.toJson(defines) + ";\n";
+                // IIFE and base url
+                String intro = "(function() {" + "var src = document.currentScript.src;\n" +
+                        "var lastSlash = src.lastIndexOf('/');\n" +
+                        "var base = lastSlash === -1 ? '' : src.substr(0, lastSlash + 1);";
+
+                // iterate the scripts and append, close IIFE
+                String outro = ".forEach(file => {\n" +
+                        "  var elt = document.createElement('script');\n" +
+                        "  elt.src = base + file;\n" +
+                        "  elt.type = 'text/javascript';\n" +
+                        "  elt.async = false;\n" +
+                        "  document.head.appendChild(elt);\n" +
+                        "});" + "})();";
+                Files.write(initialScriptFile.toPath(), Arrays.asList(
+                        defineLine,
+                        intro,
+                        scriptsArray,
+                        outro
+                ));
+            } catch (IOException e) {
+                throw new UncheckedIOException("Failed to write html import file", e);
+            }
+
+            return entry;
+        });
+    }
+
+    /**
+     * Emits a single compilationLevel=BUNDLE for this project only, without any dependencies.
+     */
+    private CompletableFuture<TranspiledCacheEntry> standaloneBundle() {
+        return getOrCreate(Step.ProjectBundle.name(), () -> {
+            // for now just generating this project's own js - in theory should generate externs too via jsChecker()
+            return j2cl().join();
+        }, (ownSources, entry) -> {
+            Closure closureCompiler = new Closure();
+
+            File closureOutputDir = entry.getProjBundleDir();
+
+            try {
+                Files.createDirectories(closureOutputDir.toPath());
+            } catch (IOException e) {
+                throw new UncheckedIOException("Failed to create closure output directory", e);
+            }
+
+            String outputFile = closureOutputDir + "/" + getArtifactId() + "-" + entry.getHash() + ".bundle.js";
+
+            //if no js sources exist, write an empty file and exit
+            //TODO alternative to this lazy check of contents, enumerate the js files, and pass them directly to closure
+            try(DirectoryStream<Path> dirStream = Files.newDirectoryStream(ownSources.getTranspiledSourcesDir().toPath())) {
+                if (!dirStream.iterator().hasNext()) {
+                    Files.createFile(Paths.get(outputFile));
+                    return entry;
+                }
+            } catch (IOException e) {
+                throw new UncheckedIOException("Failed to enumerate files or write empty file", e);
+            }
+
+            // copy the sources locally so that we can build real sourcemaps
+            File sources = new File(closureOutputDir, "sources");
+
+            try {
+                FileUtils.copyDirectory(ownSources.getTranspiledSourcesDir(), sources);
+            } catch (IOException e) {
+                e.printStackTrace();
+                throw new UncheckedIOException(e);
+            }
+
+            boolean success = closureCompiler.compile(
+                    CompilationLevel.BUNDLE,
+                    DependencyOptions.DependencyMode.SORT_ONLY,
+                    sources,
+                    Collections.emptyList(),
+                    Collections.emptyList(),
+                    Collections.emptyMap(),
+                    Collections.emptyList(),//TODO actually pass these in when we can restrict and cache them sanely
+                    diskCache.getPersistentInputStore(),
+                    true,//TODO have this be passed in,
+                    false,
+                    outputFile
+            );
+
+            if (!success) {
+                throw new IllegalStateException("Closure Compiler failed, check log for details");
+            }
+
+            return entry;
+        });
+    }
+
+    public CompletableFuture<TranspiledCacheEntry> jsCheck(String classpathScope) {
+        // Given the classpath scope, select all depenedencies that apply and j2cl them, then j2Checker() them,
+        // and return the results from this specific project. This seems like it could have been recursive, but
+        // that approach gets screwed up around optional and provided dependencies.
+
+        // easy hack for now
+        return jsChecker();
+    }
+
+    /**
+     * Checks this project in closure (roughly the equivalent of building _just_ this
+     * project with a full ADVANCED compile) against the externs of its dependencies,
+     * and emits a externs file which can then be used by other projects for this same
+     * step.
+     */
+    private CompletableFuture<TranspiledCacheEntry> jsChecker() {
+        return getOrCreate(Step.JsChecker.name(), () -> {
+            // transpile our own JS - we assume this is complete, so it finishes trivially
+//            j2cl().join();
+
+//            System.out.println(getArtifactKey() + "'s children ("+classpathScope+"): " + children.stream().filter(child -> {
+//                return new ScopeArtifactFilter(classpathScope).include(child.getArtifact());
+//            }).map(CachedProject::getArtifact).map(Object::toString).collect(Collectors.joining(", ")));
+            // build all the externs for our dependencies (which will in turn transpile them, etc)
+            return children.stream()// I'm not even sure we need upstream deps at this point
+                    .filter(child -> {
+                        return new ScopeArtifactFilter(Artifact.SCOPE_RUNTIME).include(child.getArtifact());
+                    })
+                    .map(p -> {
+//                        System.out.println(getArtifactKey() + " jsChecker -> " + p.getArtifactKey() + " jsChecker(RUNTIME)");
+//                        System.out.println(p.getArtifact().getDependencyTrail());
+                        return p.jsChecker();
+                    })// for children, we use just the runtime classpath
+                    .map(CompletableFuture::join)
+                    .collect(Collectors.toList());
+        }, (externDeps, entry) -> {
+            List<File> upstreamExterns = externDeps.stream().map(TranspiledCacheEntry::getExternsFile).collect(Collectors.toList());
+            JsChecker checker = new JsChecker(upstreamExterns);
+            boolean success = checker.checkAndGenerateExterns(getFileInfoInDir(entry.getTranspiledSourcesDir().toPath(), jsMatcher), entry.getExternsFile());
+
             return entry;
         });
     }

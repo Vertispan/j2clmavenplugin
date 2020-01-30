@@ -1,5 +1,6 @@
 package net.cardosi.mojo;
 
+import com.google.javascript.jscomp.DependencyOptions;
 import net.cardosi.mojo.cache.CachedProject;
 import net.cardosi.mojo.cache.DiskCache;
 import net.cardosi.mojo.cache.TranspiledCacheEntry;
@@ -42,8 +43,37 @@ public class WatchMojo extends AbstractBuildMojo {
     @Parameter(defaultValue = "${project.build.directory}/${project.build.finalName}", readonly = true)
     protected String defaultWebappDirectory;
 
-
-    @Parameter(defaultValue = "BUNDLE")
+    /**
+     * Describes how the output should be built - presently supports five modes, four of which are closure-compiler
+     * "compilationLevel" argument options, and an additional special case for J2cl-base applcations. The quoted
+     * descriptions here explain how closure-compiler defines them.
+     * <ul>
+     *     <li>
+     *         {@code ADVANCED_OPTIMIZATIONS} - "ADVANCED_OPTIMIZATIONS aggressively reduces code size by renaming
+     *         function names and variables, removing code which is never called, etc." This is typically what is
+     *         expected for production builds.
+     *     </li>
+     *     <li>
+     *         {@code SIMPLE_OPTIMIZATIONS} - "SIMPLE_OPTIMIZATIONS performs transformations to the input JS that
+     *         do not require any changes to JS that depend on the input JS." Generally not useful in this plugin -
+     *         slower than BUNDLE, much bigger than ADVANCED_OPTIMIZATIONS
+     *     </li>
+     *     <li>
+     *         {@code WHITESPACE_ONLY} - "WHITESPACE_ONLY removes comments and extra whitespace in the input JS."
+     *         Generally not useful in this plugin - slower than BUNDLE, much bigger than ADVANCED_OPTIMIZATIONS
+     *     </li>
+     *     <li>
+     *         {@code BUNDLE} - "Simply orders and concatenates files to the output." The GWT fork of closure also
+     *         prepends define statements, and provides wiring for sourcemaps.
+     *     </li>
+     *     <li>
+     *         {@code BUNDLE_JAR} - Not a "real" closure-compiler option. but instead invokes BUNDLE on each
+     *         classpath entry and generates a single JS file which will load those bundled files in order. Enables
+     *         the compiler to cache results for each dependency, rather than re-generate a single large JS file.
+     *     </li>
+     * </ul>
+     */
+    @Parameter(defaultValue = CachedProject.BUNDLE_JAR, property = "compilationLevel")
     protected String compilationLevel;
 
     /**
@@ -128,18 +158,28 @@ public class WatchMojo extends AbstractBuildMojo {
 //                                        Collections.emptyList()
 //                                )
 //                                        .stream()
-//                                        .map(e::registerAsApp)
+//                                        .map(c -> {
+//                                    if (c.getCompilationLevel().equalsIgnoreCase(CachedProject.BUNDLE_JAR)) {
+//                                        return e.registerAsChunkedApp(config);
+//                                    }
+//                                    return e.registerAsApp(config);
+//                                })
 //                                        .forEach(futures::add);
 //
 //                                apps.add(e);
                             } else if (goal.equals("build") && shouldCompileBuild()) {
                                 System.out.println("Found build " + execution);
-                                XmlDomClosureConfig config = new XmlDomClosureConfig(configuration, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, compilationLevel, rewritePolyfills, reactorProject.getArtifactId(), webappDirectory);
+                                XmlDomClosureConfig config = new XmlDomClosureConfig(configuration, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, compilationLevel, rewritePolyfills, reactorProject.getArtifactId(), DependencyOptions.DependencyMode.SORT_ONLY, webappDirectory);
 
                                 // Load up all the dependencies in the requested scope for the current project
                                 CachedProject p = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, true, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, getDependencyReplacements(), "* ");
 
-                                CompletableFuture<TranspiledCacheEntry> f = p.registerAsApp(config);
+                                CompletableFuture<TranspiledCacheEntry> f;
+                                if (config.getCompilationLevel().equalsIgnoreCase(CachedProject.BUNDLE_JAR)) {
+                                    f = p.registerAsChunkedApp(config);
+                                } else {
+                                    f = p.registerAsApp(config);
+                                }
                                 futures.add(f);
                                 apps.add(p);
                             }

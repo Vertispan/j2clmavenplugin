@@ -1,5 +1,6 @@
 package net.cardosi.mojo;
 
+import com.google.javascript.jscomp.DependencyOptions;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 
 import java.util.*;
@@ -12,6 +13,9 @@ public class XmlDomClosureConfig implements ClosureBuildConfiguration {
     private final boolean defaultRewritePolyfills;
     private final String defaultInitialScriptFilename;
 
+    @Deprecated
+    private final DependencyOptions.DependencyMode defaultDependencyMode;
+
     private final String defaultWebappDirectory;
 
     /**
@@ -20,14 +24,16 @@ public class XmlDomClosureConfig implements ClosureBuildConfiguration {
      * @param defaultCompilationLevel the default compilation level based on the goal detected
      * @param defaultRewritePolyfills whether or not closure should rewrite polyfills by default
      * @param artifactId the artifactId of the project being wrapped here
+     * @param defaultDependencyMode
      * @param defaultWebappDirectory the current invocation's launch dir, so we all serve from the same place
      */
-    public XmlDomClosureConfig(Xpp3Dom dom, String defaultScope, String defaultCompilationLevel, boolean defaultRewritePolyfills, String artifactId, String defaultWebappDirectory) {
+    public XmlDomClosureConfig(Xpp3Dom dom, String defaultScope, String defaultCompilationLevel, boolean defaultRewritePolyfills, String artifactId, DependencyOptions.DependencyMode defaultDependencyMode, String defaultWebappDirectory) {
         this.dom = dom;
         this.defaultScope = defaultScope;
         this.defaultCompilationLevel = defaultCompilationLevel;
         this.defaultRewritePolyfills = defaultRewritePolyfills;
         this.defaultInitialScriptFilename = artifactId + "/" + artifactId + ".js";
+        this.defaultDependencyMode = defaultDependencyMode;
         this.defaultWebappDirectory = defaultWebappDirectory;
     }
 
@@ -47,6 +53,12 @@ public class XmlDomClosureConfig implements ClosureBuildConfiguration {
             return Collections.singletonList(entrypoint.getValue());
         }
         return Arrays.stream(entrypoint.getChildren()).map(Xpp3Dom::getValue).collect(Collectors.toList());
+    }
+
+    @Override
+    public DependencyOptions.DependencyMode getDependencyMode() {
+        Xpp3Dom elt = dom.getChild("dependencyMode");
+        return elt == null ? defaultDependencyMode : DependencyOptions.DependencyMode.valueOf(elt.getValue());
     }
 
     @Override

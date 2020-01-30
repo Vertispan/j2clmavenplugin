@@ -8,6 +8,7 @@ import java.util.logging.Level;
 
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
+import com.google.javascript.jscomp.DependencyOptions;
 import net.cardosi.mojo.cache.CachedProject;
 import net.cardosi.mojo.cache.DiskCache;
 import org.apache.maven.artifact.Artifact;
@@ -20,9 +21,6 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.DefaultProjectBuildingRequest;
 import org.apache.maven.project.ProjectBuildingException;
 import org.apache.maven.project.ProjectBuildingRequest;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -64,7 +62,37 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
     @Parameter
     protected List<String> tests;
 
-    @Parameter(defaultValue = "BUNDLE")
+    /**
+     * Describes how the output should be built - presently supports five modes, four of which are closure-compiler
+     * "compilationLevel" argument options, and an additional special case for J2cl-base applcations. The quoted
+     * descriptions here explain how closure-compiler defines them.
+     * <ul>
+     *     <li>
+     *         {@code ADVANCED_OPTIMIZATIONS} - "ADVANCED_OPTIMIZATIONS aggressively reduces code size by renaming
+     *         function names and variables, removing code which is never called, etc." This is typically what is
+     *         expected for production builds.
+     *     </li>
+     *     <li>
+     *         {@code SIMPLE_OPTIMIZATIONS} - "SIMPLE_OPTIMIZATIONS performs transformations to the input JS that
+     *         do not require any changes to JS that depend on the input JS." Generally not useful in this plugin -
+     *         slower than BUNDLE, much bigger than ADVANCED_OPTIMIZATIONS
+     *     </li>
+     *     <li>
+     *         {@code WHITESPACE_ONLY} - "WHITESPACE_ONLY removes comments and extra whitespace in the input JS."
+     *         Generally not useful in this plugin - slower than BUNDLE, much bigger than ADVANCED_OPTIMIZATIONS
+     *     </li>
+     *     <li>
+     *         {@code BUNDLE} - "Simply orders and concatenates files to the output." The GWT fork of closure also
+     *         prepends define statements, and provides wiring for sourcemaps.
+     *     </li>
+     *     <li>
+     *         {@code BUNDLE_JAR} - Not a "real" closure-compiler option. but instead invokes BUNDLE on each
+     *         classpath entry and generates a single JS file which will load those bundled files in order. Enables
+     *         the compiler to cache results for each dependency, rather than re-generate a single large JS file.
+     *     </li>
+     * </ul>
+     */
+    @Parameter(defaultValue = CachedProject.BUNDLE_JAR, property = "compilationLevel")
     protected String compilationLevel;
 
     @Parameter
@@ -91,6 +119,10 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
     @Parameter(defaultValue = "htmlunit")
     protected String webdriver;
 
+    // exists only as long as entrypoint does, expect this to be removed soon
+    @Deprecated
+    @Parameter(defaultValue = "SORT_ONLY")
+    protected String dependencyMode;
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
@@ -187,7 +219,11 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
                 TestConfig config = new TestConfig(testClass, this);
 
                 // build this project normally
-                t.registerAsApp(config).join();
+                if (getCompilationLevel().equalsIgnoreCase(CachedProject.BUNDLE_JAR)) {
+                    t.registerAsChunkedApp(config).join();
+                } else {
+                    t.registerAsApp(config).join();
+                }
 
                 getLog().info("Test started: " + config.getTest());
                 // write a simple html file to that output dir
@@ -268,33 +304,14 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
     }
 
     private void analyzeLog(WebDriver driver) {
-        logMessageFromDriver(LogType.BROWSER,
-            driver);
-        // in case we got a closure message on the html page, grab it & print it to the log
-        if (driver.getPageSource().contains("closureTestRunnerLog")) {
-            this.logMessageFromDriverHTML(driver.getPageSource());
-        }
-    }
-
-    private void logMessageFromDriver(String logType, WebDriver driver) {
         if (driver != null) {
-            driver.manage().logs().get(logType).getAll().forEach(l -> {
+            driver.manage().logs().get(LogType.BROWSER).getAll().forEach(l -> {
                     if (Level.SEVERE.equals(l.getLevel())) {
-                        getLog().error(String.format(cleanForMavenLog(l.getMessage())));
+                        getLog().error(cleanForMavenLog(l.getMessage()));
                     } else {
-                        getLog().info(String.format(cleanForMavenLog(l.getMessage())));
+                        getLog().info(cleanForMavenLog(l.getMessage()));
                     }
                 });
-        }
-    }
-
-    private void logMessageFromDriverHTML(String pageSource) {
-        Document document = Jsoup.parseBodyFragment(pageSource);
-        Element body = document.body();
-        Element closureTestRunningLog = document.getElementById("closureTestRunnerLog");
-        if (!Objects.isNull(closureTestRunningLog)) {
-            closureTestRunningLog.getElementsByTag("div")
-                .forEach(t -> getLog().error(cleanForMavenLog(t.text())));
         }
     }
 
@@ -389,6 +406,11 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
     }
 
     @Override
+    public DependencyOptions.DependencyMode getDependencyMode() {
+        return DependencyOptions.DependencyMode.valueOf(dependencyMode);
+    }
+
+    @Override
     public boolean getRewritePolyfills() {
         return rewritePolyfills;
     }
@@ -410,7 +432,15 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
 
         @Override
         public List<String> getEntrypoint() {
+            if (getDependencyMode() == DependencyOptions.DependencyMode.SORT_ONLY) {
+                return Collections.emptyList();
+            }
             return Collections.singletonList("javatests." + test + "_AdapterSuite");
+        }
+
+        @Override
+        public DependencyOptions.DependencyMode getDependencyMode() {
+            return wrapped.getDependencyMode();
         }
 
         @Override

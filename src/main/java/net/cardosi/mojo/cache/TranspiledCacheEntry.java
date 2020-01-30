@@ -49,6 +49,10 @@ public class TranspiledCacheEntry {
         return dir;
     }
 
+    private File file(String name) {
+        return new File(cacheDir, name);
+    }
+
     public File getBytecodeDir() {
         return dir("bytecode");
     }
@@ -69,7 +73,15 @@ public class TranspiledCacheEntry {
         return dir("transpiled-sources");
     }
 
+    public File getExternsFile() {
+        return file("externs.js");
+    }
+
     public File getClosureOutputDir(ClosureBuildConfiguration config) {
         return dir("closure-output-" + config.hash());
+    }
+
+    public File getProjBundleDir() {
+        return dir("proj-bundle");
     }
 }

@@ -1,5 +1,7 @@
 package net.cardosi.mojo;
 
+import com.google.javascript.jscomp.DependencyOptions;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -13,6 +15,7 @@ import java.util.Set;
 public interface ClosureBuildConfiguration {
     String getClasspathScope();
 
+    @Deprecated
     List<String> getEntrypoint();
 
     Set<String> getExterns();
@@ -25,6 +28,9 @@ public interface ClosureBuildConfiguration {
 
     String getCompilationLevel();
 
+    @Deprecated
+    DependencyOptions.DependencyMode getDependencyMode();
+
     boolean getRewritePolyfills();
 
 //    List<String> getIncludedJsZips();
@@ -35,6 +41,7 @@ public interface ClosureBuildConfiguration {
         Hash hash = new Hash();
         hash.append(getClasspathScope());
         getEntrypoint().forEach(s -> hash.append(s));
+        hash.append(getDependencyMode().name());
         getDefines()
                 .forEach((key, value) -> {
                     hash.append(key);

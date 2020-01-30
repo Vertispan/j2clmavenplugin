@@ -1,5 +1,6 @@
 package net.cardosi.mojo;
 
+import com.google.javascript.jscomp.DependencyOptions;
 import net.cardosi.mojo.cache.CachedProject;
 import net.cardosi.mojo.cache.DiskCache;
 import org.apache.maven.artifact.Artifact;
@@ -42,9 +43,10 @@ import java.util.*;
  *     in order for Chrome's sourcemap implementation to work correctly.
  * </p>
  * <p>
- *     Entrypoints can be specified by their JS name, indicating where the compiler should start when
+ *     DEPRECATED: Entrypoints can be specified by their JS name, indicating where the compiler should start when
  *     pruning and optimizing the output. This should either be a plain JS/Closure module, or should be a
- *     Java class with a matching .native.js to instantiate the class on startup.
+ *     Java class with a matching .native.js to instantiate the class on startup. This feature will be removed
+ *     soon, but may support being re-added through extra closure-compiler flags.
  * </p>
  * <p>
  *     Closure defines (or J2cl/GWT System Properties) can be provided as well. There are some defaults,
@@ -84,10 +86,41 @@ public class BuildMojo extends AbstractBuildMojo implements ClosureBuildConfigur
     @Parameter
     protected Set<String> externs = new TreeSet<>();
 
+    @Deprecated
     @Parameter
     protected List<String> entrypoint = new ArrayList<>();
 
-    @Parameter(defaultValue = "ADVANCED")
+    /**
+     * Describes how the output should be built - presently supports five modes, four of which are closure-compiler
+     * "compilationLevel" argument options, and an additional special case for J2cl-base applcations. The quoted
+     * descriptions here explain how closure-compiler defines them.
+     * <ul>
+     *     <li>
+     *         {@code ADVANCED_OPTIMIZATIONS} - "ADVANCED_OPTIMIZATIONS aggressively reduces code size by renaming
+     *         function names and variables, removing code which is never called, etc." This is typically what is
+     *         expected for production builds.
+     *     </li>
+     *     <li>
+     *         {@code SIMPLE_OPTIMIZATIONS} - "SIMPLE_OPTIMIZATIONS performs transformations to the input JS that
+     *         do not require any changes to JS that depend on the input JS." Generally not useful in this plugin -
+     *         slower than BUNDLE, much bigger than ADVANCED_OPTIMIZATIONS
+     *     </li>
+     *     <li>
+     *         {@code WHITESPACE_ONLY} - "WHITESPACE_ONLY removes comments and extra whitespace in the input JS."
+     *         Generally not useful in this plugin - slower than BUNDLE, much bigger than ADVANCED_OPTIMIZATIONS
+     *     </li>
+     *     <li>
+     *         {@code BUNDLE} - "Simply orders and concatenates files to the output." The GWT fork of closure also
+     *         prepends define statements, and provides wiring for sourcemaps.
+     *     </li>
+     *     <li>
+     *         {@code BUNDLE_JAR} - Not a "real" closure-compiler option. but instead invokes BUNDLE on each
+     *         classpath entry and generates a single JS file which will load those bundled files in order. Enables
+     *         the compiler to cache results for each dependency, rather than re-generate a single large JS file.
+     *     </li>
+     * </ul>
+     */
+    @Parameter(defaultValue = "ADVANCED_OPTIMIZATIONS", property = "compilationLevel")
     protected String compilationLevel;
 
     @Parameter
@@ -100,8 +133,21 @@ public class BuildMojo extends AbstractBuildMojo implements ClosureBuildConfigur
     @Parameter(defaultValue = "false")
     protected boolean rewritePolyfills;
 
+    @Deprecated
+    @Parameter(defaultValue = "SORT_ONLY")
+    protected String dependencyMode;
+
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
+        if (!getEntrypoint().isEmpty()) {
+            getLog().warn("WARNING!");
+            getLog().warn("WARNING!");
+            getLog().warn("WARNING!");
+            getLog().warn("<entrypoint> support will be removed soon, please remove this from your configuration. See https://github.com/Vertispan/j2clmavenplugin/issues/26 for discussion on this.");
+            getLog().warn("WARNING!");
+            getLog().warn("WARNING!");
+            getLog().warn("WARNING!");
+        }
         PluginDescriptor pluginDescriptor = (PluginDescriptor) getPluginContext().get("pluginDescriptor");
         String pluginVersion = pluginDescriptor.getVersion();
 
@@ -136,7 +182,11 @@ public class BuildMojo extends AbstractBuildMojo implements ClosureBuildConfigur
         try {
             CachedProject e = loadDependenciesIntoCache(project.getArtifact(), project, false, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, getDependencyReplacements(), "* ");
             diskCache.release();
-            e.registerAsApp(this).join();
+            if (getCompilationLevel().equalsIgnoreCase(CachedProject.BUNDLE_JAR)) {
+                e.registerAsChunkedApp(this).join();
+            } else {
+                e.registerAsApp(this).join();
+            }
         } catch (ProjectBuildingException | IOException e) {
             throw new MojoExecutionException("Failed to build project structure", e);
         }
@@ -155,6 +205,11 @@ public class BuildMojo extends AbstractBuildMojo implements ClosureBuildConfigur
     @Override
     public List<String> getEntrypoint() {
         return entrypoint;
+    }
+
+    @Override
+    public DependencyOptions.DependencyMode getDependencyMode() {
+        return DependencyOptions.DependencyMode.valueOf(dependencyMode);
     }
 
     @Override

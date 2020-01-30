@@ -34,7 +34,6 @@
                   <replacement>dependency-replacements:gwt-entrypoint:1.0</replacement>
                 </dependencyReplacement>
               </dependencyReplacements>
-              <entrypoint>example.App</entrypoint>
             </configuration>
           </execution>
         </executions>
