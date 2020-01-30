@@ -93,7 +93,7 @@ public class SingleCompiler {
         baseJ2clArgs = J2clTranspilerOptions.newBuilder()
                 .setClasspaths(options.getBytecodeClasspath())
                 .setOutput(Paths.get(intermediateJsPath))
-                .setDeclareLegacyNamespace(options.isDeclareLegacyNamespaces())
+//                .setDeclareLegacyNamespace(options.isDeclareLegacyNamespaces())
                 .setSources(Collections.emptyList())
                 .setNativeSources(Collections.emptyList())
                 .setEmitReadableLibraryInfo(false)

@@ -24,7 +24,6 @@ public class J2cl {
                         .collect(Collectors.toList())
                 )
                 .setOutput(jsOutDir.toPath())
-                .setDeclareLegacyNamespace(false)//TODO parameterize these?
                 .setEmitReadableLibraryInfo(false)
                 .setEmitReadableSourceMap(false)
                 .setGenerateKytheIndexingMetadata(false);

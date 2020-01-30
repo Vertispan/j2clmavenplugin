@@ -6,7 +6,7 @@
 
   <groupId>com.vertispan.j2cl</groupId>
   <artifactId>j2cl-maven-plugin</artifactId>
-  <version>0.11-SNAPSHOT</version>
+  <version>0.12-SNAPSHOT</version>
   <packaging>maven-plugin</packaging>
 
   <name>J2CL Maven Plugin</name>
@@ -26,8 +26,8 @@
     <takari.lifecycle.plugin.version>1.13.9</takari.lifecycle.plugin.version>
     <jsoup.plugin.version>1.12.1</jsoup.plugin.version>
     <!-- Builder dependencies versions -->
-    <transpiler.version>0.5-SNAPSHOT</transpiler.version>
-    <gwt.incompatible.stripper.version>0.5-SNAPSHOT</gwt.incompatible.stripper.version>
+    <transpiler.version>0.6-SNAPSHOT</transpiler.version>
+    <gwt.incompatible.stripper.version>0.6-SNAPSHOT</gwt.incompatible.stripper.version>
     <closure.compiler.unshaded.version>0.1-SNAPSHOT</closure.compiler.unshaded.version>
     <commons.codec.version>1.11</commons.codec.version>
     <!-- Test -->
