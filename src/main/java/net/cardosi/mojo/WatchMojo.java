@@ -70,7 +70,7 @@ public class WatchMojo extends AbstractBuildMojo {
                 getFileWithMavenCoords(jsinteropAnnotationsJar),
                 getFileWithMavenCoords("javax.annotation:jsr250-api:1.0"),
                 getFileWithMavenCoords("com.vertispan.jsinterop:base:1.0.0-SNAPSHOT"),//TODO stop hardcoding this when goog releases a "base" which actually works on both platforms
-                getFileWithMavenCoords("com.vertispan.j2cl:junit-processor:0.5-SNAPSHOT"),
+                getFileWithMavenCoords("com.vertispan.j2cl:junit-processor:0.6-SNAPSHOT"),
                 getFileWithMavenCoords(junitAnnotations)
         );
 

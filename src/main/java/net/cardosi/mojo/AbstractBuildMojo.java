@@ -38,27 +38,27 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
     @Component
     protected ProjectBuilder projectBuilder;
 
-    @Parameter(defaultValue = "com.vertispan.j2cl:javac-bootstrap-classpath:0.5-SNAPSHOT", required = true)
+    @Parameter(defaultValue = "com.vertispan.j2cl:javac-bootstrap-classpath:0.6-SNAPSHOT", required = true)
     protected String javacBootstrapClasspathJar;
 
-    @Parameter(defaultValue = "com.vertispan.j2cl:jre:0.5-SNAPSHOT", required = true)
+    @Parameter(defaultValue = "com.vertispan.j2cl:jre:0.6-SNAPSHOT", required = true)
     protected String jreJar;
-    @Parameter(defaultValue = "com.vertispan.j2cl:jre:zip:jszip:0.5-SNAPSHOT", required = true)
+    @Parameter(defaultValue = "com.vertispan.j2cl:jre:zip:jszip:0.6-SNAPSHOT", required = true)
     protected String jreJsZip;
 
-    @Parameter(defaultValue = "com.vertispan.j2cl:bootstrap:zip:jszip:0.5-SNAPSHOT", required = true)
+    @Parameter(defaultValue = "com.vertispan.j2cl:bootstrap:zip:jszip:0.6-SNAPSHOT", required = true)
     protected String bootstrapJsZip;
 
-    @Parameter(defaultValue = "com.vertispan.j2cl:closure-test:zip:jszip:0.5-SNAPSHOT", required = true)
+    @Parameter(defaultValue = "com.vertispan.j2cl:closure-test:zip:jszip:0.6-SNAPSHOT", required = true)
     protected String testJsZip;
 
-    @Parameter(defaultValue = "com.vertispan.j2cl:gwt-internal-annotations:0.5-SNAPSHOT", required = true)
+    @Parameter(defaultValue = "com.vertispan.j2cl:gwt-internal-annotations:0.6-SNAPSHOT", required = true)
     protected String internalAnnotationsJar;
 
     @Parameter(defaultValue = "com.google.jsinterop:jsinterop-annotations:HEAD-SNAPSHOT", required = true)
     protected String jsinteropAnnotationsJar;
 
-    @Parameter(defaultValue = "com.vertispan.j2cl:junit-annotations:0.5-SNAPSHOT", required = true)
+    @Parameter(defaultValue = "com.vertispan.j2cl:junit-annotations:0.6-SNAPSHOT", required = true)
     protected String junitAnnotations;
 
     // optional, if not specified, we'll use the defaults
