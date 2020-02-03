@@ -55,7 +55,7 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
     @Parameter(defaultValue = "com.vertispan.j2cl:gwt-internal-annotations:0.6-SNAPSHOT", required = true)
     protected String internalAnnotationsJar;
 
-    @Parameter(defaultValue = "com.google.jsinterop:jsinterop-annotations:HEAD-SNAPSHOT", required = true)
+    @Parameter(defaultValue = "com.google.jsinterop:jsinterop-annotations:2.0.0", required = true)
     protected String jsinteropAnnotationsJar;
 
     @Parameter(defaultValue = "com.vertispan.j2cl:junit-annotations:0.6-SNAPSHOT", required = true)
