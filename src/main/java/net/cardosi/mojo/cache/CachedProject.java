@@ -232,14 +232,18 @@ public class CachedProject {
 
 //            long start = System.currentTimeMillis();
             return CompletableFuture.<TranspiledCacheEntry>supplyAsync(() -> {
-
+                // try to create the step dir. if we succeed, we own it, if we fail, someone already made it, and we wait for them to finish
                 while (!stepDir.mkdirs()) {
                     // wait for complete/failed markers, if either exists, we can bail early
-                    Path cacheDirPath = Paths.get(dir.getCacheDir().toURI());
-                    try (WatchService w = cacheDirPath.getFileSystem().newWatchService()) {
-                        cacheDirPath.register(w, StandardWatchEventKinds.ENTRY_CREATE);
+                    Path stepDirPath = stepDir.toPath();
+                    try (WatchService w = stepDirPath.getFileSystem().newWatchService()) {
+                        stepDirPath.register(w, StandardWatchEventKinds.ENTRY_CREATE);
                         // first check to see if it exists, then wait for next event to occur
                         do {
+                            if (!stepDir.exists()) {
+                                //somehow vanished and we didn't get an exception
+                                break;
+                            }
                             if (completeMarker.exists()) {
                                 //                            System.out.println(getArtifactKey() + " " + step +" ready after " + (System.currentTimeMillis() - start) + "ms of waiting");
                                 return dir;
@@ -250,12 +254,15 @@ public class CachedProject {
                                 throw new IllegalStateException("Step " + step + " failed in some other process/thread " + getArtifactKey() + " " + dir.getHash());
                             }
 
-                            // if not, keep waiting and logging
+                            // if not, keep waiting and logging until one of them exists
                             // TODO provide a way to timeout and nuke the dir since no one seems to own it
-                            System.out.println("Waiting 10s and then checking again if other thread/process finished " + getArtifactKey());
-                            w.poll(10, TimeUnit.SECONDS);
+                            System.out.println("Waiting 10s and then checking again if other thread/process finished " + getArtifactKey() + " " + dir.getHash() + " " + step);
+                            WatchKey key = w.poll(10, TimeUnit.SECONDS);
+                            key.reset();
+
                         } while (true);
                     } catch (NoSuchFileException ex) {
+                        // in this case, someone else canceled their work and deleted stepDir itself, causing an exception
                         //noinspection UnnecessaryContinue
                         continue;//try to make the directory again - explicit continue for readability
                     } catch (IOException | InterruptedException ex) {
@@ -320,8 +327,6 @@ public class CachedProject {
         hash().join();
 
         return getOrCreate(Step.AssembleOutput.name() + "-" + config.hash(), () -> {
-
-
             // For each child that matches the specified scopes, ask for the compiled js output. As this is the
             // full set of $specifiedScope dependencies for the current project, we actually don't need to j2cl
             // anything else, and just need to generate scope=compile bytecode for each of their dependencies
