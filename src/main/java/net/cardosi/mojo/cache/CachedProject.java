@@ -55,8 +55,7 @@ public class CachedProject {
 
     private final Map<String, CompletableFuture<TranspiledCacheEntry>> steps = new ConcurrentHashMap<>();
 
-    private boolean ignoreJavacFailure;
-    private Set<ClosureBuildConfiguration> registeredBuildTerminals = new HashSet<>();
+    private Set<Supplier<CompletableFuture<TranspiledCacheEntry>>> registeredBuildTerminals = new HashSet<>();
 
     public CachedProject(DiskCache diskCache, Artifact artifact, MavenProject currentProject, List<CachedProject> children, List<String> compileSourceRoots, List<Resource> resources) {
         this.diskCache = diskCache;
@@ -192,26 +191,18 @@ public class CachedProject {
         }
     }
 
-    public boolean isIgnoreJavacFailure() {
-        return ignoreJavacFailure;
-    }
-
-    public void setIgnoreJavacFailure(boolean ignoreJavacFailure) {
-        //TODO com.google.jsinterop:base, and make it configurable for other not-actually-compatible libs
-        this.ignoreJavacFailure = ignoreJavacFailure;
-    }
-
     public CompletableFuture<TranspiledCacheEntry> registerAsApp(ClosureBuildConfiguration config) {
-        registeredBuildTerminals.add(config);
+        Supplier<CompletableFuture<TranspiledCacheEntry>> supplier = () -> jscompWithScope(config);
+        registeredBuildTerminals.add(supplier);
 
         // if we're already compiled to this new terminal, then nothing will happen, otherwise we'll build everything
         // that needs building
-        return jscompWithScope(config);
+        return supplier.get();
     }
 
     private CompletableFuture<Void> build() {
         return CompletableFuture.allOf(
-                registeredBuildTerminals.stream().map(cfg -> jscompWithScope(cfg)).toArray(CompletableFuture[]::new)
+                registeredBuildTerminals.stream().map(Supplier::get).toArray(CompletableFuture[]::new)
         );
     }
 
@@ -463,9 +454,7 @@ public class CachedProject {
 
                 boolean j2clSuccess = j2cl.transpile(sourcesToCompile, nativeSources);
                 if (!j2clSuccess) {
-                    if (!isIgnoreJavacFailure()) {
-                        throw new IllegalStateException("j2cl failed, check log for details");
-                    }
+                    throw new IllegalStateException("j2cl failed, check log for details");
                 }
             }
 
@@ -525,9 +514,7 @@ public class CachedProject {
 //                System.out.println("step 3 " + project.getArtifactKey());
                 boolean javacSuccess = javac.compile(sourcesToCompile);
                 if (!javacSuccess) {
-                    if (!isIgnoreJavacFailure()) {
-                        throw new IllegalStateException("javac failed, check log for details");
-                    }
+                    throw new IllegalStateException("javac failed, check log for details");
                 }
             } catch (IOException e) {
                 e.printStackTrace();
