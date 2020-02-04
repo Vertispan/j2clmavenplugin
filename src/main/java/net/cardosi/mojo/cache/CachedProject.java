@@ -405,26 +405,6 @@ public class CachedProject {
             return entry;
         });
     }
-    static class InProcessJsCompRunner extends CommandLineRunner {
-
-        private final Compiler compiler;
-        private Integer exitCode;
-
-        InProcessJsCompRunner(String[] args, Compiler compiler) {
-            super(args);
-            this.compiler = compiler;
-            setExitCodeReceiver(exitCode -> {
-                this.exitCode = exitCode;
-                return null;
-            });
-        }
-
-        @Override
-        protected Compiler createCompiler() {
-            return compiler;
-        }
-    }
-
 
     private CompletableFuture<TranspiledCacheEntry> j2cl() {
         return getOrCreate(Step.TranspileSources.name(), () -> {
