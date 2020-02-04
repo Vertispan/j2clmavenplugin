@@ -5,9 +5,7 @@ import com.google.javascript.jscomp.Compiler;
 import com.google.javascript.jscomp.*;
 import net.cardosi.mojo.ClosureBuildConfiguration;
 import net.cardosi.mojo.Hash;
-import net.cardosi.mojo.tools.GwtIncompatiblePreprocessor;
-import net.cardosi.mojo.tools.J2cl;
-import net.cardosi.mojo.tools.Javac;
+import net.cardosi.mojo.tools.*;
 import org.apache.commons.io.FileUtils;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.ArtifactUtils;
@@ -342,17 +340,14 @@ public class CachedProject {
                     .collect(Collectors.toList());
         }, (reqs, entry) -> {
             //given these, jscomp everything (this includes ourself)
+            Closure closureCompiler = new Closure();
 
             PersistentInputStore persistentInputStore = diskCache.getPersistentInputStore();//TODO scope this per app? is that necessary?
 
             File closureOutputDir = entry.getClosureOutputDir(config);
 
-            Compiler jsCompiler = new Compiler(System.err);
-//            jsCompiler.setPersistentInputStore(persistentInputStore);
-
             CompilationLevel compilationLevel = CompilationLevel.fromString(config.getCompilationLevel());
 
-            List<String> jscompArgs = new ArrayList<>();
             //TODO pick another location if sourcemaps aren't going to be used
 
             File sources;
@@ -366,56 +361,12 @@ public class CachedProject {
                 try {
                     FileUtils.copyDirectory(new File(dir), sources);
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    throw new UncheckedIOException(e);
                 }
-
-                //add this dir as to be compiled
-//                jscompArgs.add("--js");
-//                jscompArgs.add(dir + "/**/*.js");
 
                 //TODO copy to somewhere with a consistent path instead so that we don't change the path each recompile,
                 //     then restore the persistent input store
             });
-            // add all to be compiled
-            jscompArgs.add("--js");
-            jscompArgs.add(sources + "/**/*.js");
-
-            //TODO scope=runtime jszips
-            //TODO unpack these so we can offer sourcemaps
-            diskCache.getExtraJsZips().forEach(file -> {
-                jscompArgs.add("--jszip");
-                jscompArgs.add(file.getAbsolutePath());
-            });
-
-            if (compilationLevel == CompilationLevel.BUNDLE) {
-                jscompArgs.add("--define");
-                jscompArgs.add("goog.ENABLE_DEBUG_LOADER=false");
-            }
-
-            for (Map.Entry<String, String> define : config.getDefines().entrySet()) {
-                jscompArgs.add("--define");
-                jscompArgs.add(define.getKey() + "=" + define.getValue());
-            }
-
-            for (String extern : config.getExterns()) {
-                jscompArgs.add("--externs");
-                jscompArgs.add(extern);
-            }
-
-            jscompArgs.add("--compilation_level");
-            jscompArgs.add(compilationLevel.name());
-
-            jscompArgs.add("--dependency_mode");
-            jscompArgs.add(DependencyOptions.DependencyMode.PRUNE.name());
-
-
-            jscompArgs.add("--language_out");
-            jscompArgs.add("ECMASCRIPT5");
-
-            for (String entrypoint : config.getEntrypoint()) {
-                jscompArgs.add("--entry_point");
-                jscompArgs.add(entrypoint);
-            }
 
             try {
                 Files.createDirectories(Paths.get(closureOutputDir.getAbsolutePath(), config.getInitialScriptFilename()).getParent());
@@ -423,34 +374,28 @@ public class CachedProject {
                 throw new UncheckedIOException("Failed to create closure output directory", e);
             }
 
-            jscompArgs.add("--js_output_file");
-            jscompArgs.add(closureOutputDir + "/" + config.getInitialScriptFilename());
+            Map<String, String> defines = new LinkedHashMap<>(config.getDefines());
 
-
-            //TODO bundles
-
-            InProcessJsCompRunner jscompRunner = new InProcessJsCompRunner(jscompArgs.toArray(new String[0]), jsCompiler);
-            if (!jscompRunner.shouldRunCompiler()) {
-                jscompArgs.forEach(System.out::println);
-                throw new IllegalStateException("Closure Compiler setup error, check log for details");
+            if (compilationLevel == CompilationLevel.BUNDLE) {
+                defines.putIfAbsent("goog.ENABLE_DEBUG_LOADER", "false");//TODO maybe overwrite instead?
             }
 
-            //TODO historically we didnt populate the persistent input store until this point, so put it here
-            //     if we restore it
+            boolean success = closureCompiler.compile(
+                    compilationLevel,
+                    DependencyOptions.DependencyMode.PRUNE,
+                    sources,
+                    diskCache.getExtraJsZips(),
+                    config.getEntrypoint(),
+                    defines,
+                    config.getExterns(),
+                    persistentInputStore,
+                    true,//TODO have this be passed in
+                    closureOutputDir + "/" + config.getInitialScriptFilename()
+            );
 
-            try {
-                jscompRunner.run();
-
-                if (jscompRunner.hasErrors() || jscompRunner.exitCode != 0) {
-                    throw new IllegalStateException("closure compiler failed, check log for details");
-                }
-            } finally {
-                if (jsCompiler.getModules() != null) {
-                    // clear out the compiler input for the next go-around
-                    jsCompiler.resetCompilerInput();
-                }
+            if (!success) {
+                throw new IllegalStateException("Closure Compiler failed, check log for details");
             }
-
 
             return entry;
         }).thenApply(entry -> {
