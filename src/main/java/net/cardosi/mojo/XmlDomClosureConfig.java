@@ -9,6 +9,7 @@ public class XmlDomClosureConfig implements ClosureBuildConfiguration {
     private final Xpp3Dom dom;
     private final String defaultScope;
     private final String defaultCompilationLevel;
+    private final boolean defaultRewritePolyfills;
     private final String defaultInitialScriptFilename;
 
     private final String defaultWebappDirectory;
@@ -17,13 +18,15 @@ public class XmlDomClosureConfig implements ClosureBuildConfiguration {
      * @param dom the dom from the plugin invocation
      * @param defaultScope the expected scope based on the goal detected
      * @param defaultCompilationLevel the default compilation level based on the goal detected
+     * @param defaultRewritePolyfills whether or not closure should rewrite polyfills by default
      * @param artifactId the artifactId of the project being wrapped here
      * @param defaultWebappDirectory the current invocation's launch dir, so we all serve from the same place
      */
-    public XmlDomClosureConfig(Xpp3Dom dom, String defaultScope, String defaultCompilationLevel, String artifactId, String defaultWebappDirectory) {
+    public XmlDomClosureConfig(Xpp3Dom dom, String defaultScope, String defaultCompilationLevel, boolean defaultRewritePolyfills, String artifactId, String defaultWebappDirectory) {
         this.dom = dom;
         this.defaultScope = defaultScope;
         this.defaultCompilationLevel = defaultCompilationLevel;
+        this.defaultRewritePolyfills = defaultRewritePolyfills;
         this.defaultInitialScriptFilename = artifactId + "/" + artifactId + ".js";
         this.defaultWebappDirectory = defaultWebappDirectory;
     }
@@ -91,5 +94,11 @@ public class XmlDomClosureConfig implements ClosureBuildConfiguration {
         //if users want this controlled globally, properties are prob the best option
         Xpp3Dom elt = dom.getChild("compilationLevel");
         return elt == null ? defaultCompilationLevel : elt.getValue();
+    }
+
+    @Override
+    public boolean getRewritePolyfills() {
+        Xpp3Dom elt = dom.getChild("rewritePolyfills");
+        return elt == null ? defaultRewritePolyfills : elt.getValue().equalsIgnoreCase("true");
     }
 }

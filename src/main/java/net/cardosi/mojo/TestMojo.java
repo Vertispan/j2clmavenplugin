@@ -70,6 +70,13 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
     @Parameter
     protected Map<String, String> defines = new TreeMap<>();
 
+    /**
+     * Closure flag: "Rewrite ES6 library calls to use polyfills provided by the compiler's runtime."
+     * Unlike in closure-compiler, defaults to false.
+     */
+    @Parameter(defaultValue = "false")
+    protected boolean rewritePolyfills;
+
     @Parameter(defaultValue = "false", property = "maven.test.skip")
     protected boolean skipTests;
 
@@ -368,6 +375,11 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
         return compilationLevel;
     }
 
+    @Override
+    public boolean getRewritePolyfills() {
+        return rewritePolyfills;
+    }
+
     private static class TestConfig implements ClosureBuildConfiguration {
 
         private final String test;
@@ -411,6 +423,11 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
         @Override
         public String getCompilationLevel() {
             return wrapped.getCompilationLevel();
+        }
+
+        @Override
+        public boolean getRewritePolyfills() {
+            return wrapped.getRewritePolyfills();
         }
 
         public String getTest() {

@@ -46,6 +46,13 @@ public class WatchMojo extends AbstractBuildMojo {
     @Parameter(defaultValue = "BUNDLE")
     protected String compilationLevel;
 
+    /**
+     * Closure flag: "Rewrite ES6 library calls to use polyfills provided by the compiler's runtime."
+     * Unlike in closure-compiler, defaults to false.
+     */
+    @Parameter(defaultValue = "false")
+    protected boolean rewritePolyfills;
+
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         PluginDescriptor pluginDescriptor = (PluginDescriptor) getPluginContext().get("pluginDescriptor");
@@ -107,7 +114,7 @@ public class WatchMojo extends AbstractBuildMojo {
                         for (String goal : execution.getGoals()) {
                             if (goal.equals("test") && shouldCompileTest()) {
                                 System.out.println("Found test " + execution);
-                                XmlDomClosureConfig config = new XmlDomClosureConfig(configuration, Artifact.SCOPE_TEST, compilationLevel, reactorProject.getArtifactId(), webappDirectory);
+                                XmlDomClosureConfig config = new XmlDomClosureConfig(configuration, Artifact.SCOPE_TEST, compilationLevel, rewritePolyfills, reactorProject.getArtifactId(), webappDirectory);
                                 CachedProject source = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, true, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_TEST, getDependencyReplacements(), "* ");
 
                                 // given that set of tasks, we'll chain one more on the end, and watch _that_ for changes
@@ -127,7 +134,7 @@ public class WatchMojo extends AbstractBuildMojo {
                                 apps.add(e);
                             } else if (goal.equals("build") && shouldCompileBuild()) {
                                 System.out.println("Found build " + execution);
-                                XmlDomClosureConfig config = new XmlDomClosureConfig(configuration, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, compilationLevel, reactorProject.getArtifactId(), webappDirectory);
+                                XmlDomClosureConfig config = new XmlDomClosureConfig(configuration, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, compilationLevel, rewritePolyfills, reactorProject.getArtifactId(), webappDirectory);
 
                                 // Load up all the dependencies in the requested scope for the current project
                                 CachedProject p = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, true, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, getDependencyReplacements(), "* ");

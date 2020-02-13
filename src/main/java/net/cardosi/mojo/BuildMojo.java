@@ -93,6 +93,13 @@ public class BuildMojo extends AbstractBuildMojo implements ClosureBuildConfigur
     @Parameter
     protected Map<String, String> defines = new TreeMap<>();
 
+    /**
+     * Closure flag: "Rewrite ES6 library calls to use polyfills provided by the compiler's runtime."
+     * Unlike in closure-compiler, defaults to false.
+     */
+    @Parameter(defaultValue = "false")
+    protected boolean rewritePolyfills;
+
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         PluginDescriptor pluginDescriptor = (PluginDescriptor) getPluginContext().get("pluginDescriptor");
@@ -169,5 +176,10 @@ public class BuildMojo extends AbstractBuildMojo implements ClosureBuildConfigur
     @Override
     public String getCompilationLevel() {
         return compilationLevel;
+    }
+
+    @Override
+    public boolean getRewritePolyfills() {
+        return rewritePolyfills;
     }
 }

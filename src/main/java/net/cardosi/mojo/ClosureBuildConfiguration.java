@@ -26,6 +26,8 @@ public interface ClosureBuildConfiguration {
 
     String getCompilationLevel();
 
+    boolean getRewritePolyfills();
+
 //    List<String> getIncludedJsZips();
 
     default String hash() {

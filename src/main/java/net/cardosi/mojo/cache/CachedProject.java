@@ -385,7 +385,8 @@ public class CachedProject {
                     defines,
                     config.getExterns(),
                     persistentInputStore,
-                    true,//TODO have this be passed in
+                    true,//TODO have this be passed in,
+                    config.getRewritePolyfills(),
                     closureOutputDir + "/" + config.getInitialScriptFilename()
             );
 

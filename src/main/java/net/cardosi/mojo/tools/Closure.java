@@ -20,6 +20,7 @@ public class Closure {
             Collection<String> externFiles,
             PersistentInputStore persistentInputStore,
             boolean exportTestFunctions,
+            boolean rewritePolyfills,
             String jsOutputFile
     ) {
         List<String> jscompArgs = new ArrayList<>();
@@ -60,11 +61,12 @@ public class Closure {
 
         jscompArgs.addAll(Arrays.asList(//TODO parameterize?
                 "--jscomp_off",
-                "analyzerChecks"
+                "analyzerChecks",
 //                    "--jscomp_off",
 //                    "JSC_UNKNOWN_EXPR_TYPE",
 //                    "--jscomp_off",
-//                    "JSC_STRICT_INEXISTENT_PROPERTY"
+//                    "JSC_STRICT_INEXISTENT_PROPERTY",
+                "--rewrite_polyfills=" + rewritePolyfills
         ));
 
         for (String entrypoint : entrypoints) {
