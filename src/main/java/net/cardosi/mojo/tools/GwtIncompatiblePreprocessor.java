@@ -1,5 +1,6 @@
 package net.cardosi.mojo.tools;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.j2cl.common.FrontendUtils;
 import com.google.j2cl.common.FrontendUtils.FileInfo;
 import com.google.j2cl.common.Problems;
@@ -7,6 +8,7 @@ import com.google.j2cl.tools.gwtincompatible.JavaPreprocessor;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
@@ -31,7 +33,7 @@ public class GwtIncompatiblePreprocessor {
 
         List<FileInfo> result = new ArrayList<>();
         File processed = File.createTempFile("preprocessed", ".srcjar");
-        try (FileSystem out = FrontendUtils.initZipOutput(processed.getAbsolutePath(), problems)) {
+        try (FileSystem out = initZipOutput(processed.getAbsolutePath(), problems)) {
 
             JavaPreprocessor.preprocessFiles(unprocessedFiles, out.getPath("/"), problems);
 
@@ -62,5 +64,26 @@ public class GwtIncompatiblePreprocessor {
             processed.delete();
         }
         return result;
+    }
+
+    // copied from com.google.j2cl.tools.gwtincompatible.GwtIncompatibleStripper, since it is no longer part of FrontendUtils
+    private static FileSystem initZipOutput(String output, Problems problems) {
+        Path outputPath = Paths.get(output);
+        if (Files.isDirectory(outputPath)) {
+            problems.fatal(Problems.FatalError.OUTPUT_LOCATION, outputPath);
+        }
+
+        // Ensures that we will not fail if the zip already exists.
+        outputPath.toFile().delete();
+        outputPath.toFile().getParentFile().mkdirs();
+
+        try {
+            return FileSystems.newFileSystem(
+                    URI.create("jar:" + outputPath.toAbsolutePath().toUri()),
+                    ImmutableMap.of("create", "true"));
+        } catch (IOException e) {
+            problems.fatal(Problems.FatalError.CANNOT_CREATE_ZIP, outputPath, e.getMessage());
+            return null;
+        }
     }
 }
