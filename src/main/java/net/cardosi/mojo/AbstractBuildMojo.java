@@ -7,7 +7,6 @@ import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.ArtifactUtils;
 import org.apache.maven.artifact.resolver.filter.ScopeArtifactFilter;
 import org.apache.maven.execution.MavenSession;
-import org.apache.maven.plugin.BuildPluginManager;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -26,10 +25,9 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public abstract class AbstractBuildMojo extends AbstractCacheMojo {
-    @Parameter( defaultValue = "${session}", readonly = true )
+    @Parameter( defaultValue = "${session}", readonly = true)
     protected MavenSession mavenSession;
 
     @Parameter(defaultValue = "${project}", readonly = true, required = true)
@@ -38,27 +36,27 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
     @Component
     protected ProjectBuilder projectBuilder;
 
-    @Parameter(defaultValue = "com.vertispan.j2cl:javac-bootstrap-classpath:0.6-SNAPSHOT", required = true)
+    @Parameter(defaultValue = "com.vertispan.j2cl:javac-bootstrap-classpath:" + Versions.J2CL_VERSION, required = true)
     protected String javacBootstrapClasspathJar;
 
-    @Parameter(defaultValue = "com.vertispan.j2cl:jre:0.6-SNAPSHOT", required = true)
+    @Parameter(defaultValue = "com.vertispan.j2cl:jre:" + Versions.J2CL_VERSION, required = true)
     protected String jreJar;
-    @Parameter(defaultValue = "com.vertispan.j2cl:jre:zip:jszip:0.6-SNAPSHOT", required = true)
+    @Parameter(defaultValue = "com.vertispan.j2cl:jre:zip:jszip:" + Versions.J2CL_VERSION, required = true)
     protected String jreJsZip;
 
-    @Parameter(defaultValue = "com.vertispan.j2cl:bootstrap:zip:jszip:0.6-SNAPSHOT", required = true)
+    @Parameter(defaultValue = "com.vertispan.j2cl:bootstrap:zip:jszip:" + Versions.J2CL_VERSION, required = true)
     protected String bootstrapJsZip;
 
-    @Parameter(defaultValue = "com.vertispan.j2cl:closure-test:zip:jszip:0.6-SNAPSHOT", required = true)
+    @Parameter(defaultValue = "com.vertispan.j2cl:closure-test:zip:jszip:" + Versions.J2CL_VERSION, required = true)
     protected String testJsZip;
 
-    @Parameter(defaultValue = "com.vertispan.j2cl:gwt-internal-annotations:0.6-SNAPSHOT", required = true)
+    @Parameter(defaultValue = "com.vertispan.j2cl:gwt-internal-annotations:" + Versions.J2CL_VERSION, required = true)
     protected String internalAnnotationsJar;
 
     @Parameter(defaultValue = "com.google.jsinterop:jsinterop-annotations:2.0.0", required = true)
     protected String jsinteropAnnotationsJar;
 
-    @Parameter(defaultValue = "com.vertispan.j2cl:junit-annotations:0.6-SNAPSHOT", required = true)
+    @Parameter(defaultValue = "com.vertispan.j2cl:junit-annotations:" + Versions.J2CL_VERSION, required = true)
     protected String junitAnnotations;
 
     // optional, if not specified, we'll use the defaults
@@ -66,8 +64,8 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
     protected List<DependencyReplacement> dependencyReplacements;
 
     private List<DependencyReplacement> defaultDependencyReplacements = Arrays.asList(
-            new DependencyReplacement("com.google.jsinterop:base", "com.vertispan.jsinterop:base:1.0.0-SNAPSHOT"),
-            new DependencyReplacement("org.realityforge.com.google.jsinterop:base", "com.vertispan.jsinterop:base:1.0.0-SNAPSHOT"),
+            new DependencyReplacement("com.google.jsinterop:base", "com.vertispan.jsinterop:base:" + Versions.VERTISPAN_JSINTEROP_BASE_VERSION),
+            new DependencyReplacement("org.realityforge.com.google.jsinterop:base", "com.vertispan.jsinterop:base:" + Versions.VERTISPAN_JSINTEROP_BASE_VERSION),
             new DependencyReplacement("com.google.gwt:gwt-user", null),
             new DependencyReplacement("com.google.gwt:gwt-dev", null),
             new DependencyReplacement("com.google.gwt:gwt-servlet", null)

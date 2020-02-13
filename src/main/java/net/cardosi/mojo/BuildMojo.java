@@ -111,8 +111,7 @@ public class BuildMojo extends AbstractBuildMojo implements ClosureBuildConfigur
                 getFileWithMavenCoords(jreJar),
                 getFileWithMavenCoords(internalAnnotationsJar),
                 getFileWithMavenCoords(jsinteropAnnotationsJar),
-                getFileWithMavenCoords("javax.annotation:jsr250-api:1.0"),
-                getFileWithMavenCoords("com.vertispan.jsinterop:base:1.0.0-SNAPSHOT")//TODO stop hardcoding this when goog releases a "base" which actually works on both platforms
+                getFileWithMavenCoords("com.vertispan.jsinterop:base:" + Versions.VERTISPAN_JSINTEROP_BASE_VERSION)//TODO stop hardcoding this when goog releases a "base" which actually works on both platforms
         );
 
         List<File> extraJsZips = Arrays.asList(
