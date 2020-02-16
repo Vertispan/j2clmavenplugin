@@ -249,7 +249,9 @@ public class CachedProject {
                             // TODO provide a way to timeout and nuke the dir since no one seems to own it
                             System.out.println("Waiting 10s and then checking again if other thread/process finished " + getArtifactKey() + " " + dir.getHash() + " " + step);
                             WatchKey key = w.poll(10, TimeUnit.SECONDS);
-                            key.reset();
+                            if (key != null) {
+                                key.reset();
+                            }
 
                         } while (true);
                     } catch (NoSuchFileException ex) {
