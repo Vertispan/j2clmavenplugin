@@ -1,7 +1,6 @@
 package net.cardosi.mojo.cache;
 
 import com.google.j2cl.common.FrontendUtils;
-import com.google.javascript.jscomp.Compiler;
 import com.google.javascript.jscomp.*;
 import net.cardosi.mojo.ClosureBuildConfiguration;
 import net.cardosi.mojo.Hash;
@@ -557,7 +556,8 @@ public class CachedProject {
         });
     }
 
-    private CompletableFuture<TranspiledCacheEntry> generatedSources() {
+    // this is public since we need to generate sources to see what tests we run
+    public CompletableFuture<TranspiledCacheEntry> generatedSources() {
         return getOrCreate(Step.ProcessAnnotations.name(), () -> {
             // depend on other projects with sources mapped, and only ask for "generated sources" so that we can get their unstripped bytecode
             return children.stream()

@@ -1,7 +1,12 @@
 package net.cardosi.mojo;
 
 import com.google.common.io.CharStreams;
+
+import java.io.*;
 import java.util.logging.Level;
+
+import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
 import net.cardosi.mojo.cache.CachedProject;
 import net.cardosi.mojo.cache.DiskCache;
 import org.apache.maven.artifact.Artifact;
@@ -12,10 +17,8 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.DefaultProjectBuildingRequest;
-import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.ProjectBuildingException;
 import org.apache.maven.project.ProjectBuildingRequest;
-import org.apache.maven.shared.utils.io.DirectoryScanner;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -27,14 +30,9 @@ import org.openqa.selenium.logging.LogType;
 import org.openqa.selenium.logging.LoggingPreferences;
 import org.openqa.selenium.support.ui.FluentWait;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.UncheckedIOException;
 import java.nio.file.*;
 import java.time.Duration;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Mojo(name = "test", requiresDependencyResolution = ResolutionScope.TEST)
 public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfiguration {
@@ -134,18 +132,56 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
 
 
         try {
+            // Build the dependency tree for the project itself. Note that this picks up the scope of the test side of things, but uses the app sources, which isn't exactly right.
             CachedProject source = loadDependenciesIntoCache(project.getArtifact(), project, false, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_TEST, getDependencyReplacements(), "* ");
 
-            // given that set of tasks, we'll chain one more on the end, and watch _that_ for changes
+            // Given that set of tasks, we'll chain one more on the end - this is the one that will have the actual test sources+resources. To be fully correct,
+            // only this should have the scope=test deps on it
             List<CachedProject> children = new ArrayList<>(source.getChildren());
             children.add(source);
             CachedProject e = new CachedProject(diskCache, project.getArtifact(), project, children, project.getTestCompileSourceRoots(), project.getTestResources());
 
             diskCache.release();
 
-            for (ClosureBuildConfiguration config : getTestConfigs(this, tests, project, includes, excludes)) {
-                e.registerAsApp(config).join();
-                getLog().info("Test started: " + ((TestConfig)config).getTest());
+            // Run the test's annotation processor so that we can find which tests were prepared, and treat each one as an entrypoint
+            File generatedSources = e.generatedSources().join().getAnnotationSourcesDir();
+            File testSummaryJson = new File(generatedSources, "test_summary.json");
+            if (!testSummaryJson.exists() || !testSummaryJson.isFile()) {
+                getLog().warn("No generated test_summary.json in generated output directory, either no tests, not annotated correctly or no junit-processor was on the classpath? " + testSummaryJson);
+                return;
+            }
+
+            // Grab the JSON that describes all tests, and use it to see which ones we'll actually run (user-specified tests, excludes, includes)
+            final String[] generatedTests;
+            try (final Reader reader = new BufferedReader(new FileReader(testSummaryJson))) {
+                generatedTests = new GsonBuilder().create().
+                        <Map<String, String[]>>fromJson(reader, new TypeToken<Map<String, String[]>>() {}.getType())
+                        .get("tests");
+            }
+
+            //TODO something like getTestConfigs to manage includes/exclude, manually specified tests
+
+            for (String generatedTest : generatedTests) {
+                // this is pretty hacky, TODO clean this up, put the intermediate js file somewhere nicer
+                String testFilePathWithoutSuffix = generatedTest.substring(0, generatedTest.length() - 3);
+                File testJs = new File(generatedSources, testFilePathWithoutSuffix + ".testsuite");
+                Path tmp = Files.createTempDirectory(testJs.getName() + "-dir");
+                Path copy = tmp.resolve(testFilePathWithoutSuffix + ".js");
+                copy.toFile().getParentFile().mkdirs();
+                Files.copy(testJs.toPath(), copy);
+                String testClass = testFilePathWithoutSuffix.replaceAll("/", ".");
+
+                // Synthesize a new project which only depends on the last one, and only contains the named test's .testsuite content, remade into a one-off JS file
+
+                ArrayList<CachedProject> finalChildren = new ArrayList<>(e.getChildren());
+                finalChildren.add(e);
+                CachedProject t = new CachedProject(diskCache, project.getArtifact(), project, finalChildren, Collections.singletonList(tmp.toString()), Collections.emptyList());
+                TestConfig config = new TestConfig(testClass, this);
+
+                // build this project normally
+                t.registerAsApp(config).join();
+
+                getLog().info("Test started: " + config.getTest());
                 // write a simple html file to that output dir
                 //TODO parallelize this - run once each is done, possibly concurrently
                 //TODO don't fail on the first test that doesn't work
@@ -183,13 +219,13 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
                     if (!isSuccess(driver)) {
                         // print the content of the browser console to the log
                         this.analyzeLog(driver);
-                        failedTests.put(((TestConfig) config).getTest(), startupHtmlFile);
+                        failedTests.put(config.getTest(), startupHtmlFile);
                         getLog().error("Test failed!");
                     } else {
                         getLog().info("Test passed!");
                     }
                 } catch (Exception ex) {
-                    failedTests.put(((TestConfig) config).getTest(), startupHtmlFile);
+                    failedTests.put(config.getTest(), startupHtmlFile);
                     if (!Objects.isNull(driver)) {
                         this.analyzeLog(driver);
                     }
@@ -297,46 +333,6 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
 
     private static boolean isFinished(WebDriver d) {
         return (Boolean) ((JavascriptExecutor) d).executeScript("return !!(window.G_testRunner && window.G_testRunner.isFinished())");
-    }
-
-    /**
-     * If specific tests are specified, will use them, otherwise will look for the tests through includes/excludes,
-     * and produce a build config each.
-     *
-     * The approach  to get tests is fundamentally wrong: instead, we need to run the annotation
-     * processor on the current sources (incrementally for j2cl:watch...), read out the test suites that it emitted,
-     * and generate our build config based on that.
-     * @param baseConfig initial config we start from, and use for pom-defined values
-     * @param tests the requested tests. If null or empty, we will (badly) try to generate this list
-     * @param project the project to scan to find tests
-     * @param includes a list of DirectoryScanner-compatible includes to apply to files that we might run as tests
-     * @param excludes a list of DirectoryScanner-compatible excludes to apply to files that we might run as tests, but shouldn't
-     * @return a list of configs that should be compiled (and potentially watched)
-     */
-    public static List<ClosureBuildConfiguration> getTestConfigs(ClosureBuildConfiguration baseConfig, List<String> tests, MavenProject project, List<String> includes, List<String> excludes) {
-        List<String> testEntrypoints;
-        if (tests == null || tests.isEmpty()) {
-            testEntrypoints = project.getTestCompileSourceRoots().stream()
-                    .flatMap(s -> getTestEntrypoints(new File(s), includes, excludes).stream())
-                    .distinct()
-                    .map(f -> f.replaceAll("\\.java$", "").replaceAll("/", "."))
-                    .collect(Collectors.toList());
-        } else {
-            testEntrypoints = tests;
-        }
-        return testEntrypoints.stream().map(name -> new TestConfig(name, baseConfig)).collect(Collectors.toList());
-    }
-
-    private static List<String> getTestEntrypoints(File testSourceDir, List<String> includes, List<String> excludes) {
-        DirectoryScanner scanner = new DirectoryScanner();
-        scanner.setBasedir(testSourceDir);
-        scanner.setIncludes(includes.toArray(new String[0]));
-        if (excludes != null) {
-            scanner.setExcludes(excludes.toArray(new String[0]));
-        }
-        scanner.scan();
-
-        return Arrays.asList(scanner.getIncludedFiles());
     }
 
     @Override

@@ -112,25 +112,26 @@ public class WatchMojo extends AbstractBuildMojo {
                         // wire up the given goals based on the provided configuration
                         for (String goal : execution.getGoals()) {
                             if (goal.equals("test") && shouldCompileTest()) {
-                                System.out.println("Found test " + execution);
-                                XmlDomClosureConfig config = new XmlDomClosureConfig(configuration, Artifact.SCOPE_TEST, compilationLevel, rewritePolyfills, reactorProject.getArtifactId(), webappDirectory);
-                                CachedProject source = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, true, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_TEST, getDependencyReplacements(), "* ");
-
-                                // given that set of tasks, we'll chain one more on the end, and watch _that_ for changes
-                                List<CachedProject> children = new ArrayList<>(source.getChildren());
-                                children.add(source);
-                                CachedProject e = new CachedProject(diskCache, reactorProject.getArtifact(), reactorProject, children, reactorProject.getTestCompileSourceRoots(), reactorProject.getTestResources());
-
-                                TestMojo.getTestConfigs(config, Collections.emptyList(), reactorProject,
-                                        //TODO read these from the config, that XmlDomClosureConfig looks pretty silly now
-                                        Arrays.asList("**/Test*.java", "**/*Test.java", "**/GwtTest*.java"),
-                                        Collections.emptyList()
-                                )
-                                        .stream()
-                                        .map(e::registerAsApp)
-                                        .forEach(futures::add);
-
-                                apps.add(e);
+                                System.out.println("Test watch temporarily disabled");
+//                                System.out.println("Found test " + execution);
+//                                XmlDomClosureConfig config = new XmlDomClosureConfig(configuration, Artifact.SCOPE_TEST, compilationLevel, rewritePolyfills, reactorProject.getArtifactId(), webappDirectory);
+//                                CachedProject source = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, true, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_TEST, getDependencyReplacements(), "* ");
+//
+//                                // given that set of tasks, we'll chain one more on the end, and watch _that_ for changes
+//                                List<CachedProject> children = new ArrayList<>(source.getChildren());
+//                                children.add(source);
+//                                CachedProject e = new CachedProject(diskCache, reactorProject.getArtifact(), reactorProject, children, reactorProject.getTestCompileSourceRoots(), reactorProject.getTestResources());
+//
+//                                TestMojo.getTestConfigs(config, Collections.emptyList(), reactorProject,
+//                                        //TODO read these from the config, that XmlDomClosureConfig looks pretty silly now
+//                                        Arrays.asList("**/Test*.java", "**/*Test.java", "**/GwtTest*.java"),
+//                                        Collections.emptyList()
+//                                )
+//                                        .stream()
+//                                        .map(e::registerAsApp)
+//                                        .forEach(futures::add);
+//
+//                                apps.add(e);
                             } else if (goal.equals("build") && shouldCompileBuild()) {
                                 System.out.println("Found build " + execution);
                                 XmlDomClosureConfig config = new XmlDomClosureConfig(configuration, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, compilationLevel, rewritePolyfills, reactorProject.getArtifactId(), webappDirectory);
