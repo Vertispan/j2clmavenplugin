@@ -412,7 +412,7 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
 
         @Override
         public String getInitialScriptFilename() {
-            return wrapped.getInitialScriptFilename().substring(0, ".js".length()) + "-" + test + ".js";
+            return wrapped.getInitialScriptFilename().substring(0, wrapped.getInitialScriptFilename().lastIndexOf(".js")) + "-" + test + ".js";
         }
 
         @Override
