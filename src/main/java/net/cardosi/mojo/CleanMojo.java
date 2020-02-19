@@ -56,6 +56,11 @@ public class CleanMojo extends AbstractCacheMojo {
 
         Path currentPluginCacheDir = Paths.get(gwt3BuildCacheDir.getAbsolutePath(), pluginVersion);
 
+        if (Files.notExists(currentPluginCacheDir)) {
+            getLog().info("Directory doesn't exist, nothing to clean: " + currentPluginCacheDir);
+            return;
+        }
+
         try {
             if (artifact == null) {
                 // delete all cache entries from the current reactor
