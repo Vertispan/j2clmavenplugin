@@ -4,6 +4,8 @@ import elemental2.dom.DomGlobal;
 import elemental2.dom.HTMLButtonElement;
 import elemental2.dom.HTMLDivElement;
 
+import com.google.gwt.core.client.EntryPoint;
+
 public class ${module} implements EntryPoint {
 
     public static final String HELLO_WORLD = "Hello J2CL world!";
@@ -11,11 +13,10 @@ public class ${module} implements EntryPoint {
     @Override
     public void onModuleLoad() {
         HTMLDivElement wrapper = (HTMLDivElement) DomGlobal.document.createElement("div");
-        wrapper.style.textAlign = "center";
+        wrapper.classList.add("wrapper");
 
         HTMLButtonElement btn = (HTMLButtonElement) DomGlobal.document.createElement("button");
-        btn.style.position = "absolute";
-        btn.style.top = "50%";
+        btn.classList.add("myButton");
         btn.textContent = "J2CL !!!";
 
         btn.addEventListener("click", evt -> btn.textContent = helloWorldString());

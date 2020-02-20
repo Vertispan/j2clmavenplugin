@@ -2,5 +2,5 @@
 <Context reloadable="true">
 
   <Resources className="org.apache.naming.resources.VirtualDirContext"
-    extraResourcePaths="/=${basedir}/target/gwt/launcherDir/" />
+    extraResourcePaths="/=\${basedir}/target/gwt/launcherDir/\${artifactId}" />
 </Context>

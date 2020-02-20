@@ -2,16 +2,20 @@
 <archetype-descriptor name="GWT-Maven archetype">
   <requiredProperties>
     <requiredProperty key="module" />
-    <requiredProperty key="entry-point-package-name">
-      <defaultValue>com.google.gwt.core.client</defaultValue>
-    </requiredProperty>
   </requiredProperties>
   <fileSets>
     <fileSet filtered="true" packaged="true" encoding="UTF-8">
       <directory>src/main/java</directory>
       <includes>
-        <include>**/*.java</include>
-        <include>**/*.js</include>
+        <include>__module__.java</include>
+        <include>__module__.native.js</include>
+      </includes>
+    </fileSet>
+
+    <fileSet encoding="UTF-8">
+      <directory></directory>
+      <includes>
+        <include>src/main/java/com/google/gwt/core/client/EntryPoint.java</include>
       </includes>
     </fileSet>
     <fileSet filtered="true" packaged="true" encoding="UTF-8">

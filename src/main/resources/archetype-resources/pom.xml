@@ -3,28 +3,28 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>${groupId}</groupId>
-  <artifactId>${artifactId}</artifactId>
+  <groupId>\${groupId}</groupId>
+  <artifactId>\${artifactId}</artifactId>
   <packaging>war</packaging>
-  <version>${version}</version>
+  <version>\${version}</version>
 
   <properties>
-    <webappdir>${project.build.directory}/webapp</webappdir>
+    <webappdir>\${project.build.directory}/webapp</webappdir>
     <webapp.libdir>${webappdir}/WEB-INF/lib</webapp.libdir>
 
-    <j2cl.maven.plugin.version>0.12-SNAPSHOT</j2cl.maven.plugin.version>
-    <j2cl-compilation.level>BUNDLE</j2cl-compilation.level>
+    <j2cl.maven.plugin.version>${project.version}</j2cl.maven.plugin.version>
     <elemental2.version>1.0.0</elemental2.version>
 
-    <vertispan.jsinterop.base.version>1.0.0-SNAPSHOT</vertispan.jsinterop.base.version>
-    <vertispan.j2cl.version>0.6-SNAPSHOT</vertispan.j2cl.version>
+    <google.jsinterop.version>1.0.0</google.jsinterop.version>
+    <j2cl.version>${j2cl.version}</j2cl.version>
 
-    <maven.compiler.target>1.8</maven.compiler.target>
-    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>${maven.compiler.source}</maven.compiler.target>
+    <maven.compiler.source>${maven.compiler.target}</maven.compiler.source>
 
     <maven.compiler.plugin.version>3.8.0</maven.compiler.plugin.version>
     <maven.tomcat7.plugin.version>2.2</maven.tomcat7.plugin.version>
-    <maven.source.plugin.version>3.0.1</maven.source.plugin.version>
+    <maven.jetty.plugin.version>9.4.26.v20200117</maven.jetty.plugin.version>
+    <maven.source.plugin.version>${maven.source.plugin.version}</maven.source.plugin.version>
     <maven.resources.plugin.version>3.1.0</maven.resources.plugin.version>
     <maven.war.plugin.version>3.2.3</maven.war.plugin.version>
   </properties>
@@ -37,52 +37,50 @@
     </dependency>
 
     <dependency>
-      <groupId>com.vertispan.jsinterop</groupId>
+      <groupId>com.google.jsinterop</groupId>
       <artifactId>base</artifactId>
-      <version>${vertispan.jsinterop.base.version}</version>
+      <version>${google.jsinterop.version}</version>
     </dependency>
 
     <dependency>
       <groupId>com.vertispan.j2cl</groupId>
       <artifactId>junit-annotations</artifactId>
-      <version>${vertispan.j2cl.version}</version>
+      <version>\${j2cl.version}</version>
+      <scope>test</scope>
     </dependency>
 
     <dependency>
       <groupId>com.vertispan.j2cl</groupId>
       <artifactId>gwttestcase-emul</artifactId>
-      <version>${vertispan.j2cl.version}</version>
+      <version>\${j2cl.version}</version>
+      <scope>test</scope>
     </dependency>
 
     <dependency>
       <groupId>com.vertispan.j2cl</groupId>
       <artifactId>gwttestcase-emul</artifactId>
-      <version>${vertispan.j2cl.version}</version>
+      <version>\${j2cl.version}</version>
       <classifier>sources</classifier>
-    </dependency>
-
-    <dependency>
-      <groupId>com.vertispan.j2cl</groupId>
-      <artifactId>junit-emul</artifactId>
-      <version>${vertispan.j2cl.version}</version>
       <scope>test</scope>
     </dependency>
 
     <dependency>
       <groupId>com.vertispan.j2cl</groupId>
       <artifactId>junit-emul</artifactId>
-      <version>${vertispan.j2cl.version}</version>
+      <version>\${j2cl.version}</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>com.vertispan.j2cl</groupId>
+      <artifactId>junit-emul</artifactId>
+      <version>\${j2cl.version}</version>
       <classifier>sources</classifier>
       <scope>test</scope>
     </dependency>
   </dependencies>
 
   <build>
-    <resources>
-      <resource>
-        <directory>src/main/resources</directory>
-      </resource>
-    </resources>
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -96,10 +94,10 @@
               <goal>copy-resources</goal>
             </goals>
             <configuration>
-              <outputDirectory>${project.build.directory}</outputDirectory>
+              <outputDirectory>\${project.build.directory}</outputDirectory>
               <resources>
                 <resource>
-                  <targetPath>${basedir}/target/gwt/launcherDir/${artifactId}</targetPath>
+                  <targetPath>\${basedir}/target/gwt/launcherDir</targetPath>
                   <directory>src/main/webapp</directory>
                   <filtering>true</filtering>
                 </resource>
@@ -111,10 +109,10 @@
       </plugin>
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.8.0</version>
+        <version>\${maven.compiler.plugin.version}</version>
         <configuration>
-          <source>1.8</source>
-          <target>1.8</target>
+          <source>\${maven.compiler.source}</source>
+          <target>\${maven.compiler.target}</target>
         </configuration>
       </plugin>
       <plugin>
@@ -152,8 +150,8 @@
           </execution>
         </executions>
         <configuration>
-          <defaultWebappDirectory>${project.build.directory}/gwt/launcherDir</defaultWebappDirectory>
-          <compilationLevel>${j2cl-compilation.level}</compilationLevel>
+          <defaultWebappDirectory>\${project.build.directory}/gwt/launcherDir</defaultWebappDirectory>
+          <compilationLevel>BUNDLE</compilationLevel>
           <entrypoint>${package}.${module}</entrypoint>
           <tests>
             <test>${package}.${module}Test</test>
@@ -165,20 +163,24 @@
         <artifactId>tomcat7-maven-plugin</artifactId>
         <version>${maven.tomcat7.plugin.version}</version>
         <configuration>
-          <contextFile>${basedir}/src/main/tomcatconf/context.xml</contextFile>
+          <warSourceDirectory>target/gwt/launcherDir/</warSourceDirectory>
+          <path>/</path>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-maven-plugin</artifactId>
+        <version>${maven.jetty.plugin.version}</version>
+        <configuration>
+          <scanIntervalSeconds>2</scanIntervalSeconds>
+          <webApp>
+            <resourceBase>target/gwt/launcherDir/</resourceBase>
+            <contextPath>/</contextPath>
+          </webApp>
         </configuration>
       </plugin>
     </plugins>
   </build>
-
-  <profiles>
-    <profile>
-      <id>prod</id>
-      <properties>
-        <j2cl-compilation.level>ADVANCED</j2cl-compilation.level>
-      </properties>
-    </profile>
-  </profiles>
 
   <pluginRepositories>
     <pluginRepository>
