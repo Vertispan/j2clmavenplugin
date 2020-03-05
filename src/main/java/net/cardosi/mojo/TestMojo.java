@@ -1,5 +1,6 @@
 package net.cardosi.mojo;
 
+import com.gargoylesoftware.htmlunit.BrowserVersion;
 import com.google.common.io.CharStreams;
 
 import java.io.*;
@@ -26,6 +27,7 @@ import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.htmlunit.HtmlUnitDriver;
 import org.openqa.selenium.logging.LogType;
 import org.openqa.selenium.logging.LoggingPreferences;
 import org.openqa.selenium.support.ui.FluentWait;
@@ -84,6 +86,10 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
     //TODO **/*_AdapterSuite.js
     @Parameter
     private List<String> excludes;
+
+    //TODO make this more flexible
+    @Parameter(defaultValue = "htmlunit")
+    protected String webdriver;
 
 
     @Override
@@ -199,15 +205,8 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
                     throw new UncheckedIOException(ex);
                 }
                 // assuming that was successful, start htmlunit to run the test
-                WebDriver driver = null;
+                WebDriver driver = createBrowser();
                 try {
-                    ChromeOptions chromeOptions = new ChromeOptions();
-                    chromeOptions.setHeadless(true);
-                    LoggingPreferences loggingPreferences = new LoggingPreferences();
-                    loggingPreferences.enable(LogType.BROWSER, Level.ALL);
-                    chromeOptions.setCapability("goog:loggingPrefs",
-                        loggingPreferences);
-                    driver = new ChromeDriver(chromeOptions);
                     driver.get("file://" + startupHtmlFile);
                     // loop and poll if tests are done
                     new FluentWait<>(driver)
@@ -247,6 +246,23 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
             failedTests.forEach((name, startupHtmlFile) -> getLog().error(String.format("Test %s failed, please try manually %s", name, startupHtmlFile)));
             throw new MojoFailureException("At least one test failed");
         }
+    }
+
+    private WebDriver createBrowser() throws MojoExecutionException {
+        if ("chrome".equalsIgnoreCase(webdriver)) {
+            ChromeOptions chromeOptions = new ChromeOptions();
+            chromeOptions.setHeadless(true);
+            LoggingPreferences loggingPreferences = new LoggingPreferences();
+            loggingPreferences.enable(LogType.BROWSER, Level.ALL);
+            chromeOptions.setCapability("goog:loggingPrefs",
+                    loggingPreferences);
+            WebDriver driver = new ChromeDriver(chromeOptions);
+            return driver;
+        } else if ("htmlunit".equalsIgnoreCase(webdriver)){
+            return new HtmlUnitDriver(BrowserVersion.BEST_SUPPORTED, true);
+        }
+
+        throw new MojoExecutionException("webdriver type not found: " + webdriver);
     }
 
     private void analyzeLog(WebDriver driver) {

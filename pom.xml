@@ -45,6 +45,7 @@
 
     <!-- Test goal -->
     <selenium.version>3.141.59</selenium.version>
+    <selenium.htmlunit.version>2.36.0</selenium.htmlunit.version>
     <jsoup.version>1.12.1</jsoup.version>
 
     <!-- Required core j2cl dependencies -->
@@ -190,6 +191,22 @@
         <artifactId>selenium-chrome-driver</artifactId>
         <version>${selenium.version}</version>
       </dependency>
+      <dependency>
+        <groupId>org.seleniumhq.selenium</groupId>
+        <artifactId>htmlunit-driver</artifactId>
+        <version>${selenium.htmlunit.version}</version>
+        <exclusions>
+          <!-- let j2cl control the version of these -->
+          <exclusion>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-text</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
 
       <dependency>
         <groupId>org.slf4j</groupId>
@@ -319,6 +336,10 @@
     <dependency>
       <groupId>org.seleniumhq.selenium</groupId>
       <artifactId>selenium-chrome-driver</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.seleniumhq.selenium</groupId>
+      <artifactId>htmlunit-driver</artifactId>
     </dependency>
     <dependency>
       <groupId>org.jsoup</groupId>

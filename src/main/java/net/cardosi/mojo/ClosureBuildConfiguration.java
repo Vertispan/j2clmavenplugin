@@ -3,7 +3,6 @@ package net.cardosi.mojo;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 
 /**
  * Describes how to run the Closure Compiler in a j2cl-based project, in a way that we can implement
