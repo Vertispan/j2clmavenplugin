@@ -32,10 +32,10 @@ public class Javac {
 //            System.out.println(file.getAbsolutePath() + " " + file.exists() + " " + file.isDirectory());
 //        }
         if (generatedClassesPath == null) {
-            javacOptions = Arrays.asList("-proc:none", "-implicit:none", "-bootclasspath", bootstrap.toString());
+            javacOptions = Arrays.asList("-proc:none", "-encoding", "utf8", "-implicit:none", "-bootclasspath", bootstrap.toString());
 
         } else {
-            javacOptions = Arrays.asList("-implicit:none", "-bootclasspath", bootstrap.toString());
+            javacOptions = Arrays.asList("-encoding", "utf8", "-implicit:none", "-bootclasspath", bootstrap.toString());
 
         }
         compiler = ToolProvider.getSystemJavaCompiler();
