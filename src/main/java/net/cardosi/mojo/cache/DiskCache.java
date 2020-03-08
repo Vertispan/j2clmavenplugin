@@ -3,6 +3,9 @@ package net.cardosi.mojo.cache;
 import com.google.javascript.jscomp.PersistentInputStore;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -30,7 +33,13 @@ public class DiskCache {
         this.extraJsZips = extraJsZips;
 
         this.jsZipCacheDir = new File(jsZipCacheDir, pluginVersion);
-        this.jsZipCacheDir.mkdirs();
+        if (!this.jsZipCacheDir.exists()) {
+            try {
+                Files.createDirectories(this.jsZipCacheDir.toPath());
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
     }
 
     public void takeLock() {
@@ -43,7 +52,13 @@ public class DiskCache {
 
     public TranspiledCacheEntry entry(String artifactId, String hash) {
         File cacheDir = new File(jsZipCacheDir, artifactId + "-" + hash);
-        cacheDir.mkdirs();
+        if (!cacheDir.exists()) {
+            try {
+                Files.createDirectory(cacheDir.toPath());
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
 
         return new TranspiledCacheEntry(hash, artifactId, cacheDir);
     }

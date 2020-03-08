@@ -73,11 +73,13 @@ public class GwtIncompatiblePreprocessor {
             problems.fatal(Problems.FatalError.OUTPUT_LOCATION, outputPath);
         }
 
-        // Ensures that we will not fail if the zip already exists.
-        outputPath.toFile().delete();
-        outputPath.toFile().getParentFile().mkdirs();
-
         try {
+            // Ensures that we will not fail if the zip already exists.
+            Files.delete(outputPath);
+            if (!Files.exists(outputPath.getParent())) {
+                Files.createDirectory(outputPath.getParent());
+            }
+
             return FileSystems.newFileSystem(
                     URI.create("jar:" + outputPath.toAbsolutePath().toUri()),
                     ImmutableMap.of("create", "true"));

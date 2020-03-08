@@ -173,7 +173,9 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
                 File testJs = new File(generatedSources, testFilePathWithoutSuffix + ".testsuite");
                 Path tmp = Files.createTempDirectory(testJs.getName() + "-dir");
                 Path copy = tmp.resolve(testFilePathWithoutSuffix + ".js");
-                copy.toFile().getParentFile().mkdirs();
+                if (!Files.exists(copy.getParent())) {
+                    Files.createDirectories(copy.getParent());
+                }
                 Files.copy(testJs.toPath(), copy);
                 String testClass = testFilePathWithoutSuffix.replaceAll("/", ".");
 

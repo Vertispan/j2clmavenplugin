@@ -216,6 +216,13 @@ public class CachedProject {
             TranspiledCacheEntry dir = hash().join();
             // try to create the dir - if we succeed, we own the lock, continue
             File stepDir = new File(dir.getCacheDir(), step);
+            if (!dir.getCacheDir().exists()) {
+                try {
+                    Files.createDirectories(dir.getCacheDir().toPath());
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            }
 
             File completeMarker = new File(stepDir, step + "-complete");
             File failedMarker = new File(stepDir, step + "failed");
@@ -223,7 +230,7 @@ public class CachedProject {
 //            long start = System.currentTimeMillis();
             return CompletableFuture.<TranspiledCacheEntry>supplyAsync(() -> {
                 // try to create the step dir. if we succeed, we own it, if we fail, someone already made it, and we wait for them to finish
-                while (!stepDir.mkdirs()) {
+                while (!stepDir.mkdir()) {
                     // wait for complete/failed markers, if either exists, we can bail early
                     Path stepDirPath = stepDir.toPath();
                     try (WatchService w = stepDirPath.getFileSystem().newWatchService()) {
@@ -397,10 +404,13 @@ public class CachedProject {
 
             return entry;
         }).thenApply(entry -> {
-            //This will unconditionally run after the lambda which may be cached
-            new File(config.getWebappDirectory()).mkdirs();
+            // This will unconditionally run after the lambda which may be cached
             try {
-                FileUtils.copyDirectory(entry.getClosureOutputDir(config), new File(config.getWebappDirectory()));
+                Path webappPath = Paths.get(config.getWebappDirectory());
+                if (!Files.exists(webappPath)) {
+                    Files.createDirectories(webappPath);
+                }
+                FileUtils.copyDirectory(entry.getClosureOutputDir(config), webappPath.toFile());
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
             }
