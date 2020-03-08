@@ -54,7 +54,7 @@ public class DiskCache {
         File cacheDir = new File(jsZipCacheDir, artifactId + "-" + hash);
         if (!cacheDir.exists()) {
             try {
-                Files.createDirectory(cacheDir.toPath());
+                Files.createDirectories(cacheDir.toPath());
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
             }

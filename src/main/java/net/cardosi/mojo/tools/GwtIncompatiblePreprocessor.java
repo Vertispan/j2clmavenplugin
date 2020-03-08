@@ -77,7 +77,7 @@ public class GwtIncompatiblePreprocessor {
             // Ensures that we will not fail if the zip already exists.
             Files.delete(outputPath);
             if (!Files.exists(outputPath.getParent())) {
-                Files.createDirectory(outputPath.getParent());
+                Files.createDirectories(outputPath.getParent());
             }
 
             return FileSystems.newFileSystem(
