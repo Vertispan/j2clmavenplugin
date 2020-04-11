@@ -97,7 +97,7 @@
               <outputDirectory>\${project.build.directory}</outputDirectory>
               <resources>
                 <resource>
-                  <targetPath>\${basedir}/target/gwt/launcherDir</targetPath>
+                  <targetPath>\${basedir}/target/gwt/launcherDir/\${artifactId}</targetPath>
                   <directory>src/main/webapp</directory>
                   <filtering>true</filtering>
                 </resource>
@@ -121,6 +121,15 @@
         <version>${maven.war.plugin.version}</version>
         <configuration>
           <packagingExcludes>WEB-INF/classes/**</packagingExcludes>
+          <webResources>
+            <resource>
+              <directory>\${project.build.directory}/gwt/launcherDir/\${artifactId}</directory>
+              <targetPath>/</targetPath>
+              <includes>
+                <include>**/*</include>
+              </includes>
+            </resource>
+          </webResources>
         </configuration>
       </plugin>
       <plugin>
@@ -150,7 +159,7 @@
           </execution>
         </executions>
         <configuration>
-          <defaultWebappDirectory>\${project.build.directory}/gwt/launcherDir</defaultWebappDirectory>
+          <webappDirectory>\${project.build.directory}/gwt/launcherDir/</webappDirectory>
           <compilationLevel>BUNDLE</compilationLevel>
           <entrypoint>${package}.${module}</entrypoint>
           <tests>
@@ -163,7 +172,7 @@
         <artifactId>tomcat7-maven-plugin</artifactId>
         <version>${maven.tomcat7.plugin.version}</version>
         <configuration>
-          <warSourceDirectory>target/gwt/launcherDir/</warSourceDirectory>
+          <warSourceDirectory>target/gwt/launcherDir/\${artifactId}</warSourceDirectory>
           <path>/</path>
         </configuration>
       </plugin>
@@ -174,7 +183,7 @@
         <configuration>
           <scanIntervalSeconds>2</scanIntervalSeconds>
           <webApp>
-            <resourceBase>target/gwt/launcherDir/</resourceBase>
+            <resourceBase>target/gwt/launcherDir/\${artifactId}</resourceBase>
             <contextPath>/</contextPath>
           </webApp>
         </configuration>
