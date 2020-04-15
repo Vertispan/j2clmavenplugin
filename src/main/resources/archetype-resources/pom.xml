@@ -33,13 +33,13 @@
     <dependency>
       <groupId>com.google.elemental2</groupId>
       <artifactId>elemental2-dom</artifactId>
-      <version>${elemental2.version}</version>
+      <version>\${elemental2.version}</version>
     </dependency>
 
     <dependency>
       <groupId>com.google.jsinterop</groupId>
       <artifactId>base</artifactId>
-      <version>${google.jsinterop.version}</version>
+      <version>\${google.jsinterop.version}</version>
     </dependency>
 
     <dependency>
@@ -118,7 +118,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-war-plugin</artifactId>
-        <version>${maven.war.plugin.version}</version>
+        <version>\${maven.war.plugin.version}</version>
         <configuration>
           <packagingExcludes>WEB-INF/classes/**</packagingExcludes>
           <webResources>
@@ -133,22 +133,9 @@
         </configuration>
       </plugin>
       <plugin>
-        <artifactId>maven-source-plugin</artifactId>
-        <version>${maven.source.plugin.version}</version>
-        <executions>
-          <execution>
-            <id>attach-sources</id>
-            <phase>package</phase>
-            <goals>
-              <goal>jar-no-fork</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
         <groupId>com.vertispan.j2cl</groupId>
         <artifactId>j2cl-maven-plugin</artifactId>
-        <version>${j2cl.maven.plugin.version}</version>
+        <version>\${j2cl.maven.plugin.version}</version>
         <executions>
           <execution>
             <id>build-js</id>
@@ -160,7 +147,7 @@
         </executions>
         <configuration>
           <webappDirectory>\${project.build.directory}/gwt/launcherDir/</webappDirectory>
-          <compilationLevel>BUNDLE</compilationLevel>
+          <compilationLevel>ADVANCED</compilationLevel>
           <entrypoint>${package}.${module}</entrypoint>
           <tests>
             <test>${package}.${module}Test</test>
@@ -250,15 +237,6 @@
     <repository>
       <id>sonatype-snapshots-repo</id>
       <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-      <snapshots>
-        <enabled>true</enabled>
-        <updatePolicy>daily</updatePolicy>
-        <checksumPolicy>fail</checksumPolicy>
-      </snapshots>
-    </repository>
-    <repository>
-      <id>sonatype-repo</id>
-      <url>https://oss.sonatype.org/content/repositories/repositories</url>
       <snapshots>
         <enabled>true</enabled>
         <updatePolicy>daily</updatePolicy>
