@@ -49,14 +49,38 @@ import java.util.*;
  *     soon, but may support being re-added through extra closure-compiler flags.
  * </p>
  * <p>
- *     Closure defines (or J2cl/GWT System Properties) can be provided as well. There are some defaults,
- *     assuming that a production app should be built to be as small as possible, with many checks turned off:
+ *     Closure defines (or J2cl/GWT System Properties) can be provided as well. If plugin configuration
+ *     doesn't provide them, then defaults are set following <a href="https://github.com/google/j2cl/blob/master/docs/best-practices.md#closure-compiler-flags">
+ *     J2cl's best practices</a>, which as of writing is just setting `goog.DEBUG` to `false. Internally,
+ *     `jre.checkedMode` will be set to DISABLED when this is done, but it can be overridden. Here are
+ *     some other defines that might make sense to be configured to further reduce output size, but please
+ *     be sure to check documentation before using them to understand what effects they have.
  * </p>
  * <ul>
- *     <li>jre.checkedMode=DISABLED</li>
- *     <li>jre.checks.checkLevel=MINIMAL</li>
- *     <li>jsinterop.checks=DISABLED</li>
- *     <li>goog.DEBUG=false</li>
+ *     <li>
+ *         jre.checkedMode - this can be ENABLED or DISABLED, defaults to DISABLED when goog.DEBUG is false,
+ *         or ENABLED when goog.DEBUG is true. This has many impacts inside of GWT's JRE emulation.
+ *     </li>
+ *     <li>
+ *         jre.checks.checkLevel - this can be NORMAL, OPTIMIZED, and MINIMAL, and defaults to NORMAL.
+ *         Within the JRE emulation, this is then used to decide how many checks to perform at runtime.
+ *         Reducing this level may make some code faster or slightly smaller, but at the risk of some
+ *         expected JRE exceptions no longer being thrown. Consult GWT's JRE emulation implementation
+ *         or J2CL's best practices link above to wee what specific effects this may have.
+ *     </li>
+ *     <li>
+ *         jsinterop.checks - This can be DISABLED or ENABLED. If ENABLED, some checks in jsinterop-base
+ *         will result in ClassCastExceptions if a type isn't what is expected, while if set to DISABLED,
+ *         those errors will be an AssertionError instead if jre.checked is enabled, or no failure at all
+ *         if it is disabled.
+ *     </li>
+ * </ul>
+ * <p>
+ *     Some other links other defines that are set within J2CL and jsinterop:
+ * </p>
+ * <ul>
+ *     <li>https://github.com/google/j2cl/blob/fb66a0d/jre/java/java/lang/jre.js</li>
+ *     <li>https://github.com/google/jsinterop-base/blob/18973cb/java/jsinterop/base/jsinterop.js#L25-L28</li>
  * </ul>
  */
 @Mojo(name = "build", requiresDependencyResolution = ResolutionScope.COMPILE_PLUS_RUNTIME)
@@ -172,12 +196,6 @@ public class BuildMojo extends AbstractBuildMojo implements ClosureBuildConfigur
         // for each project in the reactor, check if it is an app we should compile
         // TODO how do we want to pick which one(s) are actual apps?
         LinkedHashMap<String, CachedProject> projects = new LinkedHashMap<>();
-
-        // if key defines aren't set, assume "prod defaults" - need to doc the heck out of this
-        defines.putIfAbsent("jre.checkedMode", "DISABLED");
-        defines.putIfAbsent("jre.checks.checkLevel", "MINIMAL");
-        defines.putIfAbsent("jsinterop.checks", "DISABLED");
-        defines.putIfAbsent("goog.DEBUG", "false");
 
         try {
             CachedProject e = loadDependenciesIntoCache(project.getArtifact(), project, false, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, getDependencyReplacements(), "* ");
