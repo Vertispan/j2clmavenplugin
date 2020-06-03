@@ -1,0 +1,1 @@
+const assertions = goog.require('expect.assertions');

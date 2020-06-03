@@ -20,6 +20,7 @@ public class Closure {
             Collection<String> externFiles,
             PersistentInputStore persistentInputStore,
             boolean exportTestFunctions,
+            boolean checkAssertions,
             boolean rewritePolyfills,
             String jsOutputFile
     ) {
@@ -79,7 +80,7 @@ public class Closure {
 
         //TODO bundles
 
-        InProcessJsCompRunner jscompRunner = new InProcessJsCompRunner(jscompArgs.toArray(new String[0]), jsCompiler,exportTestFunctions);
+        InProcessJsCompRunner jscompRunner = new InProcessJsCompRunner(jscompArgs.toArray(new String[0]), jsCompiler, exportTestFunctions, checkAssertions);
         if (!jscompRunner.shouldRunCompiler()) {
             jscompArgs.forEach(System.out::println);
             return false;
@@ -92,6 +93,7 @@ public class Closure {
             jscompRunner.run();
 
             if (jscompRunner.hasErrors() || jscompRunner.exitCode != 0) {
+                jscompArgs.forEach(System.out::println);
                 return false;
             }
         } finally {
@@ -105,14 +107,16 @@ public class Closure {
 
     static class InProcessJsCompRunner extends CommandLineRunner {
         private final boolean exportTestFunctions;
+        private final boolean checkAssertions;
 
         private final Compiler compiler;
         private Integer exitCode;
 
-        InProcessJsCompRunner(String[] args, Compiler compiler, boolean exportTestFunctions) {
+        InProcessJsCompRunner(String[] args, Compiler compiler, boolean exportTestFunctions, boolean checkAssertions) {
             super(args);
             this.compiler = compiler;
             this.exportTestFunctions = exportTestFunctions;
+            this.checkAssertions = checkAssertions;
             setExitCodeReceiver(exitCode -> {
                 this.exitCode = exitCode;
                 return null;
@@ -131,6 +135,8 @@ public class Closure {
 //            options.addWarningsGuard();
 
             options.setExportTestFunctions(exportTestFunctions);
+
+            options.setRemoveJ2clAsserts(!checkAssertions);
 
             return options;
         }

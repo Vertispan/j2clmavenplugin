@@ -414,6 +414,7 @@ public class CachedProject {
                     config.getExterns(),
                     persistentInputStore,
                     true,//TODO have this be passed in,
+                    config.getCheckAssertions(),
                     config.getRewritePolyfills(),
                     closureOutputDir + "/" + config.getInitialScriptFilename()
             );
@@ -467,6 +468,7 @@ public class CachedProject {
                 config.getExterns(),
                 diskCache.getPersistentInputStore(),
                 true,//TODO parameterize, but we'll just make it true for now
+                config.getCheckAssertions(),
                 config.getRewritePolyfills(),
                 dir.getAbsolutePath() + "/" + BUNDLE_JAR_BASE_FILE
         );
@@ -635,6 +637,7 @@ public class CachedProject {
                     Collections.emptyList(),//TODO actually pass these in when we can restrict and cache them sanely
                     diskCache.getPersistentInputStore(),
                     true,//TODO have this be passed in,
+                    true,//default to true, will have no effect anyway
                     false,
                     outputFile
             );

@@ -2,6 +2,7 @@ package net.cardosi.mojo;
 
 import com.google.javascript.jscomp.DependencyOptions;
 
+import java.util.BitSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -33,6 +34,8 @@ public interface ClosureBuildConfiguration {
 
     boolean getRewritePolyfills();
 
+    boolean getCheckAssertions();
+
 //    List<String> getIncludedJsZips();
 
     default String hash() {
@@ -50,6 +53,10 @@ public interface ClosureBuildConfiguration {
         // not considering webappdir or script filename for now, should just copy the output at the end every time
         hash.append(getCompilationLevel());
 
+        BitSet flags = new BitSet();
+        flags.set(0, getRewritePolyfills());
+        flags.set(1, getCheckAssertions());
+        hash.append(flags.toByteArray());
         return hash.toString();
     }
 }

@@ -109,6 +109,13 @@ public class XmlDomClosureConfig implements ClosureBuildConfiguration {
     }
 
     @Override
+    public boolean getCheckAssertions() {
+        Xpp3Dom elt = dom.getChild("checkedAssertions");
+        // any time we use XmlDomClosureConfig (various watch modes), we assume that we want to default to true
+        return elt == null || elt.getValue().equalsIgnoreCase("true");
+    }
+
+    @Override
     public boolean getRewritePolyfills() {
         Xpp3Dom elt = dom.getChild("rewritePolyfills");
         return elt == null ? defaultRewritePolyfills : elt.getValue().equalsIgnoreCase("true");

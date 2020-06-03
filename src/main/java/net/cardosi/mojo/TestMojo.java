@@ -99,6 +99,14 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
     protected Map<String, String> defines = new TreeMap<>();
 
     /**
+     * Whether or not to leave Java assert checks in the compiled code. In j2cl:test, defaults to true. Has no
+     * effect when the compilation level isn't set to ADVANCED_OPTIMIZATIONS, assertions will always remain
+     * enabled.
+     */
+    @Parameter(defaultValue = "true")
+    protected boolean checkAssertions;
+
+    /**
      * Closure flag: "Rewrite ES6 library calls to use polyfills provided by the compiler's runtime."
      * Unlike in closure-compiler, defaults to false.
      */
@@ -411,6 +419,11 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
     }
 
     @Override
+    public boolean getCheckAssertions() {
+        return checkAssertions;
+    }
+
+    @Override
     public boolean getRewritePolyfills() {
         return rewritePolyfills;
     }
@@ -466,6 +479,11 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
         @Override
         public String getCompilationLevel() {
             return wrapped.getCompilationLevel();
+        }
+
+        @Override
+        public boolean getCheckAssertions() {
+            return wrapped.getCheckAssertions();
         }
 
         @Override

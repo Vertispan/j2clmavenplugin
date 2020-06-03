@@ -77,6 +77,14 @@ public class WatchMojo extends AbstractBuildMojo {
     protected String compilationLevel;
 
     /**
+     * Whether or not to leave Java assert checks in the compiled code. In j2cl:watch, defaults to true. Has no
+     * effect when the compilation level isn't set to ADVANCED_OPTIMIZATIONS, assertions will always remain
+     * enabled.
+     */
+    @Parameter(defaultValue = "true")
+    protected boolean checkAssertions;
+
+    /**
      * Closure flag: "Rewrite ES6 library calls to use polyfills provided by the compiler's runtime."
      * Unlike in closure-compiler, defaults to false.
      */

@@ -157,6 +157,14 @@ public class BuildMojo extends AbstractBuildMojo implements ClosureBuildConfigur
     @Parameter(defaultValue = "false")
     protected boolean rewritePolyfills;
 
+    /**
+     * Whether or not to leave Java assert checks in the compiled code. In j2cl:build, defaults to true. Has no
+     * effect when the compilation level isn't set to ADVANCED_OPTIMIZATIONS, assertions will always remain
+     * enabled.
+     */
+    @Parameter(defaultValue = "false")
+    protected boolean checkAssertions;
+
     @Deprecated
     @Parameter(defaultValue = "SORT_ONLY")
     protected String dependencyMode;
@@ -248,6 +256,11 @@ public class BuildMojo extends AbstractBuildMojo implements ClosureBuildConfigur
     @Override
     public String getCompilationLevel() {
         return compilationLevel;
+    }
+
+    @Override
+    public boolean getCheckAssertions() {
+        return checkAssertions;
     }
 
     @Override
