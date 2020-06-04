@@ -90,8 +90,6 @@
                             <goal>test</goal>
                         </goals>
                         <configuration>
-                            <!-- htmlunit requires output transpiled down to remove es2015 class -->
-                            <compilationLevel>ADVANCED</compilationLevel>
                             <checkAssertions>false</checkAssertions>
                             <defines>
                                 <expect.assertions.armed>false</expect.assertions.armed>

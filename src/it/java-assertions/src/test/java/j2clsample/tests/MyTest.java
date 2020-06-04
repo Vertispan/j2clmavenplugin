@@ -21,7 +21,6 @@ public class MyTest {
     }
     @Test
     public void testAssertFalse() {
-//        log(System.getProperty("expect.assertions.armed"));
         if (EXPECT_ASSERTIONS_ARMED) {
             try {
                 assert false : "should always fail";
@@ -35,7 +34,4 @@ public class MyTest {
             assert false : "This shouldn't go off unless assertions are armed";
         }
     }
-
-//    @JsMethod(name = "console.log", namespace = JsPackage.GLOBAL)
-//    private static native void log(String msg);
 }
