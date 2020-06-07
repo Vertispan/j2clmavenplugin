@@ -11,7 +11,7 @@ import java.util.Set;
  * Describes how to run the Closure Compiler in a j2cl-based project, in a way that we can implement
  * not just in goals but also wrap up a xml dom and pass it around. All implementations of this must
  * be consistent in how they name their parameters to avoid driving users insane - naming should be
- * derrived from the property names.
+ * derived from the property names.
  */
 public interface ClosureBuildConfiguration {
     String getClasspathScope();
@@ -50,7 +50,10 @@ public interface ClosureBuildConfiguration {
                     hash.append(key);
                     hash.append(value);
         });
-        // not considering webappdir or script filename for now, should just copy the output at the end every time
+
+        // not considering webappdir for now, should just copy the output at the end every time
+        hash.append(getInitialScriptFilename());
+
         hash.append(getCompilationLevel());
 
         BitSet flags = new BitSet();
