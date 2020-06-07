@@ -4,6 +4,7 @@ import com.gargoylesoftware.htmlunit.BrowserVersion;
 import com.google.common.io.CharStreams;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.logging.Level;
 
 import com.google.gson.GsonBuilder;
@@ -245,7 +246,7 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
                     String fileContents = CharStreams.toString(new InputStreamReader(TestMojo.class.getResourceAsStream("/junit.html")));
                     fileContents = fileContents.replace("<TEST_SCRIPT>", outputJs.getName());
 
-                    Files.write(junitStartupFile, fileContents.getBytes("UTF-8"), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                    Files.write(junitStartupFile, fileContents.getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
                     startupHtmlFile = junitStartupFile.toAbsolutePath().toString();
                 } catch (IOException ex) {
                     throw new UncheckedIOException(ex);
