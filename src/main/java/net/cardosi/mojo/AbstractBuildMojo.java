@@ -3,6 +3,7 @@ package net.cardosi.mojo;
 import net.cardosi.mojo.cache.CachedProject;
 import net.cardosi.mojo.cache.DiskCache;
 import net.cardosi.mojo.config.DependencyReplacement;
+import org.apache.maven.RepositoryUtils;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.ArtifactUtils;
 import org.apache.maven.artifact.resolver.filter.ScopeArtifactFilter;
@@ -103,7 +104,7 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
         return defaultDependencyReplacements;
     }
 
-    protected static CachedProject loadDependenciesIntoCache(
+    protected CachedProject loadDependenciesIntoCache(
             Artifact artifact,
             MavenProject currentProject,
             boolean lookupReactorProjects,
@@ -136,7 +137,7 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
 
         // stable ordering so hashing makes sense
         //TODO dedup classifiers? probably not, we want to build separately
-        List<Artifact> dependencies = new ArrayList<>(currentProject.getArtifacts().stream().sorted().collect(Collectors.toList()));
+        List<Artifact> dependencies = currentProject.getArtifacts().stream().sorted().collect(Collectors.toCollection(ArrayList::new));
         for (int i = 0; i < dependencies.size(); i++) {
             Artifact dependency = dependencies.get(i);
             // if it shouldnt be on the classpath, skip it, if it isn't part of the current expected scope, skip it
@@ -191,6 +192,14 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
                 projectBuildingRequest.setResolveDependencies(true);
                 projectBuildingRequest.setRemoteRepositories(null);
                 p = projectBuilder.build(dependency, true, projectBuildingRequest).getProject();
+
+                // at this point, we know that the dependency is not in the reactor, but may not have the artifact, so
+                // resolve it.
+                try {
+                    repoSystem.resolveArtifact(repoSession, new ArtifactRequest().setRepositories(repositories).setArtifact(RepositoryUtils.toArtifact(dependency)));
+                } catch (ArtifactResolutionException e) {
+                    throw new ProjectBuildingException(p.getId(), "Failed to resolve this project's artifact file", e);
+                }
                 CachedProject transpiledDep = loadDependenciesIntoCache(dependency, p, lookupReactorProjects, projectBuilder, projectBuildingRequest, diskCache, pluginVersion, seen, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, replacedDependencies, "  " + depth);
                 children.add(transpiledDep);
             }
