@@ -7,7 +7,7 @@
     <version>1.0</version>
 
     <properties>
-        <elemental2.version>1.0.0</elemental2.version>
+        <elemental2.version>1.1.0</elemental2.version>
     </properties>
 
     <dependencies>
@@ -52,12 +52,11 @@
             <artifactId>elemental2-webstorage</artifactId>
             <version>${elemental2.version}</version>
         </dependency>
-        <!-- commented out until https://github.com/google/elemental2/pull/142 is released -->
-        <!--<dependency>-->
-            <!--<groupId>com.google.elemental2</groupId>-->
-            <!--<artifactId>elemental2-webassembly</artifactId>-->
-            <!--<version>${elemental2.version}</version>-->
-        <!--</dependency>-->
+        <dependency>
+            <groupId>com.google.elemental2</groupId>
+            <artifactId>elemental2-webassembly</artifactId>
+            <version>${elemental2.version}</version>
+        </dependency>
 
     </dependencies>
     <build>
