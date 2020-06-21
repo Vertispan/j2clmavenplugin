@@ -116,7 +116,7 @@ public class BuildMojo extends AbstractBuildMojo implements ClosureBuildConfigur
 
     /**
      * Describes how the output should be built - presently supports five modes, four of which are closure-compiler
-     * "compilationLevel" argument options, and an additional special case for J2cl-base applcations. The quoted
+     * "compilationLevel" argument options, and an additional special case for J2cl-base applications. The quoted
      * descriptions here explain how closure-compiler defines them.
      * <ul>
      *     <li>

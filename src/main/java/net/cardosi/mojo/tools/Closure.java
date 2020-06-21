@@ -7,8 +7,15 @@ import javax.annotation.Nullable;
 import java.io.File;
 import java.util.*;
 
-//TODO factor out the wiring to set this up for reuse
 public class Closure {
+    /**
+     * Closure compiler uses static variables at least when parsing arguments, so we have to ensure
+     * that only one thread at a time is trying to parse args, otherwise we risk CMEs. The comments
+     * around this code appear to indicate that multiple instances of the compiler at a time are
+     * safe as long as they share "flags", but it is a bit worse - the subsequent instances must
+     * actually share the options instance itself.
+     */
+    private static final Object GLOBAL_CLOSURE_ARGS_LOCK = new Object();
 
     public boolean compile(
             CompilationLevel compilationLevel,
@@ -104,7 +111,10 @@ public class Closure {
 
         //TODO bundles
 
-        InProcessJsCompRunner jscompRunner = new InProcessJsCompRunner(jscompArgs.toArray(new String[0]), jsCompiler, exportTestFunctions, checkAssertions);
+        final InProcessJsCompRunner jscompRunner;
+        synchronized (GLOBAL_CLOSURE_ARGS_LOCK) {
+            jscompRunner = new InProcessJsCompRunner(jscompArgs.toArray(new String[0]), jsCompiler, exportTestFunctions, checkAssertions);
+        }
         if (!jscompRunner.shouldRunCompiler()) {
             jscompArgs.forEach(System.out::println);
             return false;
