@@ -169,6 +169,9 @@ public class BuildMojo extends AbstractBuildMojo implements ClosureBuildConfigur
     @Parameter(defaultValue = "SORT_ONLY")
     protected String dependencyMode;
 
+    @Parameter(defaultValue = "false")
+    protected boolean enableSourcemaps;
+
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         if (!getEntrypoint().isEmpty()) {
@@ -266,5 +269,10 @@ public class BuildMojo extends AbstractBuildMojo implements ClosureBuildConfigur
     @Override
     public boolean getRewritePolyfills() {
         return rewritePolyfills;
+    }
+
+    @Override
+    public boolean getSourcemapsEnabled() {
+        return enableSourcemaps;
     }
 }

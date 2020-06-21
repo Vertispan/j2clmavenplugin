@@ -91,6 +91,9 @@ public class WatchMojo extends AbstractBuildMojo {
     @Parameter(defaultValue = "false")
     protected boolean rewritePolyfills;
 
+    @Parameter(defaultValue = "false")
+    protected boolean enableSourcemaps;
+
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         PluginDescriptor pluginDescriptor = (PluginDescriptor) getPluginContext().get("pluginDescriptor");
@@ -177,7 +180,7 @@ public class WatchMojo extends AbstractBuildMojo {
 //                                apps.add(e);
                             } else if (goal.equals("build") && shouldCompileBuild()) {
                                 System.out.println("Found build " + execution);
-                                XmlDomClosureConfig config = new XmlDomClosureConfig(configuration, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, compilationLevel, rewritePolyfills, reactorProject.getArtifactId(), DependencyOptions.DependencyMode.SORT_ONLY, webappDirectory);
+                                XmlDomClosureConfig config = new XmlDomClosureConfig(configuration, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, compilationLevel, rewritePolyfills, reactorProject.getArtifactId(), DependencyOptions.DependencyMode.SORT_ONLY, enableSourcemaps, webappDirectory);
 
                                 // Load up all the dependencies in the requested scope for the current project
                                 CachedProject p = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, true, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, getDependencyReplacements(), "* ");

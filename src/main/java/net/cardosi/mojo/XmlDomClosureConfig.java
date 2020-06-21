@@ -16,6 +16,8 @@ public class XmlDomClosureConfig implements ClosureBuildConfiguration {
     @Deprecated
     private final DependencyOptions.DependencyMode defaultDependencyMode;
 
+    private final boolean defaultSourcemapsEnabled;
+
     private final String defaultWebappDirectory;
 
     /**
@@ -24,16 +26,18 @@ public class XmlDomClosureConfig implements ClosureBuildConfiguration {
      * @param defaultCompilationLevel the default compilation level based on the goal detected
      * @param defaultRewritePolyfills whether or not closure should rewrite polyfills by default
      * @param artifactId the artifactId of the project being wrapped here
-     * @param defaultDependencyMode
+     * @param defaultDependencyMode (deprecated, will be gone soon)
+     * @param defaultSourcemapsEnabled true if sourcemaps should be enabled by default
      * @param defaultWebappDirectory the current invocation's launch dir, so we all serve from the same place
      */
-    public XmlDomClosureConfig(Xpp3Dom dom, String defaultScope, String defaultCompilationLevel, boolean defaultRewritePolyfills, String artifactId, DependencyOptions.DependencyMode defaultDependencyMode, String defaultWebappDirectory) {
+    public XmlDomClosureConfig(Xpp3Dom dom, String defaultScope, String defaultCompilationLevel, boolean defaultRewritePolyfills, String artifactId, DependencyOptions.DependencyMode defaultDependencyMode, boolean defaultSourcemapsEnabled, String defaultWebappDirectory) {
         this.dom = dom;
         this.defaultScope = defaultScope;
         this.defaultCompilationLevel = defaultCompilationLevel;
         this.defaultRewritePolyfills = defaultRewritePolyfills;
         this.defaultInitialScriptFilename = artifactId + "/" + artifactId + ".js";
         this.defaultDependencyMode = defaultDependencyMode;
+        this.defaultSourcemapsEnabled = defaultSourcemapsEnabled;
         this.defaultWebappDirectory = defaultWebappDirectory;
     }
 
@@ -119,5 +123,11 @@ public class XmlDomClosureConfig implements ClosureBuildConfiguration {
     public boolean getRewritePolyfills() {
         Xpp3Dom elt = dom.getChild("rewritePolyfills");
         return elt == null ? defaultRewritePolyfills : elt.getValue().equalsIgnoreCase("true");
+    }
+
+    @Override
+    public boolean getSourcemapsEnabled() {
+        Xpp3Dom elt = dom.getChild("enableSourcemaps");
+        return elt == null ? defaultSourcemapsEnabled : elt.getValue().equalsIgnoreCase("true");
     }
 }

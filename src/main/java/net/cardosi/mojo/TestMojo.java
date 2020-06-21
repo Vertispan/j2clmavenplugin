@@ -133,6 +133,9 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
     @Parameter(defaultValue = "SORT_ONLY")
     protected String dependencyMode;
 
+    @Parameter(defaultValue = "false")
+    protected boolean enableSourcemaps;
+
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         if (skipTests) {
@@ -429,6 +432,11 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
         return rewritePolyfills;
     }
 
+    @Override
+    public boolean getSourcemapsEnabled() {
+        return enableSourcemaps;
+    }
+
     private static class TestConfig implements ClosureBuildConfiguration {
 
         private final String test;
@@ -490,6 +498,11 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
         @Override
         public boolean getRewritePolyfills() {
             return wrapped.getRewritePolyfills();
+        }
+
+        @Override
+        public boolean getSourcemapsEnabled() {
+            return wrapped.getSourcemapsEnabled();
         }
 
         public String getTest() {

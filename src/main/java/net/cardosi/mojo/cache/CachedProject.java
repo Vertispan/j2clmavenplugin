@@ -377,13 +377,20 @@ public class CachedProject {
             File sources;
             String jsOutputDir = new File(closureOutputDir + "/" + config.getInitialScriptFilename()).getParent();
             if (compilationLevel == CompilationLevel.BUNDLE) {
+                if (!config.getSourcemapsEnabled()) {
+                    //TODO warn that sourcemaps are there anyway, we can't disable in bundle modes?
+                }
                 sources = new File(jsOutputDir, "sources");
             } else {
-                sources = entry.getClosureOutputDir(config);
+                if (config.getSourcemapsEnabled()) {
+                    sources = new File(jsOutputDir, "sources");//write to the same place as in bundle mode
+                } else {
+                    sources = entry.getClosureInputDir();
+                }
             }
-            reqs.stream().map(TranspiledCacheEntry::getTranspiledSourcesDir).map(File::getAbsolutePath).distinct().forEach(dir -> {
+            reqs.stream().map(TranspiledCacheEntry::getTranspiledSourcesDir).map(File::getAbsoluteFile).distinct().forEach(dir -> {
                 try {
-                    FileUtils.copyDirectory(new File(dir), sources);
+                    FileUtils.copyDirectory(dir, sources);
                 } catch (IOException e) {
                     throw new UncheckedIOException(e);
                 }
@@ -416,6 +423,7 @@ public class CachedProject {
                     true,//TODO have this be passed in,
                     config.getCheckAssertions(),
                     config.getRewritePolyfills(),
+                    config.getSourcemapsEnabled(),
                     closureOutputDir + "/" + config.getInitialScriptFilename()
             );
 
@@ -470,6 +478,7 @@ public class CachedProject {
                 true,//TODO parameterize, but we'll just make it true for now
                 config.getCheckAssertions(),
                 config.getRewritePolyfills(),
+                false,
                 dir.getAbsolutePath() + "/" + BUNDLE_JAR_BASE_FILE
         );
 
@@ -638,6 +647,7 @@ public class CachedProject {
                     diskCache.getPersistentInputStore(),
                     true,//TODO have this be passed in,
                     true,//default to true, will have no effect anyway
+                    false,
                     false,
                     outputFile
             );

@@ -38,6 +38,8 @@ public interface ClosureBuildConfiguration {
 
 //    List<String> getIncludedJsZips();
 
+    boolean getSourcemapsEnabled();
+
     default String hash() {
         //TODO externs need to have their _contents_ hashed instead
 
@@ -59,6 +61,7 @@ public interface ClosureBuildConfiguration {
         BitSet flags = new BitSet();
         flags.set(0, getRewritePolyfills());
         flags.set(1, getCheckAssertions());
+        flags.set(2, getSourcemapsEnabled());
         hash.append(flags.toByteArray());
         return hash.toString();
     }

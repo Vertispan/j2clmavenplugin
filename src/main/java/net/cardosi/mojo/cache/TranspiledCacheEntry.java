@@ -77,6 +77,9 @@ public class TranspiledCacheEntry {
         return file("externs.js");
     }
 
+    public File getClosureInputDir() {
+        return dir("closure-inputs");
+    }
     public File getClosureOutputDir(ClosureBuildConfiguration config) {
         return dir("closure-output-" + config.hash());
     }

@@ -22,6 +22,7 @@ public class Closure {
             boolean exportTestFunctions,
             boolean checkAssertions,
             boolean rewritePolyfills,
+            boolean enabledSourcemaps,
             String jsOutputFile
     ) {
         List<String> jscompArgs = new ArrayList<>();
@@ -69,6 +70,29 @@ public class Closure {
 //                    "JSC_STRICT_INEXISTENT_PROPERTY",
                 "--rewrite_polyfills=" + rewritePolyfills
         ));
+
+        if (enabledSourcemaps && jsSourceDir != null) {
+            jscompArgs.add("--create_source_map");
+            jscompArgs.add(jsOutputFile + ".map");
+//            jscompArgs.add("%outname%.map"); // this variant would allow one sourcemap per chunk
+
+            jscompArgs.add("--source_map_location_mapping");
+            jscompArgs.add(jsSourceDir.getParent() + "|.");// we use parent since the source dir always has a source/ suffix
+
+            jscompArgs.add("--output_wrapper");
+            jscompArgs.add("(function(){%output%}).call(this);\n//# sourceMappingURL="+jsOutputFile.substring(jsOutputFile.lastIndexOf("/") + 1)+".map");
+            jscompArgs.add("--assume_function_wrapper");
+            jscompArgs.add("true");
+
+
+            //TODO deal with chunk_wrapper here, once we support those. might be as simple as this (plus knowledge of the chunk names):
+//            jscompArgs.add("--chunk_wrapper");
+//            jscompArgs.add("NAME_OF_CHUNK_HERE:%output%%n//# sourceMappingURL=%basename%.map");
+        } else if (compilationLevel == CompilationLevel.ADVANCED_OPTIMIZATIONS) {
+            // go ahead and use IIFE
+            jscompArgs.add("--isolation_mode");
+            jscompArgs.add("IIFE");
+        }
 
         for (String entrypoint : entrypoints) {
             jscompArgs.add("--entry_point");
