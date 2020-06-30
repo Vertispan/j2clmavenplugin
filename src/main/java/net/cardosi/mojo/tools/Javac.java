@@ -2,10 +2,12 @@ package net.cardosi.mojo.tools;
 
 import com.google.j2cl.common.FrontendUtils.FileInfo;
 
+import javax.lang.model.SourceVersion;
 import javax.tools.*;
 import javax.tools.JavaCompiler.CompilationTask;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -31,12 +33,13 @@ public class Javac {
 //        for (File file : classpath) {
 //            System.out.println(file.getAbsolutePath() + " " + file.exists() + " " + file.isDirectory());
 //        }
+        javacOptions = new ArrayList<>(Arrays.asList("-encoding", "utf8", "-implicit:none", "-bootclasspath", bootstrap.toString()));
         if (generatedClassesPath == null) {
-            javacOptions = Arrays.asList("-proc:none", "-encoding", "utf8", "-implicit:none", "-bootclasspath", bootstrap.toString());
-
-        } else {
-            javacOptions = Arrays.asList("-encoding", "utf8", "-implicit:none", "-bootclasspath", bootstrap.toString());
-
+            javacOptions.add("-proc:none");
+        }
+        if (SourceVersion.latestSupported().compareTo(SourceVersion.RELEASE_8) > 0) {
+            //java 9+
+            javacOptions.add("--release=8");
         }
         compiler = ToolProvider.getSystemJavaCompiler();
         fileManager = compiler.getStandardFileManager(null, null, null);

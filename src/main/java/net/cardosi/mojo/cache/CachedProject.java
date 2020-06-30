@@ -847,7 +847,6 @@ public class CachedProject {
                 throw new UncheckedIOException(e);
             }
 
-
             return entry;
         });
     }
@@ -868,7 +867,7 @@ public class CachedProject {
             // We don't do this at all if drawing on an already-built jar
             if (hasSourcesMapped()) {
                 File annotationSources = entry.getAnnotationSourcesDir();
-                File plainBytecode = entry.getBytecodeDir();
+                File plainBytecode = entry.getBytecodeDir();//output dir for bytecode while generating sources
                 List<File> plainClasspath = new ArrayList<>(diskCache.getExtraClasspath());
                 plainClasspath.addAll(reactorBytecode.stream().map(TranspiledCacheEntry::getBytecodeDir).collect(Collectors.toList()));
                 plainClasspath.addAll(children.stream()
