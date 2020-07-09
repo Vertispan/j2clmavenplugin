@@ -10,26 +10,26 @@
         <dependency>
             <groupId>com.vertispan.j2cl</groupId>
             <artifactId>junit-annotations</artifactId>
-            <version>0.7-SNAPSHOT</version>
+            <version>@j2cl.version@</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.vertispan.j2cl</groupId>
             <artifactId>junit-emul</artifactId>
-            <version>0.7-SNAPSHOT</version>
+            <version>@j2cl.version@</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.vertispan.j2cl</groupId>
             <artifactId>junit-emul</artifactId>
-            <version>0.7-SNAPSHOT</version>
+            <version>@j2cl.version@</version>
             <classifier>sources</classifier>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.vertispan.j2cl</groupId>
             <artifactId>gwttestcase-emul</artifactId>
-            <version>0.7-SNAPSHOT</version>
+            <version>@j2cl.version@</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

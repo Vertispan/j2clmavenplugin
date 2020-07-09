@@ -1,10 +1,9 @@
 package net.cardosi.mojo.tools;
 
 import com.google.common.collect.ImmutableMap;
-import com.google.j2cl.common.FrontendUtils;
 import com.google.j2cl.common.FrontendUtils.FileInfo;
 import com.google.j2cl.common.Problems;
-import com.google.j2cl.tools.gwtincompatible.JavaPreprocessor;
+import com.google.j2cl.tools.gwtincompatible.GwtIncompatibleStripper;
 
 import java.io.File;
 import java.io.IOException;
@@ -32,10 +31,10 @@ public class GwtIncompatiblePreprocessor {
         Problems problems = new Problems();
 
         List<FileInfo> result = new ArrayList<>();
-        File processed = File.createTempFile("preprocessed", ".srcjar");
+        File processed = File.createTempFile("preprocessed", ".jar");
         try (FileSystem out = initZipOutput(processed.getAbsolutePath(), problems)) {
 
-            JavaPreprocessor.preprocessFiles(unprocessedFiles, out.getPath("/"), problems);
+            GwtIncompatibleStripper.preprocessFiles(unprocessedFiles, out.getPath("/"), problems);
 
             if (problems.hasErrors()) {
                 throw new IllegalStateException(problems.getErrors().toString());
@@ -58,8 +57,8 @@ public class GwtIncompatiblePreprocessor {
                 }
             });
         } catch (Throwable t) {
-            t.printStackTrace();
             problems.getErrors().forEach(System.out::println);
+            throw t;
         } finally {
             processed.delete();
         }
