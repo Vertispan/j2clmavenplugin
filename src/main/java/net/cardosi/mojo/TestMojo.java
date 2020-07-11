@@ -5,6 +5,7 @@ import com.google.common.io.CharStreams;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
 
 import com.google.gson.GsonBuilder;
@@ -22,6 +23,12 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.DefaultProjectBuildingRequest;
 import org.apache.maven.project.ProjectBuildingException;
 import org.apache.maven.project.ProjectBuildingRequest;
+import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.ServerConnector;
+import org.eclipse.jetty.server.handler.ResourceHandler;
+import org.eclipse.jetty.util.component.AbstractLifeCycle;
+import org.eclipse.jetty.util.component.LifeCycle;
+import org.eclipse.jetty.util.resource.Resource;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -224,7 +231,6 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
                 String testClass = testFilePathWithoutSuffix.replaceAll("/", ".");
 
                 // Synthesize a new project which only depends on the last one, and only contains the named test's .testsuite content, remade into a one-off JS file
-
                 ArrayList<CachedProject> finalChildren = new ArrayList<>(e.getChildren());
                 finalChildren.add(e);
                 CachedProject t = new CachedProject(diskCache, project.getArtifact(), project, finalChildren, Collections.singletonList(tmp.toString()), Collections.emptyList());
@@ -241,56 +247,86 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
                 // write a simple html file to that output dir
                 //TODO parallelize this - run once each is done, possibly concurrently
                 //TODO don't fail on the first test that doesn't work
-                String startupHtmlFile;
+                Path startupHtmlFile;
                 try {
+                    Path webappDirPath = Paths.get(webappDirectory);
+                    Path outputJsPath = webappDirPath.resolve(config.getInitialScriptFilename());
                     File outputJs = new File(new File(webappDirectory), config.getInitialScriptFilename());
-                    Path junitStartupFile = Paths.get(outputJs.getParent(), outputJs.getName().substring(0, outputJs.getName().length() - 2) + "html");
-                    Files.createDirectories(junitStartupFile.getParent());
+                    Path junitStartupPath = outputJsPath.resolveSibling(outputJsPath.getFileName().toString().substring(0, outputJs.getName().length() - 2) + "html");
+                    Files.createDirectories(junitStartupPath.getParent());
                     String fileContents = CharStreams.toString(new InputStreamReader(TestMojo.class.getResourceAsStream("/junit.html")));
                     fileContents = fileContents.replace("<TEST_SCRIPT>", outputJs.getName());
 
-                    Files.write(junitStartupFile, fileContents.getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-                    startupHtmlFile = junitStartupFile.toAbsolutePath().toString();
+                    Files.write(junitStartupPath, fileContents.getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                    startupHtmlFile = webappDirPath.relativize(junitStartupPath);
                 } catch (IOException ex) {
                     throw new UncheckedIOException(ex);
                 }
-                // assuming that was successful, start htmlunit to run the test
+
+                // Start a webserver TODO start just once for all tests
+                Server server = new Server(0);
+
+                // Tell jetty how to serve our compiled content
+                ResourceHandler resourceHandler = new ResourceHandler();
+                resourceHandler.setDirectoriesListed(true);//enabled for easier debugging, if we introduce a "manual" mode
+                resourceHandler.setBaseResource(Resource.newResource(webappDirectory));
+
+                server.setHandler(resourceHandler);
+                server.start();
+
+                // With the server started, start a browser too so they work in parallel
                 WebDriver driver = createBrowser();
+
+                // Wait until server is ready
+                if (!server.isStarted()) {
+                    CountDownLatch started = new CountDownLatch(1);
+                    server.addLifeCycleListener(new AbstractLifeCycle.AbstractLifeCycleListener() {
+                        @Override
+                        public void lifeCycleStarted(LifeCycle event) {
+                            started.countDown();
+                        }
+                    });
+                    started.await();
+                }
+                int port = ((ServerConnector) server.getConnectors()[0]).getLocalPort();
+
                 try {
-                    driver.get("file://" + startupHtmlFile);
-                    // loop and poll if tests are done
+                    String url = "http://localhost:" + port + "/" + startupHtmlFile.toString();
+                    System.out.println("fetching " + url);
+                    driver.get(url);
+
+                    // Loop and poll if tests are done
                     new FluentWait<>(driver)
                             .withTimeout(Duration.ofMinutes(1))
-                            .withMessage("Tests failed to finish in timeout")
+                            .withMessage("Tests failed to finish before timeout")
                             .pollingEvery(Duration.ofMillis(100))
                             .until(d -> isFinished(d));
-                    // check for success
+                    // Check for success
                     if (!isSuccess(driver)) {
-                        // print the content of the browser console to the log
+                        // Print the content of the browser console to the log
                         this.analyzeLog(driver);
-                        failedTests.put(config.getTest(), startupHtmlFile);
+                        failedTests.put(config.getTest(), generatedTest);
                         getLog().error("Test failed!");
                     } else {
                         getLog().info("Test passed!");
                     }
                 } catch (Exception ex) {
-                    failedTests.put(config.getTest(), startupHtmlFile);
-                    if (!Objects.isNull(driver)) {
-                        this.analyzeLog(driver);
-                    }
+                    failedTests.put(config.getTest(), generatedTest);
+                    this.analyzeLog(driver);
                     getLog().error("Test failed!");
-                    getLog().error(cleanForMavenLog(String.format(ex.getMessage())));
+                    getLog().error(cleanForMavenLog(ex.getMessage()));
                 } finally {
-                    if (driver != null) {
-                        driver.quit();
-                    }
+                    driver.quit();
                 }
             }
         } catch (ProjectBuildingException | IOException e) {
             throw new MojoExecutionException("Failed to build project structure", e);
+        } catch (Exception e) {
+            //TODO refine this, possibly remove
+            throw new MojoExecutionException("Failed on test server start", e);
         }
 
-        if(failedTests.isEmpty()) {
+        if (failedTests.isEmpty()) {
             getLog().info("All tests were passed successfully!");
         } else {
             failedTests.forEach((name, startupHtmlFile) -> getLog().error(String.format("Test %s failed, please try manually %s", name, startupHtmlFile)));
