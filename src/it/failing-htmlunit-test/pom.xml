@@ -36,6 +36,16 @@
     </dependencies>
     <build>
         <plugins>
+            <!-- turn off surefire so that it doesnt fail before our j2cl test -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.0.0-M4</version>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
+
             <plugin>
                 <groupId>@project.groupId@</groupId>
                 <artifactId>@project.artifactId@</artifactId>
@@ -43,7 +53,7 @@
                 <executions>
                     <execution>
                         <id>test-js</id>
-                        <phase>prepare-package</phase>
+                        <phase>test</phase>
                         <goals>
                             <goal>test</goal>
                         </goals>
