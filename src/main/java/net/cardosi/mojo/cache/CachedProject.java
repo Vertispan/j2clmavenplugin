@@ -510,6 +510,9 @@ public class CachedProject {
      * into a file named {@link #BUNDLE_JAR_BASE_FILE}, and this cannot change while the build is running.
      */
     private CompletableFuture<TranspiledCacheEntry> bundleJarApplication(ClosureBuildConfiguration config) {
+        // first, build the hash of this project and all dependencies
+        hash().join();
+
         File initialScriptFile = Paths.get(config.getWebappDirectory(), config.getInitialScriptFilename()).toFile();
 
         File outDir = initialScriptFile.getParentFile();
