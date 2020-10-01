@@ -44,6 +44,9 @@ public class Closure {
             jscompArgs.add(jsSourceDir + "/**/*.js");
         }
 
+//        jscompArgs.add("--warning_level");
+//        jscompArgs.add("verbose");
+
         jsZips.forEach(file -> {
             jscompArgs.add("--jszip");
             jscompArgs.add(file.getAbsolutePath());

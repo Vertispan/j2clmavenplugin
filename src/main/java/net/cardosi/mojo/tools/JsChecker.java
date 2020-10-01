@@ -9,6 +9,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.OpenOption;
+import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Collections;
 import java.util.List;
@@ -24,7 +25,7 @@ public class JsChecker {
         this.upstreamExterns = upstreamExterns;
     }
 
-    public boolean checkAndGenerateExterns(List<FrontendUtils.FileInfo> jsInputs, File externsFile) {
+    public boolean checkAndGenerateExterns(List<Path> jsInputs, File externsFile) {
 //        upstreamExterns.forEach(System.out::println);
 //        jsInputs.stream().map(FrontendUtils.FileInfo::sourcePath).forEach(System.out::println);
         // configure compiler
@@ -53,7 +54,7 @@ public class JsChecker {
         compiler.disableThreads();
         Result result = compiler.compile(
                 Collections.emptyList(),
-                jsInputs.stream().map(FrontendUtils.FileInfo::sourcePath).map(SourceFile::fromFile).collect(Collectors.toList()),
+                jsInputs.stream().map(Path::toString).map(SourceFile::fromFile).collect(Collectors.toList()),
                 options);
 
         if (!result.success) {
