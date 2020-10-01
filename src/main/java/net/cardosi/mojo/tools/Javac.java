@@ -1,13 +1,12 @@
 package net.cardosi.mojo.tools;
 
-import com.google.j2cl.common.FrontendUtils.FileInfo;
-
 import javax.lang.model.SourceVersion;
 import javax.tools.*;
 import javax.tools.JavaCompiler.CompilationTask;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -30,9 +29,6 @@ public class Javac {
     StandardJavaFileManager fileManager;
 
     public Javac(File generatedClassesPath, List<File> classpath, File classesDirFile, File bootstrap) throws IOException {
-//        for (File file : classpath) {
-//            System.out.println(file.getAbsolutePath() + " " + file.exists() + " " + file.isDirectory());
-//        }
         javacOptions = new ArrayList<>(Arrays.asList("-encoding", "utf8", "-implicit:none", "-bootclasspath", bootstrap.toString()));
         if (generatedClassesPath == null) {
             javacOptions.add("-proc:none");
@@ -51,9 +47,9 @@ public class Javac {
         fileManager.setLocation(StandardLocation.CLASS_OUTPUT, Collections.singleton(classesDirFile));
     }
 
-    public boolean compile(List<FileInfo> modifiedJavaFiles) {
+    public boolean compile(List<Path> modifiedJavaFiles) {
         // preCompile java files with javac into classesDir
-        Iterable<? extends JavaFileObject> modifiedFileObjects = fileManager.getJavaFileObjectsFromStrings(modifiedJavaFiles.stream().map(FileInfo::sourcePath).collect(Collectors.toList()));
+        Iterable<? extends JavaFileObject> modifiedFileObjects = fileManager.getJavaFileObjectsFromStrings(modifiedJavaFiles.stream().map(Path::toString).collect(Collectors.toList()));
         //TODO pass-non null for "classes" to properly kick apt?
         //TODO consider a different classpath for this tasks, so as to not interfere with everything else?
 
