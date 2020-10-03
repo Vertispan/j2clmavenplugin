@@ -190,13 +190,13 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
 
         try {
             // Build the dependency tree for the project itself. Note that this picks up the scope of the test side of things, but uses the app sources, which isn't exactly right.
-            CachedProject source = loadDependenciesIntoCache(project.getArtifact(), project, false, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_TEST, getDependencyReplacements(), "* ");
+            CachedProject source = loadDependenciesIntoCache(project.getArtifact(), project, false, true, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_TEST, getDependencyReplacements(), "* ");
 
             // Given that set of tasks, we'll chain one more on the end - this is the one that will have the actual test sources+resources. To be fully correct,
             // only this should have the scope=test deps on it
             List<CachedProject> children = new ArrayList<>(source.getChildren());
             children.add(source);
-            CachedProject e = new CachedProject(diskCache, project.getArtifact(), project, children, project.getTestCompileSourceRoots(), project.getTestResources());
+            CachedProject e = new CachedProject(diskCache, project.getArtifact(), project, children, project.getTestCompileSourceRoots(), project.getTestResources(), false);
 
             diskCache.release();
 
@@ -233,7 +233,7 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
                 // Synthesize a new project which only depends on the last one, and only contains the named test's .testsuite content, remade into a one-off JS file
                 ArrayList<CachedProject> finalChildren = new ArrayList<>(e.getChildren());
                 finalChildren.add(e);
-                CachedProject t = new CachedProject(diskCache, project.getArtifact(), project, finalChildren, Collections.singletonList(tmp.toString()), Collections.emptyList());
+                CachedProject t = new CachedProject(diskCache, project.getArtifact(), project, finalChildren, Collections.singletonList(tmp.toString()), Collections.emptyList(), false);
                 TestConfig config = new TestConfig(testClass, this);
 
                 // build this project normally

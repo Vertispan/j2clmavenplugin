@@ -108,6 +108,7 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
             Artifact artifact,
             MavenProject currentProject,
             boolean lookupReactorProjects,
+            boolean reactorProject,
             ProjectBuilder projectBuilder,
             ProjectBuildingRequest projectBuildingRequest,
             DiskCache diskCache,
@@ -183,7 +184,7 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
 //                        null,
 //                        dependency.getArtifactHandler()
 //                );
-                CachedProject transpiledDep = loadDependenciesIntoCache(dependency, p, lookupReactorProjects, projectBuilder, projectBuildingRequest, diskCache, pluginVersion, seen, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, replacedDependencies, "  " + depth);
+                CachedProject transpiledDep = loadDependenciesIntoCache(dependency, p, lookupReactorProjects, true, projectBuilder, projectBuildingRequest, diskCache, pluginVersion, seen, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, replacedDependencies, "  " + depth);
                 children.add(transpiledDep);
             } else {
                 // non-reactor project, build a project for it
@@ -200,7 +201,7 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
                 } catch (ArtifactResolutionException e) {
                     throw new ProjectBuildingException(p.getId(), "Failed to resolve this project's artifact file", e);
                 }
-                CachedProject transpiledDep = loadDependenciesIntoCache(dependency, p, lookupReactorProjects, projectBuilder, projectBuildingRequest, diskCache, pluginVersion, seen, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, replacedDependencies, "  " + depth);
+                CachedProject transpiledDep = loadDependenciesIntoCache(dependency, p, lookupReactorProjects, false, projectBuilder, projectBuildingRequest, diskCache, pluginVersion, seen, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, replacedDependencies, "  " + depth);
                 children.add(transpiledDep);
             }
             if (appendDependencies) {
@@ -215,7 +216,7 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
             p = seen.get(key);
             p.replace(artifact, currentProject, children);
         } else {
-            p = new CachedProject(diskCache, artifact, currentProject, children);
+            p = new CachedProject(diskCache, artifact, currentProject, children, reactorProject);
             seen.put(key, p);
 
             p.markDirty();

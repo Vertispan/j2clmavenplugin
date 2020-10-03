@@ -209,7 +209,7 @@ public class BuildMojo extends AbstractBuildMojo implements ClosureBuildConfigur
         LinkedHashMap<String, CachedProject> projects = new LinkedHashMap<>();
 
         try {
-            CachedProject e = loadDependenciesIntoCache(project.getArtifact(), project, false, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, getDependencyReplacements(), "* ");
+            CachedProject e = loadDependenciesIntoCache(project.getArtifact(), project, false, true, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, getDependencyReplacements(), "* ");
             diskCache.release();
             if (getCompilationLevel().equalsIgnoreCase(CachedProject.BUNDLE_JAR)) {
                 e.registerAsChunkedApp(this).join();

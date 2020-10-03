@@ -5,6 +5,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.j2cl.common.FrontendUtils;
+import com.google.j2cl.transpiler.incremental.TypeGraphStore;
 import com.google.javascript.jscomp.*;
 import net.cardosi.mojo.ClosureBuildConfiguration;
 import net.cardosi.mojo.Hash;
@@ -35,11 +36,14 @@ import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import static com.google.common.collect.ImmutableList.toImmutableList;
+
 public class CachedProject {
     public static final String BUNDLE_JAR = "BUNDLE_JAR";
     private static final String BUNDLE_JAR_BASE_FILE = "j2cl-base.js";
     private enum Step {
         Hash,
+        ChangeSet,
         ProcessAnnotations,
         StripGwtIncompatible,
         GenerateStrippedBytecode,
@@ -64,20 +68,25 @@ public class CachedProject {
     private final List<CachedProject> dependents = new ArrayList<>();
     private final List<String> compileSourceRoots;
     private final List<Resource> resources;
+    private TypeGraphStore typeGraphStore;
 
     private final Map<String, CompletableFuture<TranspiledCacheEntry>> steps = new ConcurrentHashMap<>();
 
     private Set<Supplier<CompletableFuture<TranspiledCacheEntry>>> registeredBuildTerminals = new HashSet<>();
 
-    public CachedProject(DiskCache diskCache, Artifact artifact, MavenProject currentProject, List<CachedProject> children, List<String> compileSourceRoots, List<Resource> resources) {
+    private boolean reactorProject;
+
+    public CachedProject(DiskCache diskCache, Artifact artifact, MavenProject currentProject, List<CachedProject> children,
+                         List<String> compileSourceRoots, List<Resource> resources, boolean reactorProject) {
         this.diskCache = diskCache;
         this.compileSourceRoots = compileSourceRoots;
         this.resources = resources;
+        this.reactorProject = reactorProject;
         replace(artifact, currentProject, children);
     }
 
-    public CachedProject(DiskCache diskCache, Artifact artifact, MavenProject currentProject, List<CachedProject> children) {
-        this(diskCache, artifact, currentProject, children, currentProject.getCompileSourceRoots(), currentProject.getResources());
+    public CachedProject(DiskCache diskCache, Artifact artifact, MavenProject currentProject, List<CachedProject> children, boolean reactorProject) {
+        this(diskCache, artifact, currentProject, children, currentProject.getCompileSourceRoots(), currentProject.getResources(), reactorProject);
     }
 
     public void replace(Artifact artifact, MavenProject currentProject, List<CachedProject> children) {
@@ -320,16 +329,16 @@ public class CachedProject {
     private <T> CompletableFuture<TranspiledCacheEntry> getOrCreate(String step, Supplier<T> dependencies, BiFunction<T, TranspiledCacheEntry, TranspiledCacheEntry> work) {
         return getOrCreate(step, entry -> CompletableFuture
                         .supplyAsync(() -> {
-                    //System.out.println("starting dependency step for " + getArtifactKey() + " " + step);
+                    System.out.println("starting dependency step for " + getArtifactKey() + " " + step);
                             try {
                                 return dependencies.get();
                             } finally {
-                    //    System.out.println("done with dependency step for " + getArtifactKey() + " " + step);
+                        System.out.println("done with dependency step for " + getArtifactKey() + " " + step);
 
                             }
                         }, diskCache.queueingPool())
                         .thenApplyAsync(output -> {
-                    //System.out.println("starting pool work for " + getArtifactKey() + " " + step);
+                    System.out.println("starting pool work for " + getArtifactKey() + " " + step);
                             long start = System.currentTimeMillis();
                             try {
                                 return work.apply(output, entry);
@@ -344,8 +353,9 @@ public class CachedProject {
     }
 
     private CompletableFuture<TranspiledCacheEntry> jscompWithScope(ClosureBuildConfiguration config) {
+        System.out.println("jscompWithScope");
         // first, build the hash of this project and all dependencies
-        hash().join();
+        TranspiledCacheEntry cacheEntry = hash().join();
 
         return getOrCreate(Step.AssembleOutput.name() + "-" + config.hash(), () -> {
             // For each child that matches the specified scopes, ask for the compiled js output. As this is the
@@ -392,7 +402,8 @@ public class CachedProject {
             }
             reqs.stream().map(TranspiledCacheEntry::getTranspiledSourcesDir).map(File::getAbsoluteFile).distinct().forEach(dir -> {
                 try {
-                    FileUtils.copyDirectory(dir, sources);
+                    // don't include the incremental.dat
+                    FileUtils.copyDirectory(dir, sources, p -> !p.toString().endsWith("incremental.dat"));
                 } catch (IOException e) {
                     throw new UncheckedIOException(e);
                 }
@@ -513,11 +524,13 @@ public class CachedProject {
      */
     private CompletableFuture<TranspiledCacheEntry> bundleJarApplication(ClosureBuildConfiguration config) {
         // first, build the hash of this project and all dependencies
+        System.out.println("bundleJarApplication");
         hash().join();
 
         File initialScriptFile = Paths.get(config.getWebappDirectory(), config.getInitialScriptFilename()).toFile();
 
         File outDir = initialScriptFile.getParentFile();
+
 
         //incorporate the config into the hash, since we might change config without changing sources
         return getOrCreate(Step.ChunkBundle.name() + "-" + config.hash(), () -> {
@@ -726,13 +739,16 @@ public class CachedProject {
 
 
         }, (bytecodeDeps, entry) -> {
-            List<Path> sourcesToCompile = getFileInfoInDir(Paths.get(entry.getStrippedSourcesDir().toURI()), javaMatcher);
+            List<Path> sourcesToCompile = getFileInfoInDir(Paths.get(entry.getStrippedSourcesDir().toURI()),
+                                                           javaMatcher,
+                                                           p -> typeGraphStore.getChangeSet().getSourcesToProcesSet()
+                                                                              .contains(p.toString()));
             if (!sourcesToCompile.isEmpty()) {
                 //invoke j2cl on these sources, classpath
                 List<File> strippedClasspath = new ArrayList<>(bytecodeDeps.stream().map(TranspiledCacheEntry::getStrippedBytecodeDir).collect(Collectors.toList()));
                 strippedClasspath.addAll(diskCache.getExtraClasspath());
 
-                J2cl j2cl = new J2cl(strippedClasspath, diskCache.getBootstrap(), entry.getTranspiledSourcesDir());
+                J2cl j2cl = new J2cl(strippedClasspath, diskCache.getBootstrap(), entry.getTranspiledSourcesDir(), reactorProject);
                 List<Path> nativeSources = getFileInfoInDir(entry.getStrippedSourcesDir().toPath(), nativeJsMatcher);
 
                 boolean j2clSuccess = j2cl.transpile(sourcesToCompile, nativeSources);
@@ -789,7 +805,10 @@ public class CachedProject {
             File strippedBytecode = entry.getStrippedBytecodeDir();
             try {
                 Javac javac = new Javac(null, strippedClasspath, strippedBytecode, diskCache.getBootstrap());
-                List<Path> sourcesToCompile = getFileInfoInDir(Paths.get(entry.getStrippedSourcesDir().toURI()), javaMatcher);
+                List<Path> sourcesToCompile = getFileInfoInDir(Paths.get(entry.getStrippedSourcesDir().toURI()),
+                                                               javaMatcher,
+                                                               p -> typeGraphStore.getChangeSet().getSourcesToProcesSet()
+                                                                                  .contains(p.toString()));
                 if (sourcesToCompile.isEmpty()) {
                     return entry;
                 }
@@ -854,7 +873,10 @@ public class CachedProject {
 
     private void stripSources(File sourceDir, File stripedSourceDir) {
         GwtIncompatiblePreprocessor stripper = new GwtIncompatiblePreprocessor(stripedSourceDir);
-        List<Path> sources = getFileInfoInDir(sourceDir.toPath(), javaMatcher, nativeJsMatcher, jsMatcher);
+        List<Path> sources = getFileInfoInDir(sourceDir.toPath(),
+                                              javaMatcher, nativeJsMatcher, jsMatcher,
+                                              p -> typeGraphStore.getChangeSet().getSourcesToProcesSet()
+                                                                 .contains(p.toString()));
         try {
             stripper.preprocess(sourceDir, sources);
         } catch (IOException e) {
@@ -866,6 +888,7 @@ public class CachedProject {
     public CompletableFuture<TranspiledCacheEntry> generatedSources() {
         return getOrCreate(Step.ProcessAnnotations.name(), () -> {
             // depend on other projects with sources mapped, and only ask for "generated sources" so that we can get their unstripped bytecode
+            buildChangeSets().join();
             return children.stream()
                     .filter(CachedProject::hasSourcesMapped)
 //                    .filter(child -> new ScopeArtifactFilter(Artifact.SCOPE_COMPILE).include(child.getArtifact()))//TODO removing this is wrong, should instead let the whole "project" be scoped
@@ -946,6 +969,33 @@ public class CachedProject {
             }
 
             return diskCache.entry(getArtifactId(), hash.toString());
+        });
+    }
+
+    private CompletableFuture<TranspiledCacheEntry> buildChangeSets() {
+        return getOrCreate(Step.ChangeSet.name(), () -> {
+            return null;
+        }, (ignore, entry) -> {
+            if (reactorProject) {
+                try {
+                    List<String> files = new ArrayList<>();
+
+                    for (String dir : compileSourceRoots) {
+                        try (Stream<Path> stream = Files.walk(Paths.get(dir), Integer.MAX_VALUE)) {
+                            stream.map( f -> f.toAbsolutePath().toString())
+                                  .filter(p -> p.endsWith(".java"))
+                                  .forEach( f -> files.add(f));
+                        }
+                    }
+
+                    typeGraphStore = new TypeGraphStore();
+                    typeGraphStore.calculateChangeSet(entry.getTranspiledSourcesDir().toPath(), files);
+                    typeGraphStore.write();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            return entry;
         });
     }
 

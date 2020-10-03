@@ -16,7 +16,10 @@ import java.util.stream.Stream;
 //TODO factor out the wiring to set this up for reuse
 public class J2cl {
     List<String> args = new ArrayList<>();
-    public J2cl(List<File> strippedClasspath, File bootstrap, File jsOutDir) {
+    public J2cl(List<File> strippedClasspath, File bootstrap, File jsOutDir, boolean writeTypeGraph) {
+        if (writeTypeGraph) {
+            args.add("-writeTypeGraph");
+        }
         args.add("-d");
         args.add(jsOutDir.toPath().toString());
         args.add("-cp");
@@ -38,6 +41,7 @@ public class J2cl {
         }
 
         commandLineArgsBuilder.addAll(args);
+
 
         ImmutableList<String> cmdLine = commandLineArgsBuilder.build();
 

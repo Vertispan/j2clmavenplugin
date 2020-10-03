@@ -288,6 +288,11 @@
     </dependency>
     <dependency>
       <groupId>com.vertispan.j2cl</groupId>
+      <artifactId>incremental</artifactId>
+      <version>${j2cl.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.vertispan.j2cl</groupId>
       <artifactId>gwt-incompatible-stripper</artifactId>
       <version>${j2cl.version}</version>
     </dependency>

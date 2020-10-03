@@ -1,5 +1,14 @@
 package net.cardosi.mojo;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+
 import com.google.javascript.jscomp.DependencyOptions;
 import net.cardosi.mojo.cache.CachedProject;
 import net.cardosi.mojo.cache.DiskCache;
@@ -19,19 +28,13 @@ import org.apache.maven.project.ProjectBuildingException;
 import org.apache.maven.project.ProjectBuildingRequest;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
-
 /**
  * Attempts to do the setup for various test and build goals declared in the current project or in child projects,
  * but also allows the configuration for this goal to further customize them. For example, this goal will be
  * configured to use a particular compilation level, or directory to copy output to.
  */
-@Mojo(name = "watch", requiresDependencyResolution = ResolutionScope.TEST, aggregator = true)
-public class WatchMojo extends AbstractBuildMojo {
+@Mojo(name = "incremental", requiresDependencyResolution = ResolutionScope.TEST, aggregator = true)
+public class IncrementalMojo extends AbstractBuildMojo {
 
     @Parameter(defaultValue = "${reactorProjects}", required = true, readonly = true)
     protected List<MavenProject> reactorProjects;
@@ -204,15 +207,15 @@ public class WatchMojo extends AbstractBuildMojo {
         }
         diskCache.release();
 
-        for (CachedProject app : projects.values()) {
-            //TODO instead of N threads per project, combine threads?
-            try {
-                app.watch();
-            } catch (IOException ex) {
-                ex.printStackTrace();
-                //TODO fall back to polling or another strategy
-            }
-        }
+//        for (CachedProject app : projects.values()) {
+//            //TODO instead of N threads per project, combine threads?
+//            try {
+//                app.watch();
+//            } catch (IOException ex) {
+//                ex.printStackTrace();
+//                //TODO fall back to polling or another strategy
+//            }
+//        }
 
         // TODO replace this dumb timer with a System.in loop so we can watch for some commands from the user
         try {
