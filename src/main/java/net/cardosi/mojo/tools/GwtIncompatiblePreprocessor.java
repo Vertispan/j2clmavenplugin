@@ -6,7 +6,9 @@ import com.google.common.io.MoreFiles;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
+import java.util.Collections;
 import java.util.List;
 
 import static com.google.j2cl.tools.gwtincompatible.GwtIncompatibleStripper.strip;
@@ -33,15 +35,19 @@ public class GwtIncompatiblePreprocessor {
             Path localPath = sourceDir.toPath().relativize(file);
             final Path targetPath = outputDirectory.toPath().resolve(localPath);
             Files.createDirectories(targetPath.getParent());
+            Files.deleteIfExists(targetPath);
             if (file.endsWith(".java")) {
                 String fileContent = MoreFiles.asCharSource(file, UTF_8).read();
                 // Write the processed file to output
-                J2clUtils.writeToFile(targetPath, strip(fileContent), problems);
+                //J2clUtils.writeToFile(targetPath, strip(fileContent), problems);
+                Files.write(targetPath, Collections.singleton(fileContent), StandardCharsets.UTF_8);
+                //targetPath.toFile().setLastModified(file.toFile().lastModified()); // last modified must be same, for calculated ChangeSet
                 if (problems.hasErrors()) {
                     throw new IOException(problems.getErrors().toString());
                 }
             } else {
                 Files.copy(file, targetPath);
+                //targetPath.toFile().setLastModified(file.toFile().lastModified()); // last modified must be same, for calculated ChangeSet
             }
         }
     }

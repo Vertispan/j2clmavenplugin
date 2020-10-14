@@ -45,6 +45,8 @@ public class J2cl {
 
         ImmutableList<String> cmdLine = commandLineArgsBuilder.build();
 
+        System.out.println(cmdLine);
+
         int status = J2clCommandLineRunner.run(Iterables.toArray(cmdLine, String.class));
         return status == 0;
 
