@@ -798,6 +798,10 @@ public class CachedProject {
                 }
 //                System.out.println("step 3 " + project.getArtifactKey());
                 boolean javacSuccess = javac.compile(sourcesToCompile);
+
+                Generator entryPointGenerator = new EntryPointGenerator(entry.getStrippedBytecodeDir().toString(), entry);
+                entryPointGenerator.process(sourcesToCompile).generate();
+
                 if (!javacSuccess) {
                     throw new IllegalStateException("javac failed, check log for details");
                 }
@@ -905,7 +909,7 @@ public class CachedProject {
                     throw new UncheckedIOException(e);
                 }
 
-                Generator entryPointGenerator = new EntryPointGenerator(entry);
+                Generator entryPointGenerator = new EntryPointGenerator(entry.getBytecodeDir().getAbsolutePath(), entry);
                 entryPointGenerator.process(sources).generate();
             }
 

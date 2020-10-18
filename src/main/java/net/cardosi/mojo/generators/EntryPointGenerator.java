@@ -28,15 +28,17 @@ public class EntryPointGenerator implements Generator {
 
     private final Indexer indexer = new Indexer();
     private final DotName GWT_ENTRY_POINT = DotName.createSimple("org.gwtproject.annotations.GwtEntryPoint");
-    private final TranspiledCacheEntry path;
+    private final TranspiledCacheEntry cacheEntry;
+    private final String path;
 
-    public EntryPointGenerator(TranspiledCacheEntry path) {
+    public EntryPointGenerator(String path, TranspiledCacheEntry cacheEntry) {
         this.path = path;
+        this.cacheEntry = cacheEntry;
     }
 
     public Generator process(List<FrontendUtils.FileInfo> sources) {
         for (FrontendUtils.FileInfo source : sources) {
-            String absolutePath = path.getBytecodeDir() + "/" + source.originalPath().replace(".java", ".class");
+            String absolutePath = path + "/" + source.originalPath().replace(".java", ".class");
             File file = new File(absolutePath);
             if (file.exists()) {
                 try (InputStream in = new FileInputStream(file)) {
@@ -114,7 +116,7 @@ public class EntryPointGenerator implements Generator {
 
     private String generateNativeJsFilename(String className, String classPkg) {
         StringBuffer sb = new StringBuffer();
-        sb.append(path.getStrippedSourcesDir());
+        sb.append(cacheEntry.getStrippedSourcesDir());
         sb.append("/");
         sb.append(classPkg.replaceAll("\\.", "/"));
         sb.append("/");
