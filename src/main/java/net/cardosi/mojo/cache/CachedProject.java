@@ -7,6 +7,8 @@ import com.google.j2cl.common.FrontendUtils;
 import com.google.javascript.jscomp.*;
 import net.cardosi.mojo.ClosureBuildConfiguration;
 import net.cardosi.mojo.Hash;
+import net.cardosi.mojo.generators.EntryPointGenerator;
+import net.cardosi.mojo.generators.Generator;
 import net.cardosi.mojo.tools.*;
 import org.apache.commons.io.FileUtils;
 import org.apache.maven.artifact.Artifact;
@@ -15,6 +17,8 @@ import org.apache.maven.artifact.resolver.filter.ScopeArtifactFilter;
 import org.apache.maven.model.FileSet;
 import org.apache.maven.model.Resource;
 import org.apache.maven.project.MavenProject;
+import org.jboss.jandex.DotName;
+import org.jboss.jandex.Indexer;
 
 import java.io.File;
 import java.io.IOException;
@@ -900,6 +904,9 @@ public class CachedProject {
                 } catch (IOException e) {
                     throw new UncheckedIOException(e);
                 }
+
+                Generator entryPointGenerator = new EntryPointGenerator(entry);
+                entryPointGenerator.process(sources).generate();
             }
 
             return entry;
