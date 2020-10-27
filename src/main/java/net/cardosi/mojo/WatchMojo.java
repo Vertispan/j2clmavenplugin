@@ -23,6 +23,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -190,6 +192,7 @@ public class WatchMojo extends AbstractBuildMojo {
                                     f = p.registerAsChunkedApp(config);
                                 } else {
                                     f = p.registerAsApp(config);
+
                                 }
                                 futures.add(f);
                                 apps.add(p);
@@ -203,6 +206,21 @@ public class WatchMojo extends AbstractBuildMojo {
             throw new MojoExecutionException("Failed to build project structure", e);
         }
         diskCache.release();
+
+        for (Future f : futures) {
+            try {
+                f.get();
+            } catch (ExecutionException| InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        try {
+            // sleep 500ms, so the printouts aren't muddled
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
 
         for (CachedProject app : projects.values()) {
             //TODO instead of N threads per project, combine threads?

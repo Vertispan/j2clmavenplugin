@@ -31,16 +31,18 @@ public class GwtIncompatiblePreprocessor {
     public void preprocess(File sourceDir, List<Path> unprocessedFiles) throws IOException {
         Problems problems = new Problems();
 
+        System.out.println("strip sourceDir" + sourceDir);
         for (Path file : unprocessedFiles) {
             Path localPath = sourceDir.toPath().relativize(file);
             final Path targetPath = outputDirectory.toPath().resolve(localPath);
             Files.createDirectories(targetPath.getParent());
             Files.deleteIfExists(targetPath);
+            System.out.println("strip targetPath" + targetPath + ":" + file);
             if (file.endsWith(".java")) {
                 String fileContent = MoreFiles.asCharSource(file, UTF_8).read();
+                String processedFileContent = strip(fileContent);
                 // Write the processed file to output
-                //J2clUtils.writeToFile(targetPath, strip(fileContent), problems);
-                Files.write(targetPath, Collections.singleton(fileContent), StandardCharsets.UTF_8);
+                Files.write(targetPath, Collections.singleton(processedFileContent), StandardCharsets.UTF_8);
                 //targetPath.toFile().setLastModified(file.toFile().lastModified()); // last modified must be same, for calculated ChangeSet
                 if (problems.hasErrors()) {
                     throw new IOException(problems.getErrors().toString());

@@ -1,16 +1,13 @@
 package net.cardosi.mojo.cache;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.j2cl.common.FrontendUtils;
 import com.google.j2cl.transpiler.incremental.ChangeSet;
 import com.google.j2cl.transpiler.incremental.TypeGraphStore;
 import com.google.javascript.jscomp.*;
 import net.cardosi.mojo.ClosureBuildConfiguration;
 import net.cardosi.mojo.Hash;
-import net.cardosi.mojo.XmlDomClosureConfig;
 import net.cardosi.mojo.tools.*;
 import org.apache.commons.io.FileUtils;
 import org.apache.maven.artifact.Artifact;
@@ -110,10 +107,10 @@ public class CachedProject {
      *
      * TODO this could be updated to compare before/after hash and avoid marking children as dirty
      */
-    public void markDirty() {
+    public CompletableFuture<Void> markDirty() {
         synchronized (steps) {
             if (steps.isEmpty()) {
-                return;
+                return null;
             }
             // cancel all running work
             for (CompletableFuture<TranspiledCacheEntry> cf : steps.values()) {
@@ -131,6 +128,7 @@ public class CachedProject {
                     // ignore errors, we're expecting this
                 }
             }
+
             steps.clear();
         }
 
@@ -138,8 +136,10 @@ public class CachedProject {
 
         //TODO cache those "compile me" or "test me" values so we don't pass around like this
         if (!registeredBuildTerminals.isEmpty()) {
-            build();
+            return build();
         }
+
+        return null;
     }
 
     //TODO instead of these, consider a .test() method instead?
@@ -181,30 +181,63 @@ public class CachedProject {
         Map<FileSystem, List<Path>> fileSystemsToWatch = compileSourceRoots.stream().map(Paths::get).collect(Collectors.groupingBy(Path::getFileSystem));
         for (Map.Entry<FileSystem, List<Path>> entry : fileSystemsToWatch.entrySet()) {
             WatchService watchService = entry.getKey().newWatchService();
+            Map<Path, WatchKey> pathWatchKeys = new HashMap<>();
             for (Path path : entry.getValue()) {
-                Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
-                    @Override
-                    public FileVisitResult preVisitDirectory(Path path, BasicFileAttributes basicFileAttributes) throws IOException {
-                        path.register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_MODIFY);
-                        return FileVisitResult.CONTINUE;
-                    }
-                });
-                path.register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_MODIFY);
+                watchDirectoryAndDescendants(watchService, pathWatchKeys, path);
             }
             new Thread() {
                 @Override
                 public void run() {
                     while (true) {
                         try {
-                            WatchKey key = watchService.poll(10, TimeUnit.SECONDS);
+                            System.out.println("Waiting...");
+                            System.in.read();
+                            WatchKey key = null;
+                            // attempt poll 10 times, before going back to waiting. WatchService is not always instant
+                            for (int i = 0; key == null && i < 10; i++) {
+                                System.out.println("Polling... " + (i + 1));
+                                key = watchService.poll(1, TimeUnit.SECONDS);
+                            }
                             if (key == null) {
+                                System.out.println("No Changes...");
                                 continue;
                             }
+
+                            // need to drain.
+                            // I found if changed one file I'd get two events key.pollEvent didn't fully drain.
+                            // This means a second in.read after a build, would trigger another unecessary build. (mdp)
+                            while (key != null) {
+                                for( WatchEvent<?> event : key.pollEvents() ) {//clear the events out
+                                    WatchEvent.Kind<?> kind = event.kind();
+                                    Path parent = (Path) key.watchable();
+                                    Path child = parent.resolve((Path) event.context());
+
+                                    if(kind == StandardWatchEventKinds.ENTRY_DELETE ) {
+                                        // deleted directories will not work with Files.isDirectory()
+                                        // so just check for a key, for all entries
+                                        WatchKey childKey = pathWatchKeys.remove(child);
+                                        if (childKey != null) {
+                                            childKey.cancel();
+                                            System.out.println("unwatch " + child);
+                                        }
+                                    } else  if (kind == StandardWatchEventKinds.ENTRY_CREATE && child.toFile().isDirectory() ) {
+                                        watchDirectoryAndDescendants(watchService, pathWatchKeys, child);
+                                    }
+                                }
+                                sleep(50); // some stackexchange article recommended a very short sleep, to ensure last changes are flushed
+                                key.reset();//reset to go again
+                                key = watchService.poll();
+                            }
+
+                            System.out.println("Running...");
+                            CompletableFuture<Void>  f = markDirty();
+                            if (f != null) {
+                                f.get();
+                            }
+                            sleep(500); // sleep 500ms, so the printouts aren't muddled
+
                             //TODO if it was a create, register it (recursively?)
-                            key.pollEvents();//clear the events out
-                            key.reset();//reset to go again
-                            markDirty();
-                        } catch (InterruptedException e) {
+                        } catch (InterruptedException | ExecutionException | IOException e) {
                             Thread.currentThread().interrupt();
                             return;
                         }
@@ -212,6 +245,18 @@ public class CachedProject {
                 }
             }.start();
         }
+    }
+
+    private void watchDirectoryAndDescendants(WatchService watchService, Map<Path, WatchKey> pathWatchKeys, Path path) throws IOException {
+        Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
+            @Override
+            public FileVisitResult preVisitDirectory(Path path, BasicFileAttributes basicFileAttributes) throws IOException {
+                WatchKey key = path.register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_MODIFY);
+                pathWatchKeys.put(path, key);
+                System.out.println("watch " + path);
+                return FileVisitResult.CONTINUE;
+            }
+        });
     }
 
     public CompletableFuture<TranspiledCacheEntry> registerAsApp(ClosureBuildConfiguration config) {
@@ -982,26 +1027,8 @@ public class CachedProject {
                     }
                 }
 
-                TranspiledCacheEntry entry2 = diskCache.entry(getArtifactId(), hash.toString());
-                if(transpiledCacheEntry != null) {
-                    copyFolder(transpiledCacheEntry.getCacheDir(),
-                               entry2.getCacheDir());
-
-
-                    Set<String> set = Arrays.stream(Step.values()).map(Step::toString).collect(Collectors.toSet());
-                    List<Path> stepPaths = Files.list(entry2.getCacheDir().toPath()).filter(p -> { String f = p.getFileName().toString();
-                                                                            int index = f.indexOf("-");
-                                                                            String stepName = index < 0 ? f : f.substring(0, index);
-                                                                            System.out.println("substr step: " + stepName + ":" + p.getFileName().toString());
-                                                                            return set.contains(stepName);} ).collect(Collectors.toList());
-                    for (Path stepPath : stepPaths) {
-                        deleteDirectoryJava8(stepPath);
-                    }
-                }
-
-                transpiledCacheEntry = entry2;
-
-                return entry2;
+                TranspiledCacheEntry entry = diskCache.entry(getArtifactId(), hash.toString());
+                return entry;
             } catch (IOException e) {
                 e.printStackTrace();
                 throw new UncheckedIOException(e);
@@ -1010,74 +1037,12 @@ public class CachedProject {
         });
     }
 
-    public static void deleteDirectoryJava8(Path path) throws IOException {
-        // read java doc, Files.walk need close the resources.
-        // try-with-resources to ensure that the stream's open directories are closed
-        try (Stream<Path> walk = Files.walk(path)) {
-            walk
-                    .sorted(Comparator.reverseOrder())
-                    .forEach(CachedProject::deleteDirectoryJava8Extract);
-        }
-
-    }
-
-    // extract method to handle exception in lambda
-    public static void deleteDirectoryJava8Extract(Path path) {
-        try {
-            System.out.println("DeleteJava8: " + path);
-            Files.delete(path);
-        } catch (IOException e) {
-            System.err.printf("Unable to delete this path : %s%n%s", path, e);
-        }
-    }
-
     static void copyFolder(File src, File dest){
-        // checks
-        if(src==null || dest==null)
-            return;
-        if(!src.isDirectory())
-            return;
-        if(dest.exists()){
-            if(!dest.isDirectory()){
-                //System.out.println("destination not a folder " + dest);
-                return;
-            }
-        } else {
-            dest.mkdir();
-        }
-
-        if(src.listFiles()==null || src.listFiles().length==0)
-            return;
-
-        String strAbsPathSrc = src.getAbsolutePath();
-        String strAbsPathDest = dest.getAbsolutePath();
-
         try {
-            Files.walkFileTree(src.toPath(), new SimpleFileVisitor<Path>() {
-                @Override
-                public FileVisitResult visitFile(Path file,
-                                                 BasicFileAttributes attrs) throws IOException {
-
-                    File dstFile = new File(strAbsPathDest + file.toAbsolutePath().toString().substring(strAbsPathSrc.length()));
-                    if(dstFile.exists()) {
-                        return FileVisitResult.CONTINUE;
-                    }
-
-                    if(!dstFile.getParentFile().exists()) {
-                        dstFile.getParentFile().mkdirs();
-                    }
-
-                    Files.copy(file, dstFile.toPath());
-
-                    return FileVisitResult.CONTINUE;
-                }
-            });
-
+            FileUtils.copyDirectory(src, dest);
         } catch (IOException e) {
-            //e.printStackTrace();
-            return;
+            throw new UncheckedIOException(e);
         }
-
         return;
     }
 
@@ -1086,6 +1051,30 @@ public class CachedProject {
             return null;
         }, (ignore, entry) -> {
             if (reactorProject) {
+                if(transpiledCacheEntry != null) {
+                    TranspiledCacheEntry srcEntry = transpiledCacheEntry;
+                    Path srcBase = entry.getCacheDir().toPath();
+                    Path trgBase = entry.getCacheDir().toPath();
+//                    copyFolder(srcBase.resolve(srcEntry.getAnnotationSourcesDir().toPath()).toFile(),
+//                               trgBase.resolve(entry.getAnnotationSourcesDir().toPath()).toFile());
+
+                    copyFolder(srcBase.resolve(srcEntry.getBytecodeDir().toPath()).toFile(),
+                               trgBase.resolve(entry.getBytecodeDir().toPath()).toFile());
+
+                    copyFolder(srcBase.resolve(srcEntry.getTranspiledSourcesDir().toPath()).toFile(),
+                               trgBase.resolve(entry.getTranspiledSourcesDir().toPath()).toFile());
+
+                    copyFolder(srcBase.resolve(srcEntry.getStrippedBytecodeDir().toPath()).toFile(),
+                               trgBase.resolve(entry.getStrippedBytecodeDir().toPath()).toFile());
+
+                    copyFolder(srcBase.resolve(srcEntry.getStrippedSourcesDir().toPath()).toFile(),
+                               trgBase.resolve(entry.getStrippedSourcesDir().toPath()).toFile());
+
+                    copyFolder(srcBase.resolve(srcEntry.getUnpackedSources().toPath()).toFile(),
+                               trgBase.resolve(entry.getUnpackedSources().toPath()).toFile());
+                }
+                transpiledCacheEntry = entry;
+
                 try {
                     typeGraphStore = new TypeGraphStore();
                     typeGraphStore.calculateChangeSet(entry.getTranspiledSourcesDir().toPath(), compileSourceRoots);
@@ -1094,33 +1083,29 @@ public class CachedProject {
                     ChangeSet[] changeSets = typeGraphStore.getChangeSets().values().toArray(new ChangeSet[typeGraphStore.getChangeSets().size()]);
                     ChangeSet changeSet = changeSets[0];
                     for (String updated : changeSet.getUpdated()) {
-                        if ( updated.endsWith(".java")) {
-                            Path javaPath = entry.getStrippedSourcesDir().toPath().resolve(updated);
-                            Files.deleteIfExists(javaPath);
+                        if ( updated.endsWith(".native.js")) {
+                            deleteNativeJsSource(entry, updated);
+                        } else if ( updated.endsWith(".java")) {
+                            deleteJavaSource(entry, updated);
+                            String uniqueId = typeGraphStore.getPathToUniqueId().get(updated);
+                            deleteInnerTypes(entry, updated, typeGraphStore.getInnerTypesChanged().get(uniqueId));
 
-                            String baseFileName = updated.substring(0, updated.length() - 5);
-                            Path   bytecodPath  = entry.getBytecodeDir().toPath().resolve(baseFileName + ".class");
-                            Files.deleteIfExists(bytecodPath);
-
-                            Path javaJsPath = entry.getTranspiledSourcesDir().toPath().resolve(baseFileName + ".java.js");
-                            Files.deleteIfExists(javaJsPath);
-
-                            Path implJavaJsPath = entry.getTranspiledSourcesDir().toPath().resolve(baseFileName + ".impl.java.js");
-                            Files.deleteIfExists(implJavaJsPath);
-
-                            Path jsMap = entry.getTranspiledSourcesDir().toPath().resolve(baseFileName + ".js.map");
-                            Files.deleteIfExists(jsMap);
-
-                            System.out.println("Delete: " + javaPath);
-                            System.out.println("Delete: " + bytecodPath);
-                            System.out.println("Delete: " + javaJsPath);
-                            System.out.println("Delete: " + implJavaJsPath);
-                            System.out.println("Delete: " + jsMap);
+                            // TODO delete nested classes
                         } else {
                             System.out.println("Did not Delete: " + updated);
                         }
+                    }
 
-                        // TODO delete nested classes
+                    for (String removed : changeSet.getRemoved()) {
+                        if ( removed.endsWith(".native.js")) {
+                            deleteNativeJsSource(entry, removed);
+                        } else if ( removed.endsWith(".java")) {
+                            deleteJavaSource(entry, removed);
+                            String uniqueId = typeGraphStore.getPathToUniqueId().get(removed);
+                            deleteInnerTypes(entry, removed, typeGraphStore.getInnerTypesChanged().get(uniqueId));
+                        } else {
+                            System.out.println("Did not Delete: " + removed);
+                        }
                     }
 
                 } catch (IOException e) {
@@ -1129,6 +1114,50 @@ public class CachedProject {
             }
             return entry;
         });
+    }
+
+    private void deleteInnerTypes(TranspiledCacheEntry entry, String updated, List<String> innerTypes) throws IOException {
+        if (innerTypes != null && !innerTypes.isEmpty()) {
+            System.out.println("deleteInner: " + updated + ":" + innerTypes);
+            String baseFileName = updated.substring(0, updated.length() - 5);
+            for (String innerType : innerTypes) {
+                String innerFileName = baseFileName + innerType.substring(innerType.indexOf('$')) + ".java";
+                deleteJavaSource(entry, innerFileName);
+            }
+        }
+    }
+
+    private void deleteNativeJsSource(TranspiledCacheEntry entry, String updated) throws IOException {
+        Path strippedJsPath = entry.getStrippedSourcesDir().toPath().resolve(updated);
+        Files.deleteIfExists(strippedJsPath);
+
+        Path strippedJsPath_js = entry.getStrippedSourcesDir().toPath()
+                                      .resolve(updated.substring(0, updated.length() - 9) + "native_js");
+        Files.deleteIfExists(strippedJsPath_js);
+    }
+
+    private void deleteJavaSource(TranspiledCacheEntry entry, String file) throws IOException {
+        Path javaPath = entry.getStrippedSourcesDir().toPath().resolve(file);
+        boolean b1 = Files.deleteIfExists(javaPath); // this won't exist for inner types, but that's ok
+
+        String baseFileName = file.substring(0, file.length() - 5);
+        Path   bytecodPath  = entry.getBytecodeDir().toPath().resolve(baseFileName + ".class");
+        boolean b2 = Files.deleteIfExists(bytecodPath);
+
+        Path javaJsPath = entry.getTranspiledSourcesDir().toPath().resolve(baseFileName + ".java.js");
+        boolean b3 = Files.deleteIfExists(javaJsPath);
+
+        Path implJavaJsPath = entry.getTranspiledSourcesDir().toPath().resolve(baseFileName + ".impl.java.js");
+        boolean b4 = Files.deleteIfExists(implJavaJsPath);
+
+        Path jsMap = entry.getTranspiledSourcesDir().toPath().resolve(baseFileName + ".js.map");
+        boolean b5 = Files.deleteIfExists(jsMap);
+
+        System.out.println("Delete: " + b1 + ":" + javaPath);
+        System.out.println("Delete: " + b2 + ":" + bytecodPath);
+        System.out.println("Delete: " + b3 + ":" + javaJsPath);
+        System.out.println("Delete: " + b4 + ":" + implJavaJsPath);
+        System.out.println("Delete: " + b5 + ":" + jsMap);
     }
 
     private static void appendHashOfAllSources(Hash hash, Path rootDirectory) throws IOException {
