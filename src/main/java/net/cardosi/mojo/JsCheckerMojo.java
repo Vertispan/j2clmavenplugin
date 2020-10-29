@@ -61,7 +61,7 @@ public class JsCheckerMojo extends AbstractBuildMojo {
         ProjectBuildingRequest request = new DefaultProjectBuildingRequest(mavenSession.getProjectBuildingRequest());
 
         try {
-            CachedProject e = loadDependenciesIntoCache(project.getArtifact(), project, false, true, projectBuilder, request, diskCache, pluginVersion, new LinkedHashMap<>(), Artifact.SCOPE_COMPILE_PLUS_RUNTIME, getDependencyReplacements(), "* ");
+            CachedProject e = loadDependenciesIntoCache(project.getArtifact(), project,true, projectBuilder, request, diskCache, pluginVersion, new LinkedHashMap<>(), Artifact.SCOPE_COMPILE_PLUS_RUNTIME, getDependencyReplacements(), "* ");
             diskCache.release();
             e.jsCheck(null).join();
         } catch (ProjectBuildingException | IOException e) {

@@ -185,7 +185,7 @@ public class WatchMojo extends AbstractBuildMojo {
                                 XmlDomClosureConfig config = new XmlDomClosureConfig(configuration, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, compilationLevel, rewritePolyfills, reactorProject.getArtifactId(), DependencyOptions.DependencyMode.SORT_ONLY, enableSourcemaps, webappDirectory);
 
                                 // Load up all the dependencies in the requested scope for the current project
-                                CachedProject p = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, true, true, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, getDependencyReplacements(), "* ");
+                                CachedProject p = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject,true, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, getDependencyReplacements(), "* ");
 
                                 CompletableFuture<TranspiledCacheEntry> f;
                                 if (config.getCompilationLevel().equalsIgnoreCase(CachedProject.BUNDLE_JAR)) {

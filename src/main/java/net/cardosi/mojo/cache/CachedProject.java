@@ -73,19 +73,16 @@ public class CachedProject {
 
     private Set<Supplier<CompletableFuture<TranspiledCacheEntry>>> registeredBuildTerminals = new HashSet<>();
 
-    private boolean reactorProject;
-
     public CachedProject(DiskCache diskCache, Artifact artifact, MavenProject currentProject, List<CachedProject> children,
-                         List<String> compileSourceRoots, List<Resource> resources, boolean reactorProject) {
+                         List<String> compileSourceRoots, List<Resource> resources) {
         this.diskCache = diskCache;
         this.compileSourceRoots = compileSourceRoots;
         this.resources = resources;
-        this.reactorProject = reactorProject;
         replace(artifact, currentProject, children);
     }
 
-    public CachedProject(DiskCache diskCache, Artifact artifact, MavenProject currentProject, List<CachedProject> children, boolean reactorProject) {
-        this(diskCache, artifact, currentProject, children, currentProject.getCompileSourceRoots(), currentProject.getResources(), reactorProject);
+    public CachedProject(DiskCache diskCache, Artifact artifact, MavenProject currentProject, List<CachedProject> children) {
+        this(diskCache, artifact, currentProject, children, currentProject.getCompileSourceRoots(), currentProject.getResources());
     }
 
     public void replace(Artifact artifact, MavenProject currentProject, List<CachedProject> children) {
@@ -402,7 +399,7 @@ public class CachedProject {
     private CompletableFuture<TranspiledCacheEntry> jscompWithScope(ClosureBuildConfiguration config) {
         System.out.println("jscompWithScope");
         // first, build the hash of this project and all dependencies
-        TranspiledCacheEntry cacheEntry = hash().join();
+        hash().join();
 
         return getOrCreate(Step.AssembleOutput.name() + "-" + config.hash(), () -> {
             // For each child that matches the specified scopes, ask for the compiled js output. As this is the
@@ -806,7 +803,7 @@ public class CachedProject {
 
 
 
-                J2cl j2cl = new J2cl(bytecodeClasspath, diskCache.getBootstrap(), entry.getTranspiledSourcesDir(), reactorProject);
+                J2cl j2cl = new J2cl(bytecodeClasspath, diskCache.getBootstrap(), entry.getTranspiledSourcesDir(), hasSourcesMapped());
                 List<Path> nativeSources = getFileInfoInDir(entry.getStrippedSourcesDir().toPath(), true, nativeJsMatcher);
 
                 boolean j2clSuccess = j2cl.transpile(sourcesToCompile, nativeSources);
@@ -832,45 +829,175 @@ public class CachedProject {
             return entry;
         });
     }
+//
+//    private CompletableFuture<TranspiledCacheEntry> strippedBytecode() {
+//        return getOrCreate(Step.GenerateStrippedBytecode.name(), () -> {
+//
+//            // If there is no sources, or no sources with GwtIncompatible, then just return the original bytecode as-is.
+//            // This lets us get away with not being able to transpile annotation processors or their dependencies, or
+//            // artifacts which just include compile-time stuff like annotations.
+//            //TODO
+//
+//            // In order to generate bytecode, we strip the sources, and javac that against the stripped bytecode of all
+//            // scope=compile dependencies
+//
+//            strippedSources().join();
+//            return children.stream()
+////                    .filter(child -> {
+////                        return new ScopeArtifactFilter(Artifact.SCOPE_COMPILE).include(child.getArtifact());//TODO removing this is wrong, should instead let the whole "project" be scoped
+////                    })
+//                    .map(child -> child.strippedBytecode())
+////                    .collect(Collectors.toList()).stream()
+//                    .map(CompletableFuture::join)
+//                    .collect(Collectors.toList());
+//
+//
+//        }, (bytecodeDeps, entry) -> {
+//            //invoke javac on these sources, classpath
+//            List<File> strippedClasspath = new ArrayList<>(diskCache.getExtraClasspath());
+//            strippedClasspath.addAll(bytecodeDeps.stream().map(TranspiledCacheEntry::getStrippedBytecodeDir).collect(Collectors.toList()));
+//
+//            // add itself, this is needed for incremental.
+//            // As .java takes classpath priority over .class, the shadowing should not be an issue.
+//            strippedClasspath.add(entry.getStrippedBytecodeDir());
+//
+//            File strippedBytecode = entry.getStrippedBytecodeDir();
+//            try {
+//                // Recompile just the classes from the ChangeSet
+//                Javac javac = new Javac(null, strippedClasspath, strippedBytecode, diskCache.getBootstrap());
+//                List<Path> sourcesToCompile = getFileInfoInDir(Paths.get(entry.getStrippedSourcesDir().toURI()),
+//                                                               true,
+//                                                               javaMatcher);
+//                if (sourcesToCompile.isEmpty()) {
+//                    return entry;
+//                }
+////                System.out.println("step 3 " + project.getArtifactKey());
+//                boolean javacSuccess = javac.compile(sourcesToCompile);
+//                if (!javacSuccess) {
+//                    throw new IllegalStateException("javac failed, check log for details");
+//                }
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//
+//            return entry;
+//        });
+//    }
+//
+//    private CompletableFuture<TranspiledCacheEntry> strippedSources() {
+//        return getOrCreate(Step.StripGwtIncompatible.name(), () -> {
+//
+//            // We could probably not make this async, since it runs pretty quickly - but should try it to see if
+//            // it being parallel buys us anything
+//
+//            // This depends on running APT on the original sources, and then running the preprocessor tool on both.
+//
+//            // If there is no instance of the string GwtIncompatible in the code we could skip this entirely?
+//
+//            return generatedSources().join();
+//        }, (generatedSources, entry) -> {
+//
+//
+//            try {
+//                if (hasSourcesMapped()) {
+//                    stripSources(entry.getAnnotationSourcesDir(), entry.getStrippedSourcesDir());
+//                    compileSourceRoots.stream().forEach(dir -> stripSources(Paths.get(dir).toFile(), entry.getStrippedSourcesDir()));
+//                } else {
+//                    //unpack the jar's sources
+//                    File sources = entry.getUnpackedSources();
+//                    //collect sources from jar instead
+//                    try (ZipFile zipInputFile = new ZipFile(getArtifact().getFile())) {
+//                        for (ZipEntry z : Collections.list(zipInputFile.entries())) {
+//                            if (z.isDirectory()) {
+//                                continue;
+//                            }
+//                            Path outPath = sources.toPath().resolve(z.getName());
+//                            if (javaMatcher.matches(outPath) || nativeJsMatcher.matches(outPath) || jsMatcher.matches(outPath)) {
+//                                try (InputStream inputStream = zipInputFile.getInputStream(z)) {
+//                                    Files.createDirectories(outPath.getParent());
+//                                    Files.copy(inputStream, outPath);
+//                                }
+//                            }
+//                        }
+//                    }
+//                    stripSources(sources, entry.getStrippedSourcesDir());
+//                }
+//            } catch (IOException e) {
+//                throw new UncheckedIOException(e);
+//            }
+//
+//            return entry;
+//        });
+//    }
+
+//    private CompletableFuture<TranspiledCacheEntry> j2cl() {
+//        return getOrCreate(Step.TranspileSources.name(), () -> {
+//// collect all scope=compile dependencies and our own stripped sources
+//            strippedSources().join();
+//            return children.stream()
+////                    .filter(child -> {
+////                        return new ScopeArtifactFilter(Artifact.SCOPE_COMPILE).include(child.getArtifact());//TODO removing this is wrong, should instead let the whole "project" be scoped
+////                    })
+//                           .map(child -> child.strippedBytecode())
+////                    .collect(Collectors.toList()).stream()
+//                           .map(CompletableFuture::join)
+//                           .collect(Collectors.toList());
+//        }, (bytecodeDeps, entry) -> {
+//            List<Path> sourcesToCompile = getFileInfoInDir(Paths.get(entry.getStrippedSourcesDir().toURI()), false,javaMatcher);
+//            if (!sourcesToCompile.isEmpty()) {
+////invoke j2cl on these sources, classpath
+//                List<File> strippedClasspath = new ArrayList<>(bytecodeDeps.stream().map(TranspiledCacheEntry::getStrippedBytecodeDir).collect(Collectors.toList()));
+//                strippedClasspath.addAll(diskCache.getExtraClasspath());
+//                J2cl j2cl = new J2cl(strippedClasspath, diskCache.getBootstrap(), entry.getTranspiledSourcesDir(), false);
+//                List<Path> nativeSources = getFileInfoInDir(entry.getStrippedSourcesDir().toPath(), false, nativeJsMatcher);
+//                boolean j2clSuccess = j2cl.transpile(sourcesToCompile, nativeSources);
+//                if (!j2clSuccess) {
+//                    throw new IllegalStateException("j2cl failed, check log for details");
+//                }
+//            }
+////copy over other plain js
+//            Path outSources = entry.getTranspiledSourcesDir().toPath();
+//            getFileInfoInDir(entry.getStrippedSourcesDir().toPath(), false, path -> jsMatcher.matches(path) && !nativeJsMatcher.matches(path))
+//                    .stream()
+//                    //.map(FrontendUtils.FileInfo::sourcePath).map(Paths::get)
+//                    .map(p -> entry.getStrippedSourcesDir().toPath().relativize(p))
+//                    .forEach(path -> {
+//                        try {
+//                            Files.createDirectories(outSources.resolve(path).getParent());
+//                            Files.copy(entry.getStrippedSourcesDir().toPath().resolve(path), outSources.resolve(path));
+//                        } catch (IOException e) {
+//                            throw new UncheckedIOException(e);
+//                        }
+//                    });
+//            return entry;
+//        });
+//    }
 
     private CompletableFuture<TranspiledCacheEntry> strippedBytecode() {
         return getOrCreate(Step.GenerateStrippedBytecode.name(), () -> {
-
-            // If there is no sources, or no sources with GwtIncompatible, then just return the original bytecode as-is.
-            // This lets us get away with not being able to transpile annotation processors or their dependencies, or
-            // artifacts which just include compile-time stuff like annotations.
-            //TODO
-
-            // In order to generate bytecode, we strip the sources, and javac that against the stripped bytecode of all
-            // scope=compile dependencies
-
+// If there is no sources, or no sources with GwtIncompatible, then just return the original bytecode as-is.
+// This lets us get away with not being able to transpile annotation processors or their dependencies, or
+// artifacts which just include compile-time stuff like annotations.
+//TODO
+// In order to generate bytecode, we strip the sources, and javac that against the stripped bytecode of all
+// scope=compile dependencies
             strippedSources().join();
             return children.stream()
 //                    .filter(child -> {
 //                        return new ScopeArtifactFilter(Artifact.SCOPE_COMPILE).include(child.getArtifact());//TODO removing this is wrong, should instead let the whole "project" be scoped
 //                    })
-                    .map(child -> child.strippedBytecode())
+                           .map(child -> child.strippedBytecode())
 //                    .collect(Collectors.toList()).stream()
-                    .map(CompletableFuture::join)
-                    .collect(Collectors.toList());
-
-
+                           .map(CompletableFuture::join)
+                           .collect(Collectors.toList());
         }, (bytecodeDeps, entry) -> {
-            //invoke javac on these sources, classpath
+//invoke javac on these sources, classpath
             List<File> strippedClasspath = new ArrayList<>(diskCache.getExtraClasspath());
             strippedClasspath.addAll(bytecodeDeps.stream().map(TranspiledCacheEntry::getStrippedBytecodeDir).collect(Collectors.toList()));
-
-            // add itself, this is needed for incremental.
-            // As .java takes classpath priority over .class, the shadowing should not be an issue.
-            strippedClasspath.add(entry.getStrippedBytecodeDir());
-
             File strippedBytecode = entry.getStrippedBytecodeDir();
             try {
-                // Recompile just the classes from the ChangeSet
                 Javac javac = new Javac(null, strippedClasspath, strippedBytecode, diskCache.getBootstrap());
-                List<Path> sourcesToCompile = getFileInfoInDir(Paths.get(entry.getStrippedSourcesDir().toURI()),
-                                                               true,
-                                                               javaMatcher);
+                List<Path> sourcesToCompile = getFileInfoInDir(Paths.get(entry.getStrippedSourcesDir().toURI()), false, javaMatcher);
                 if (sourcesToCompile.isEmpty()) {
                     return entry;
                 }
@@ -882,33 +1009,39 @@ public class CachedProject {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-
             return entry;
         });
     }
-
     private CompletableFuture<TranspiledCacheEntry> strippedSources() {
         return getOrCreate(Step.StripGwtIncompatible.name(), () -> {
-
-            // We could probably not make this async, since it runs pretty quickly - but should try it to see if
-            // it being parallel buys us anything
-
-            // This depends on running APT on the original sources, and then running the preprocessor tool on both.
-
-            // If there is no instance of the string GwtIncompatible in the code we could skip this entirely?
-
+// We could probably not make this async, since it runs pretty quickly - but should try it to see if
+// it being parallel buys us anything
+// This depends on running APT on the original sources, and then running the preprocessor tool on both.
+// If there is no instance of the string GwtIncompatible in the code we could skip this entirely?
             return generatedSources().join();
         }, (generatedSources, entry) -> {
-
-
+            GwtIncompatiblePreprocessor stripper = new GwtIncompatiblePreprocessor(entry.getStrippedSourcesDir());
             try {
                 if (hasSourcesMapped()) {
-                    stripSources(entry.getAnnotationSourcesDir(), entry.getStrippedSourcesDir());
-                    compileSourceRoots.stream().forEach(dir -> stripSources(Paths.get(dir).toFile(), entry.getStrippedSourcesDir()));
+//                    List<Path> annSourcesToStrip = getFileInfoInDir(entry.getAnnotationSourcesDir().toPath(), false, javaMatcher, nativeJsMatcher, jsMatcher);
+//                    stripper.preprocess(entry.getAnnotationSourcesDir(), annSourcesToStrip);
+                    List<String> sourceRoots = new ArrayList<>(compileSourceRoots);
+                    sourceRoots.add(entry.getAnnotationSourcesDir().toString());
+
+                    sourceRoots.stream().forEach(dir -> {
+                        Path dirPath = Paths.get(dir);
+                        List<Path> sourcesToStrip = getFileInfoInDir(dirPath, false, javaMatcher, nativeJsMatcher, jsMatcher);
+                        try {
+                            stripper.preprocess(dirPath.toFile(), sourcesToStrip);
+                        } catch (IOException e) {
+                            throw new UncheckedIOException(e);
+                        }
+                    });
                 } else {
-                    //unpack the jar's sources
+//unpack the jar's sources
+//collect sources from jar instead
                     File sources = entry.getUnpackedSources();
-                    //collect sources from jar instead
+                    List<Path> sourcesToStrip = new ArrayList<>();
                     try (ZipFile zipInputFile = new ZipFile(getArtifact().getFile())) {
                         for (ZipEntry z : Collections.list(zipInputFile.entries())) {
                             if (z.isDirectory()) {
@@ -919,38 +1052,74 @@ public class CachedProject {
                                 try (InputStream inputStream = zipInputFile.getInputStream(z)) {
                                     Files.createDirectories(outPath.getParent());
                                     Files.copy(inputStream, outPath);
+                                    sourcesToStrip.add(outPath);
                                 }
                             }
                         }
                     }
-                    stripSources(sources, entry.getStrippedSourcesDir());
+                    stripper.preprocess(sources, sourcesToStrip);
                 }
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
             }
-
             return entry;
         });
     }
 
-    private void stripSources(File sourceDir, File stripedSourceDir) {
-        GwtIncompatiblePreprocessor stripper = new GwtIncompatiblePreprocessor(stripedSourceDir);
-        List<Path> sources = getFileInfoInDir(sourceDir.toPath(), true,
-                                              javaMatcher, nativeJsMatcher, jsMatcher);
-
-
-        try {
-            stripper.preprocess(sourceDir, sources);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
+//    // this is public since we need to generate sources to see what tests we run
+//    public CompletableFuture<TranspiledCacheEntry> generatedSources() {
+//        return getOrCreate(Step.ProcessAnnotations.name(), () -> {
+//// depend on other projects with sources mapped, and only ask for "generated sources" so that we can get their unstripped bytecode
+//            return children.stream()
+//                           .filter(CachedProject::hasSourcesMapped)
+////                    .filter(child -> new ScopeArtifactFilter(Artifact.SCOPE_COMPILE).include(child.getArtifact()))//TODO removing this is wrong, should instead let the whole "project" be scoped
+//                           .map(CachedProject::generatedSources)
+////                    .collect(Collectors.toList()).stream()
+//                           .map(CompletableFuture::join)
+//                           .collect(Collectors.toList());
+//        }, (reactorBytecode, entry) -> {
+//// Using the original sources and non-stripped classpath, run javac to generate a source dir
+//// We don't do this at all if drawing on an already-built jar
+//            if (hasSourcesMapped()) {
+//                File annotationSources = entry.getAnnotationSourcesDir();
+//                File plainBytecode = entry.getBytecodeDir();//output dir for bytecode while generating sources
+//                List<File> plainClasspath = new ArrayList<>(diskCache.getExtraClasspath());
+//                plainClasspath.addAll(reactorBytecode.stream().map(TranspiledCacheEntry::getBytecodeDir).collect(Collectors.toList()));
+//                plainClasspath.addAll(children.stream()
+//                                              .filter(proj -> !proj.hasSourcesMapped())
+////                        .filter(child -> new ScopeArtifactFilter(Artifact.SCOPE_COMPILE).include(child.getArtifact()))//TODO removing this is wrong, should instead let the whole "project" be scoped
+//                                              .map(CachedProject::getArtifact)
+//                                              .map(Artifact::getFile)
+//                                              .collect(Collectors.toList())
+//                                     );
+////also add the source dir as if it were on the classpath, as resources
+//                plainClasspath.addAll(resources.stream().map(FileSet::getDirectory).map(File::new).collect(Collectors.toList()));
+////                plainClasspath.addAll(compileSourceRoots.stream().map(File::new).collect(Collectors.toList()));
+//                List<Path> sources = compileSourceRoots.stream().flatMap(dir -> getFileInfoInDir(Paths.get(dir), false, javaMatcher).stream()).collect(Collectors.toList());
+//                if (sources.isEmpty()) {
+//                    return entry;
+//                }
+//                try {
+//                    Javac javac = new Javac(annotationSources, plainClasspath, plainBytecode, diskCache.getBootstrap());
+////                    System.out.println("step 1 " + project.getArtifactKey());
+//                    if (!javac.compile(sources)) {
+//// so far at least we don't have any whitelist need here, it wouldnt really make sense to let a
+//// local compile fail
+//                        throw new IllegalStateException("javac failed, check log");
+//                    }
+//                } catch (IOException e) {
+//                    throw new UncheckedIOException(e);
+//                }
+//            }
+//            return entry;
+//        });
+//    }
 
     // this is public since we need to generate sources to see what tests we run
     public CompletableFuture<TranspiledCacheEntry> generatedSources() {
         return getOrCreate(Step.ProcessAnnotations.name(), () -> {
             // depend on other projects with sources mapped, and only ask for "generated sources" so that we can get their unstripped bytecode
-            buildChangeSets().join();
+            //buildChangeSets().join();
             return children.stream()
                     .filter(CachedProject::hasSourcesMapped)
 //                    .filter(child -> new ScopeArtifactFilter(Artifact.SCOPE_COMPILE).include(child.getArtifact()))//TODO removing this is wrong, should instead let the whole "project" be scoped
@@ -1027,8 +1196,8 @@ public class CachedProject {
                     }
                 }
 
-                TranspiledCacheEntry entry = diskCache.entry(getArtifactId(), hash.toString());
-                return entry;
+                System.out.println("hash " + artifact.getArtifactId() + " : " + artifact.getVersion() + " : " + hash.toString() );
+                return diskCache.entry(getArtifactId(), hash.toString());
             } catch (IOException e) {
                 e.printStackTrace();
                 throw new UncheckedIOException(e);
@@ -1050,7 +1219,7 @@ public class CachedProject {
         return getOrCreate(Step.ChangeSet.name(), () -> {
             return null;
         }, (ignore, entry) -> {
-            if (reactorProject) {
+            if (hasSourcesMapped()) {
                 if(transpiledCacheEntry != null) {
                     TranspiledCacheEntry srcEntry = transpiledCacheEntry;
                     Path srcBase = entry.getCacheDir().toPath();
