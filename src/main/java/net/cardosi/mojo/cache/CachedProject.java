@@ -5,6 +5,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.j2cl.common.FrontendUtils;
 import com.google.javascript.jscomp.*;
+import com.google.javascript.jscomp.CompilerOptions.LanguageMode;
 import net.cardosi.mojo.ClosureBuildConfiguration;
 import net.cardosi.mojo.Hash;
 import net.cardosi.mojo.tools.*;
@@ -372,6 +373,8 @@ public class CachedProject {
 
             CompilationLevel compilationLevel = CompilationLevel.fromString(config.getCompilationLevel());
 
+            LanguageMode languageOut = LanguageMode.fromString(config.getLanguageOut());
+
             //TODO pick another location if sourcemaps aren't going to be used
 
             File sources;
@@ -414,6 +417,7 @@ public class CachedProject {
             boolean success = closureCompiler.compile(
                     compilationLevel,
                     config.getDependencyMode(),
+                    languageOut,
                     sources,
                     diskCache.getExtraJsZips(),
                     config.getEntrypoint(),
@@ -466,9 +470,12 @@ public class CachedProject {
 
         Preconditions.checkArgument(config.getDependencyMode() == DependencyOptions.DependencyMode.SORT_ONLY, "With compilationLevel=" + BUNDLE_JAR + " only dependencyMode=SORT_ONLY is supported");
 
+        LanguageMode languageOut = LanguageMode.valueOf(config.getLanguageOut());
+
         boolean success = closureCompiler.compile(
                 CompilationLevel.BUNDLE,
                 DependencyOptions.DependencyMode.SORT_ONLY,
+                languageOut,
                 null,
                 diskCache.getExtraJsZips(),
                 Collections.emptyList(),
@@ -642,6 +649,7 @@ public class CachedProject {
             boolean success = closureCompiler.compile(
                     CompilationLevel.BUNDLE,
                     DependencyOptions.DependencyMode.SORT_ONLY,
+                    LanguageMode.STABLE_OUT,
                     sources,
                     Collections.emptyList(),
                     Collections.emptyList(),

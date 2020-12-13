@@ -2,6 +2,7 @@ package net.cardosi.mojo.tools;
 
 import com.google.javascript.jscomp.*;
 import com.google.javascript.jscomp.Compiler;
+import com.google.javascript.jscomp.parsing.Config;
 
 import javax.annotation.Nullable;
 import java.io.File;
@@ -20,6 +21,7 @@ public class Closure {
     public boolean compile(
             CompilationLevel compilationLevel,
             DependencyOptions.DependencyMode dependencyMode,
+            CompilerOptions.LanguageMode languageOut,
             @Nullable File jsSourceDir,
             List<File> jsZips,
             List<String> entrypoints,
@@ -66,7 +68,7 @@ public class Closure {
         jscompArgs.add(dependencyMode.name());
 
         jscompArgs.add("--language_out");
-        jscompArgs.add("ECMASCRIPT5");//TODO parameterize?
+        jscompArgs.add(languageOut.name());
 
         jscompArgs.addAll(Arrays.asList(//TODO parameterize?
                 "--jscomp_off",

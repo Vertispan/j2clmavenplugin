@@ -77,6 +77,13 @@ public class WatchMojo extends AbstractBuildMojo {
     protected String compilationLevel;
 
     /**
+     * ECMAScript language level of generated JavasScript. Values correspond to the Closure Compiler reference:
+     * https://github.com/google/closure-compiler/wiki/Flags-and-Options
+     */
+    @Parameter(defaultValue = "ECMASCRIPT5", property = "languageOut")
+    protected String languageOut;
+
+    /**
      * Whether or not to leave Java assert checks in the compiled code. In j2cl:watch, defaults to true. Has no
      * effect when the compilation level isn't set to ADVANCED_OPTIMIZATIONS, assertions will always remain
      * enabled.
@@ -180,7 +187,7 @@ public class WatchMojo extends AbstractBuildMojo {
 //                                apps.add(e);
                             } else if (goal.equals("build") && shouldCompileBuild()) {
                                 System.out.println("Found build " + execution);
-                                XmlDomClosureConfig config = new XmlDomClosureConfig(configuration, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, compilationLevel, rewritePolyfills, reactorProject.getArtifactId(), DependencyOptions.DependencyMode.SORT_ONLY, enableSourcemaps, webappDirectory);
+                                XmlDomClosureConfig config = new XmlDomClosureConfig(configuration, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, compilationLevel, languageOut, rewritePolyfills, reactorProject.getArtifactId(), DependencyOptions.DependencyMode.SORT_ONLY, enableSourcemaps, webappDirectory);
 
                                 // Load up all the dependencies in the requested scope for the current project
                                 CachedProject p = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, true, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, getDependencyReplacements(), "* ");

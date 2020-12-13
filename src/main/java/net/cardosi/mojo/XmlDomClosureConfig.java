@@ -10,6 +10,7 @@ public class XmlDomClosureConfig implements ClosureBuildConfiguration {
     private final Xpp3Dom dom;
     private final String defaultScope;
     private final String defaultCompilationLevel;
+    private final String defaultLanguageOut;
     private final boolean defaultRewritePolyfills;
     private final String defaultInitialScriptFilename;
 
@@ -24,16 +25,18 @@ public class XmlDomClosureConfig implements ClosureBuildConfiguration {
      * @param dom the dom from the plugin invocation
      * @param defaultScope the expected scope based on the goal detected
      * @param defaultCompilationLevel the default compilation level based on the goal detected
+     * @param defaultLanguageOut the default output langague level based on the goal detected
      * @param defaultRewritePolyfills whether or not closure should rewrite polyfills by default
      * @param artifactId the artifactId of the project being wrapped here
      * @param defaultDependencyMode (deprecated, will be gone soon)
      * @param defaultSourcemapsEnabled true if sourcemaps should be enabled by default
      * @param defaultWebappDirectory the current invocation's launch dir, so we all serve from the same place
      */
-    public XmlDomClosureConfig(Xpp3Dom dom, String defaultScope, String defaultCompilationLevel, boolean defaultRewritePolyfills, String artifactId, DependencyOptions.DependencyMode defaultDependencyMode, boolean defaultSourcemapsEnabled, String defaultWebappDirectory) {
+    public XmlDomClosureConfig(Xpp3Dom dom, String defaultScope, String defaultCompilationLevel, String defaultLanguageOut, boolean defaultRewritePolyfills, String artifactId, DependencyOptions.DependencyMode defaultDependencyMode, boolean defaultSourcemapsEnabled, String defaultWebappDirectory) {
         this.dom = dom;
         this.defaultScope = defaultScope;
         this.defaultCompilationLevel = defaultCompilationLevel;
+        this.defaultLanguageOut = defaultLanguageOut;
         this.defaultRewritePolyfills = defaultRewritePolyfills;
         this.defaultInitialScriptFilename = artifactId + "/" + artifactId + ".js";
         this.defaultDependencyMode = defaultDependencyMode;
@@ -110,6 +113,13 @@ public class XmlDomClosureConfig implements ClosureBuildConfiguration {
         //if users want this controlled globally, properties are prob the best option
         Xpp3Dom elt = dom.getChild("compilationLevel");
         return elt == null ? defaultCompilationLevel : elt.getValue();
+    }
+
+    @Override
+    public String getLanguageOut() {
+        //if users want this controlled globally, properties are prob the best option
+        Xpp3Dom elt = dom.getChild("languageOut");
+        return elt == null ? defaultLanguageOut : elt.getValue();
     }
 
     @Override
