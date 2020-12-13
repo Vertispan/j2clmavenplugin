@@ -103,6 +103,13 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
     @Parameter(defaultValue = CachedProject.BUNDLE_JAR, property = "compilationLevel")
     protected String compilationLevel;
 
+    /**
+     * ECMAScript language level of generated JavasScript. Values correspond to the Closure Compiler reference:
+     * https://github.com/google/closure-compiler/wiki/Flags-and-Options
+     */
+    @Parameter(defaultValue = "ECMASCRIPT5", property = "languageOut")
+    protected String languageOut;
+
     @Parameter
     protected Map<String, String> defines = new TreeMap<>();
 
@@ -454,6 +461,11 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
     }
 
     @Override
+    public String getLanguageOut() {
+        return languageOut;
+    }
+
+    @Override
     public DependencyOptions.DependencyMode getDependencyMode() {
         return DependencyOptions.DependencyMode.valueOf(dependencyMode);
     }
@@ -524,6 +536,11 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
         @Override
         public String getCompilationLevel() {
             return wrapped.getCompilationLevel();
+        }
+
+        @Override
+        public String getLanguageOut() {
+            return wrapped.getLanguageOut();
         }
 
         @Override

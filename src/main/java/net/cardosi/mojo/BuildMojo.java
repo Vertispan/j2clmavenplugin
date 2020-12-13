@@ -1,5 +1,6 @@
 package net.cardosi.mojo;
 
+import com.google.javascript.jscomp.CompilerOptions;
 import com.google.javascript.jscomp.DependencyOptions;
 import net.cardosi.mojo.cache.CachedProject;
 import net.cardosi.mojo.cache.DiskCache;
@@ -147,6 +148,13 @@ public class BuildMojo extends AbstractBuildMojo implements ClosureBuildConfigur
     @Parameter(defaultValue = "ADVANCED_OPTIMIZATIONS", property = "compilationLevel")
     protected String compilationLevel;
 
+    /**
+     * ECMAScript language level of generated JavasScript. Values correspond to the Closure Compiler reference:
+     * https://github.com/google/closure-compiler/wiki/Flags-and-Options
+     */
+    @Parameter(defaultValue = "ECMASCRIPT5", property = "languageOut")
+    protected String languageOut;
+
     @Parameter
     protected Map<String, String> defines = new TreeMap<>();
 
@@ -259,6 +267,11 @@ public class BuildMojo extends AbstractBuildMojo implements ClosureBuildConfigur
     @Override
     public String getCompilationLevel() {
         return compilationLevel;
+    }
+
+    @Override
+    public String getLanguageOut() {
+        return languageOut;
     }
 
     @Override

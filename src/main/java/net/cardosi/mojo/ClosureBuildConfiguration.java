@@ -32,6 +32,8 @@ public interface ClosureBuildConfiguration {
     @Deprecated
     DependencyOptions.DependencyMode getDependencyMode();
 
+    String getLanguageOut();
+
     boolean getRewritePolyfills();
 
     boolean getCheckAssertions();
@@ -57,6 +59,8 @@ public interface ClosureBuildConfiguration {
         hash.append(getInitialScriptFilename());
 
         hash.append(getCompilationLevel());
+
+        hash.append(getLanguageOut());
 
         BitSet flags = new BitSet();
         flags.set(0, getRewritePolyfills());
