@@ -91,7 +91,7 @@ public class WatchMojo extends AbstractBuildMojo {
     @Parameter(defaultValue = "false")
     protected boolean rewritePolyfills;
 
-    @Parameter(defaultValue = "false")
+    @Parameter(defaultValue = "true")
     protected boolean enableSourcemaps;
 
     @Override
