@@ -127,8 +127,6 @@ public class Closure {
         //     if we restore it
 
         try {
-            System.out.println("closure: ");
-            jscompArgs.forEach(System.out::println);
             jscompRunner.run();
 
             if (jscompRunner.hasErrors() || jscompRunner.exitCode != 0) {

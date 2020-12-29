@@ -4,6 +4,7 @@ import com.google.javascript.jscomp.DependencyOptions;
 import net.cardosi.mojo.cache.CachedProject;
 import net.cardosi.mojo.cache.DiskCache;
 import net.cardosi.mojo.cache.TranspiledCacheEntry;
+import net.cardosi.mojo.cache.WatchServiceManager;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.model.Plugin;
 import org.apache.maven.model.PluginExecution;
@@ -222,15 +223,8 @@ public class WatchMojo extends AbstractBuildMojo {
             e.printStackTrace();
         }
 
-        for (CachedProject app : projects.values()) {
-            //TODO instead of N threads per project, combine threads?
-            try {
-                app.watch();
-            } catch (IOException ex) {
-                ex.printStackTrace();
-                //TODO fall back to polling or another strategy
-            }
-        }
+        WatchServiceManager watchManager = new WatchServiceManager( projects.values().toArray( new CachedProject[projects.size()]));
+        watchManager.start();
 
         // TODO replace this dumb timer with a System.in loop so we can watch for some commands from the user
         try {

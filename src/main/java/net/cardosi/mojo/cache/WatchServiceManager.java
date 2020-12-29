@@ -2,65 +2,62 @@ package net.cardosi.mojo.cache;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.file.FileSystem;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.StandardWatchEventKinds;
-import java.nio.file.WatchEvent;
-import java.nio.file.WatchKey;
-import java.nio.file.WatchService;
-import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.Set;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
-public class WatchManager {
-    Map<FileSystem, List<Path>> fileSystemsToWatch;
-    List<WatchServiceRunner> watchServices;
-    private CachedProject cachedProject;
-    private AtomicBoolean run;
+import io.methvin.watcher.DirectoryChangeEvent;
+import io.methvin.watcher.DirectoryChangeListener;
+import io.methvin.watcher.DirectoryWatcher;
 
-    public WatchManager(Map<FileSystem, List<Path>> fileSystemsToWatch, CachedProject cachedProject) {
-        this.fileSystemsToWatch = fileSystemsToWatch;
-        this.watchServices = new ArrayList<>(fileSystemsToWatch.size());
-        this.cachedProject = cachedProject;
-        this.run = new AtomicBoolean();
+public class WatchServiceManager {
 
+    private final DirectoryWatcher watcher;
+    private final ChangeSetListener listener;
+    private AtomicBoolean                   run;
+
+    public WatchServiceManager(CachedProject... cachedProjects) {
+        int watchSize = 0;
+        Map<CachedProject, List<Path>> projectsToWatch = new HashMap<>();
+        Map<Path, CachedProject> contexts = new HashMap<>();
+
+        List<CachedProject> cachedProjectsList = new ArrayList<>();
+
+        // need all reactor projects
+        for (CachedProject project : cachedProjects) {
+            cachedProjectsList.add(project);
+            cachedProjectsList.addAll(project.getChildren().stream().filter( p -> p.hasSourcesMapped() ).collect(Collectors.toList()));
+        }
+
+        for (CachedProject project : cachedProjectsList) {
+            project.getCompileSourceRoots().stream().map(Paths::get).forEach(p -> contexts.put(p, project));
+        }
+
+        this.run = new AtomicBoolean(true);
+        this.listener = new ChangeSetListener(contexts);
         try {
-            for (Map.Entry<FileSystem, List<Path>> entry : fileSystemsToWatch.entrySet()) {
-                WatchService        watchService  = entry.getKey().newWatchService();
-                Map<Path, WatchKey> pathWatchKeys = new HashMap<>();
-                for (Path path : entry.getValue()) {
-                    watchDirectoryAndDescendants(watchService, pathWatchKeys, path);
-                }
-
-                WatchServiceRunner runner = new WatchServiceRunner(run, watchService, pathWatchKeys, cachedProject);
-                watchServices.add(runner);
-            }
+            this.watcher = DirectoryWatcher.builder()
+                                           .paths(new ArrayList<>(contexts.keySet()))
+                                           .listener(listener)
+                                           .fileHashing(true)
+                                           .build();
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
     }
 
     public void start() {
-        UserInputRunner inputRunner = new UserInputRunner(run, null);
-        new Thread(inputRunner).start();
+        this.watcher.watchAsync();
 
-        for(WatchServiceRunner watchRunner : watchServices) {
-            new Thread(watchRunner).start();
-        }
+        UserInputRunner inputRunner = new UserInputRunner(run, this.listener);
+        new Thread(inputRunner).start();
     }
 
     public void stop() {
@@ -71,134 +68,104 @@ public class WatchManager {
             } catch (InterruptedException e) {
             }
         }
+
+        try {
+            this.watcher.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
-    private static void watchDirectoryAndDescendants(WatchService watchService, Map<Path, WatchKey> pathWatchKeys, Path path) throws IOException {
-        Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
-            @Override
-            public FileVisitResult preVisitDirectory(Path path, BasicFileAttributes basicFileAttributes) throws IOException {
-                WatchKey key = path.register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_MODIFY);
-                pathWatchKeys.put(path, key);
-                System.out.println("watch " + path);
-                return FileVisitResult.CONTINUE;
-            }
-        });
-    }
+    public static class ChangeSetListener implements DirectoryChangeListener {
+        private Map<CachedProject, ChangeSet> changeSets;
+        private Map<Path, CachedProject>      contexts;
 
-    public static class UserInputRunner implements Runnable {
-        private AtomicBoolean run;
-        private BlockingQueue<Set<PathChanged>> fileSystemChanges;
+        // Lock is used as a simple Exchange pattern, so the UserInput thread can safely consume normalisedChangedSet
+        private Object lock = new Object() {
+        };
 
-        public UserInputRunner(AtomicBoolean run, BlockingQueue<Set<PathChanged>> fileSystemChanges) {
-            this.run = run;
-            this.fileSystemChanges = fileSystemChanges;
+        public ChangeSetListener(Map<Path, CachedProject> contexts) {
+            this.contexts = contexts;
+            this.changeSets = new HashMap<>();
         }
 
         @Override
-        public void run() {
-            while (run.get()) {
-                try {
-                    System.in.read();
-                    List<Set<PathChanged>> changes = new ArrayList<>();
-                    Set<PathChanged> set = fileSystemChanges.take();
-                    // Need to fully drain. Use 3 attemps, with a short sleep.
-                    int pollAttemptsLeft = 3;
-                    while (pollAttemptsLeft >= 0) {
-                        if (set != null) {
-                            changes.add(set);
-                            pollAttemptsLeft = 3;
-                        } else {
-                            pollAttemptsLeft--;
-                        }
-                        Thread.sleep(50);
-                        set = fileSystemChanges.poll();
-                    }
-                } catch (InterruptedException | IOException e) {
-                    e.printStackTrace();
+        public void onEvent(DirectoryChangeEvent event) {
+            Path contextPath = event.context();
+            Path path = event.path();
+            CachedProject cachedProject = contexts.get(path);
+
+            synchronized (lock) {
+
+                // Maintain a ChangeSet per CachedProject
+                ChangeSet changeSet = changeSets.get(cachedProject);
+                System.out.println(cachedProject);
+                System.out.println(changeSet);
+                if (changeSet == null) {
+                    changeSet = new ChangeSet();
+                    changeSets.put(cachedProject, changeSet);
                 }
+
+                // This logic assumes events might come out of order, i.e. a delete before a create, and attempts to handle this gracefully.
+                switch (event.eventType()) {
+                    case CREATE:
+                        // Remove any MODIFY, quicker to just remove than check and remove.
+                        changeSet.modified.remove(path);
+
+                        // Only add if DELETE does not already exist.
+                        if (!changeSet.deleted.remove(path)) {
+                            changeSet.created.add(path);
+                        }
+                        break;
+                    case MODIFY:
+                        if (!changeSet.deleted.contains(path) && !changeSet.created.contains(path) ) {
+                            // Only add the MODIFY if a CREATE or DELETE does not already exist.
+                            changeSet.modified.add(path);
+                        }
+                        break;
+                    case DELETE:
+                        // Always added DELETE, quicker to just remove CREATE and MODIFY, than check for them.
+                        changeSet.created.remove(path);
+                        changeSet.modified.remove(path);
+
+                        changeSet.deleted.add(path);
+                        break;
+                    case OVERFLOW:
+                        throw new IllegalStateException("OVERFLOW not yet handled");
+                }
+                System.out.println(changeSet);
             }
+
+        }
+
+        public Map<CachedProject, ChangeSet> getChangeSet() {
+            Map<CachedProject, ChangeSet> returnMap;
+            synchronized (lock) {
+                returnMap = changeSets;
+                changeSets = new HashMap<>();
+            }
+            return returnMap;
         }
     }
 
-    public static class WatchServiceRunner implements Runnable {
-        private WatchService watchService;
-        private Map<Path, WatchKey> pathWatchKeys;
-        private CachedProject cachedProject;
-        private AtomicBoolean run;
+    public static class ChangeSet {
+        private Set<Path> created = new HashSet<>();
+        private Set<Path> modified = new HashSet<>();
+        private Set<Path> deleted = new HashSet<>();
 
-
-        public WatchServiceRunner(AtomicBoolean run, WatchService watchService, Map<Path, WatchKey> pathWatchKeys, CachedProject cachedProject) {
-            this.run = run;
-            this.watchService = watchService;
-            this.pathWatchKeys = pathWatchKeys;
-            this.cachedProject = cachedProject;
+        public Set<Path> created() {
+            return created;
         }
 
-        public void run() {
-            while (run.get()) {
-                try {
-                    Set<PathChanged> fileSystemChanges = new HashSet<>();
-                    WatchKey  key   = watchService.take();
-
-                    // This attempts some degree of batching, and normalisation in the case of modifies on the same file, in the case of user batch operations, like refactoring.
-                    // It will keep looping while the poll is returning. It will allow for up to
-                    // 3 null polls, before ending the batch.
-                    int pollAttemptsLeft = 3;
-                    while (pollAttemptsLeft >= 0) {
-                        if (key != null) {
-                            for (WatchEvent<?> event : key.pollEvents()) {//clear the events out
-                                WatchEvent.Kind<?> kind   = event.kind();
-                                Path               parent = (Path) key.watchable();
-                                Path               child  = parent.resolve((Path) event.context());
-
-                                if (kind == StandardWatchEventKinds.ENTRY_DELETE) {
-                                    fileSystemChanges.add(new PathChanged(kind, child));
-                                    // deleted directories will not work with Files.isDirectory()
-                                    // so just check for a key, for all entries
-                                    WatchKey childKey = pathWatchKeys.remove(child);
-                                    if (childKey != null) { // if it's not null, we know it was a folder
-                                        childKey.cancel();
-                                        System.out.println("unwatch " + child);
-                                    }
-                                } else if (kind == StandardWatchEventKinds.ENTRY_CREATE && child.toFile().isDirectory()) {
-                                    watchDirectoryAndDescendants(watchService, pathWatchKeys, child);
-                                }
-
-                                fileSystemChanges.add(new PathChanged(kind, child));
-                            }
-                            key.reset();//reset to go again
-                            pollAttemptsLeft = 3;
-                        } else {
-                            pollAttemptsLeft--;
-                        }
-                        key = watchService.poll(50, TimeUnit.MILLISECONDS);
-                    }
-                } catch (InterruptedException | IOException e) {
-                    Thread.currentThread().interrupt();
-                }
-            }
-        }
-    }
-
-    public static class PathChanged {
-        private WatchEvent.Kind<?> kind;
-        private Path path;
-
-        public PathChanged(WatchEvent.Kind<?> kind, Path path) {
-            this.kind = kind;
-            this.path = path;
+        public Set<Path> modified() {
+            return modified;
         }
 
-        public WatchEvent.Kind<?> getKind() {
-            return kind;
+        public Set<Path> deleted() {
+            return deleted;
         }
 
-        public Path getPath() {
-            return path;
-        }
-
-        @Override
-        public boolean equals(Object o) {
+        @Override public boolean equals(Object o) {
             if (this == o) {
                 return true;
             }
@@ -206,18 +173,63 @@ public class WatchManager {
                 return false;
             }
 
-            PathChanged that = (PathChanged) o;
+            ChangeSet changeSet = (ChangeSet) o;
 
-            if (kind != null ? !kind.equals(that.kind) : that.kind != null) {
+            if (!created.equals(changeSet.created)) {
                 return false;
             }
-            return path != null ? path.equals(that.path) : that.path == null;
+            if (!modified.equals(changeSet.modified)) {
+                return false;
+            }
+            return deleted.equals(changeSet.deleted);
         }
 
         @Override public int hashCode() {
-            int result = kind != null ? kind.hashCode() : 0;
-            result = 31 * result + (path != null ? path.hashCode() : 0);
+            int result = created.hashCode();
+            result = 31 * result + modified.hashCode();
+            result = 31 * result + deleted.hashCode();
             return result;
+        }
+
+        @Override public String toString() {
+            return "ChangeSet{" +
+                   "created=" + created +
+                   ", modified=" + modified +
+                   ", deleted=" + deleted +
+                   '}';
+        }
+    }
+
+    public static class UserInputRunner implements Runnable {
+        private AtomicBoolean   run;
+        private ChangeSetListener listener;
+
+        public UserInputRunner(AtomicBoolean run, ChangeSetListener listener) {
+            this.run = run;
+            this.listener = listener;
+        }
+
+        @Override
+        public void run() {
+            while (run.get()) {
+                try {
+                    System.out.println("waiting read");
+                    System.in.read();
+                    Map<CachedProject, ChangeSet> changeSet = listener.getChangeSet();
+
+                    System.out.println("received changeSet " + changeSet);
+
+                    for (Map.Entry<CachedProject, ChangeSet> projectChangeSet : changeSet.entrySet()) {
+                        CachedProject cachedProject = projectChangeSet.getKey();
+                        ChangeSet pathChanges = projectChangeSet.getValue(); // we aren't doing anything with this yet.
+
+                        System.out.println("MakeDirty..." + cachedProject.getArtifact());
+                        cachedProject.markDirty();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 }
