@@ -101,7 +101,7 @@ public class BuildMojo extends AbstractBuildMojo implements ClosureBuildConfigur
     @Parameter(defaultValue = Artifact.SCOPE_RUNTIME, required = true)
     protected String classpathScope;
 
-    @Parameter(defaultValue = "${project.artifactId}/${project.artifactId}.js", required = true)
+    @Parameter(defaultValue = "${project.artifactId}.js", required = true)
     protected String initialScriptFilename;
 
     @Parameter(defaultValue = "${project.build.directory}/${project.build.finalName}", required = true)
