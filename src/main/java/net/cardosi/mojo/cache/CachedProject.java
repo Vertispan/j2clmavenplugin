@@ -5,6 +5,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.j2cl.common.FrontendUtils;
 import com.google.javascript.jscomp.*;
+import com.sun.nio.file.SensitivityWatchEventModifier;
 import net.cardosi.mojo.ClosureBuildConfiguration;
 import net.cardosi.mojo.Hash;
 import net.cardosi.mojo.tools.*;
@@ -14,6 +15,7 @@ import org.apache.maven.artifact.ArtifactUtils;
 import org.apache.maven.artifact.resolver.filter.ScopeArtifactFilter;
 import org.apache.maven.model.FileSet;
 import org.apache.maven.model.Resource;
+import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.project.MavenProject;
 
 import java.io.File;
@@ -62,20 +64,22 @@ public class CachedProject {
     private final List<CachedProject> dependents = new ArrayList<>();
     private final List<String> compileSourceRoots;
     private final List<Resource> resources;
+    private final Path webappPath;
 
     private final Map<String, CompletableFuture<TranspiledCacheEntry>> steps = new ConcurrentHashMap<>();
 
     private Set<Supplier<CompletableFuture<TranspiledCacheEntry>>> registeredBuildTerminals = new HashSet<>();
 
-    public CachedProject(DiskCache diskCache, Artifact artifact, MavenProject currentProject, List<CachedProject> children, List<String> compileSourceRoots, List<Resource> resources) {
+    public CachedProject(DiskCache diskCache, Artifact artifact, MavenProject currentProject, List<CachedProject> children, List<String> compileSourceRoots, List<Resource> resources, Path webappPath) {
         this.diskCache = diskCache;
         this.compileSourceRoots = compileSourceRoots;
         this.resources = resources;
+        this.webappPath = webappPath;
         replace(artifact, currentProject, children);
     }
 
-    public CachedProject(DiskCache diskCache, Artifact artifact, MavenProject currentProject, List<CachedProject> children) {
-        this(diskCache, artifact, currentProject, children, currentProject.getCompileSourceRoots(), currentProject.getResources());
+    public CachedProject(DiskCache diskCache, Artifact artifact, MavenProject currentProject, List<CachedProject> children, Path webappPath) {
+        this(diskCache, artifact, currentProject, children, currentProject.getCompileSourceRoots(), currentProject.getResources(), webappPath);
     }
 
     public void replace(Artifact artifact, MavenProject currentProject, List<CachedProject> children) {
@@ -97,11 +101,8 @@ public class CachedProject {
      *
      * TODO this could be updated to compare before/after hash and avoid marking children as dirty
      */
-    public void markDirty() {
+    public CompletableFuture<Void> markDirty() {
         synchronized (steps) {
-            if (steps.isEmpty()) {
-                return;
-            }
             // cancel all running work
             for (CompletableFuture<TranspiledCacheEntry> cf : steps.values()) {
                 try {
@@ -124,9 +125,7 @@ public class CachedProject {
         dependents.forEach(CachedProject::markDirty);
 
         //TODO cache those "compile me" or "test me" values so we don't pass around like this
-        if (!registeredBuildTerminals.isEmpty()) {
-            build();
-        }
+        return build();
     }
 
     //TODO instead of these, consider a .test() method instead?
@@ -164,41 +163,198 @@ public class CachedProject {
         return !compileSourceRoots.isEmpty();
     }
 
-    public void watch() throws IOException {
-        Map<FileSystem, List<Path>> fileSystemsToWatch = compileSourceRoots.stream().map(Paths::get).collect(Collectors.groupingBy(Path::getFileSystem));
-        for (Map.Entry<FileSystem, List<Path>> entry : fileSystemsToWatch.entrySet()) {
-            WatchService watchService = entry.getKey().newWatchService();
-            for (Path path : entry.getValue()) {
-                Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
-                    @Override
-                    public FileVisitResult preVisitDirectory(Path path, BasicFileAttributes basicFileAttributes) throws IOException {
-                        path.register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_MODIFY);
-                        return FileVisitResult.CONTINUE;
-                    }
-                });
-                path.register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_MODIFY);
-            }
-            new Thread() {
-                @Override
-                public void run() {
-                    while (true) {
-                        try {
-                            WatchKey key = watchService.poll(10, TimeUnit.SECONDS);
-                            if (key == null) {
-                                continue;
-                            }
-                            //TODO if it was a create, register it (recursively?)
-                            key.pollEvents();//clear the events out
-                            key.reset();//reset to go again
-                            markDirty();
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                            return;
+    public void watch(String webappDirectory, DevServer devServer) throws IOException {
+        /*
+        First, make a thread to watch changes to `src/main/webapp`, if configured.
+         */
+        if (webappPath != null) {
+            // initial copy
+            Path outDir = Paths.get(webappDirectory).resolve(getArtifactId());
+            FileUtils.copyDirectory(webappPath.toFile(), outDir.toFile());
+
+            WatchService ws = webappPath.getFileSystem().newWatchService();
+            registerDirectories(webappPath, ws);
+
+            new Thread(() -> {
+                while (true) {
+                    try {
+                        WatchKey key = ws.take();
+                        List<WatchEvent<?>> events = key.pollEvents();
+
+                        if (devServer != null) {
+                            devServer.notifyBuilding();
                         }
+
+                        for (WatchEvent<?> event : events) {
+                            WatchEvent.Kind<?> kind = event.kind();
+
+                            if (kind == StandardWatchEventKinds.OVERFLOW) {
+                                // need to redo everything, since events have been
+                                // lost / discarded and therefore we're not up to date.
+                                System.err.println("OVERFLOW event occurred, this should not happen often.");
+                                FileUtils.deleteDirectory(outDir.toFile());
+                                try {
+                                    markDirty().join();
+                                } catch (Exception e) {
+                                    /*
+                                     we do not want to interrupt the thread, since we
+                                     want to try building again when the user fixes the problem
+                                    */
+                                    e.printStackTrace();
+                                }
+                                FileUtils.copyDirectory(webappPath.toFile(), outDir.toFile());
+                                // ignore remaining events
+                                break;
+
+                            } else if (kind == StandardWatchEventKinds.ENTRY_CREATE ||
+                                       kind == StandardWatchEventKinds.ENTRY_MODIFY) {
+                                if (isTempFileEvent(event))
+                                    continue;
+
+                                /*
+                                if new directory was created, register it
+                                no need to be recursive, since there will be a new
+                                WatchEvent for every sub-directory created.. we can
+                                just register one-by-one.
+                                 */
+                                Path toCopy = (Path) event.context();
+                                if (kind == StandardWatchEventKinds.ENTRY_CREATE && Files.isDirectory(toCopy)) {
+                                    toCopy.register(ws, WATCH_KINDS, WATCH_MODIFIERS);
+                                }
+
+                                Files.copy(webappPath.resolve(toCopy), outDir.resolve(toCopy),
+                                    StandardCopyOption.REPLACE_EXISTING);
+
+                            } else if (kind == StandardWatchEventKinds.ENTRY_DELETE) {
+                                if (isTempFileEvent(event))
+                                    continue;
+
+                                Path toDelete = (Path) event.context();
+                                Files.deleteIfExists(outDir.resolve(toDelete));
+                            }
+                        }
+
+                        if (!key.reset()) {
+                            throw new MojoExecutionException("The src/main/webapp WatchService is no longer valid");
+                        }
+
+                        if (devServer != null) {
+                            devServer.notifyBuildStepComplete();
+                        }
+
+                    } catch (InterruptedException | IOException | MojoExecutionException e) {
+                        e.printStackTrace();
+                        // todo: is this the best error handling we can do?
+                        Thread.currentThread().interrupt();
+                        return;
                     }
                 }
-            }.start();
+            }).start();
         }
+
+        /*
+        Next, make a thread to watch every compileSourceRoot, and rebuild on change.
+         */
+        Map<FileSystem, List<Path>> fileSystemsToWatch = compileSourceRoots.stream()
+            .map(Paths::get)
+            .collect(Collectors.groupingBy(Path::getFileSystem));
+
+        for (Map.Entry<FileSystem, List<Path>> entry : fileSystemsToWatch.entrySet()) {
+            WatchService watchService = entry.getKey().newWatchService();
+            for (Path sourceRoot : entry.getValue()) {
+                registerDirectories(sourceRoot, watchService);
+            }
+            new Thread(() -> {
+                while (true) {
+                    try {
+                        WatchKey key = watchService.take();
+                        List<WatchEvent<?>> events = key.pollEvents();
+
+                        if (devServer != null) {
+                            devServer.notifyBuilding();
+                        }
+
+                        /*
+                        if new directory was created, register it
+                        no need to be recursive, since there will be a new
+                        WatchEvent for every sub-directory created.. we can
+                        just register one-by-one.
+                         */
+                        for (WatchEvent<?> event : events) {
+                            if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE) {
+                                Path dirToWatch = (Path) event.context();
+                                if (Files.isDirectory(dirToWatch)) {
+                                    dirToWatch.register(watchService, WATCH_KINDS, WATCH_MODIFIERS);
+                                }
+                            }
+                        }
+
+                        if (!key.reset()) {
+                            throw new MojoExecutionException("The WatchService is no longer valid");
+                        }
+
+                        /*
+                         run through build steps
+
+                         we do not want to interrupt the thread, since we
+                         want to try building again when the user fixes the problem
+                        */
+                        try {
+                            markDirty().join();
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+
+                        if (devServer != null) {
+                            devServer.notifyBuildStepComplete();
+                        }
+
+                    } catch (InterruptedException | IOException | MojoExecutionException e) {
+                        e.printStackTrace();
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                }
+            }).start();
+        }
+    }
+
+    private static boolean isTempFileEvent(WatchEvent<?> event) {
+        if (event.kind() != StandardWatchEventKinds.OVERFLOW) {
+            Path p = (Path) event.context();
+            // ignore Vim & Intellij backup files
+            // todo any other filetypes we can ignore?
+            return p.getFileName().toString().endsWith("~");
+        }
+
+        return false;
+    }
+
+    private static final WatchEvent.Kind[] WATCH_KINDS = {
+        StandardWatchEventKinds.ENTRY_CREATE,
+        StandardWatchEventKinds.ENTRY_DELETE,
+        StandardWatchEventKinds.ENTRY_MODIFY
+    };
+
+    private static final WatchEvent.Modifier[] WATCH_MODIFIERS =
+        { SensitivityWatchEventModifier.HIGH };
+
+    /**
+     * Register Directory dir and all sub-Directories with the provided WatchService.
+     *
+     * Directories are registered with {ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY}
+     * keys, with a HIGH sensitivity (needed for MacOs, which does not have a native
+     * WatchService impl, and is very slow otherwise).
+     */
+    private static void registerDirectories(Path dir, WatchService ws) throws IOException {
+        Files.walkFileTree(dir, new SimpleFileVisitor<Path>() {
+            @Override
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                dir.register(ws, WATCH_KINDS, WATCH_MODIFIERS);
+                return FileVisitResult.CONTINUE;
+            }
+        });
+        dir.register(ws, WATCH_KINDS, WATCH_MODIFIERS);
     }
 
     public CompletableFuture<TranspiledCacheEntry> registerAsApp(ClosureBuildConfiguration config) {
@@ -924,6 +1080,9 @@ public class CachedProject {
                     for (String compileSourceRoot : compileSourceRoots) {
                         appendHashOfAllSources(hash, Paths.get(compileSourceRoot));
                     }
+//                    if (webappPath != null) {
+//                        appendHashOfAllSources(hash, webappPath);
+//                    }
                 } else {
                     try (FileSystem zip = FileSystems.newFileSystem(URI.create("jar:" + getArtifact().getFile().toURI()), Collections.emptyMap())) {
                         for (Path rootDirectory : zip.getRootDirectories()) {

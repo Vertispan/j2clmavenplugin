@@ -4,6 +4,7 @@ import com.google.javascript.jscomp.DependencyOptions;
 import net.cardosi.mojo.cache.CachedProject;
 import net.cardosi.mojo.cache.DiskCache;
 import net.cardosi.mojo.cache.TranspiledCacheEntry;
+import net.cardosi.mojo.tools.DevServer;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.model.Plugin;
 import org.apache.maven.model.PluginExecution;
@@ -21,9 +22,11 @@ import org.codehaus.plexus.util.xml.Xpp3Dom;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Attempts to do the setup for various test and build goals declared in the current project or in child projects,
@@ -91,8 +94,26 @@ public class WatchMojo extends AbstractBuildMojo {
     @Parameter(defaultValue = "false")
     protected boolean rewritePolyfills;
 
-    @Parameter(defaultValue = "false")
-    protected boolean enableSourcemaps;
+    /**
+     * Enable the live-reloading dev server
+     */
+    @Parameter(defaultValue = "true", property = "devServerEnable")
+    protected boolean devServerEnable;
+
+    /**
+     * Port for the dev server to operate
+     */
+    @Parameter(defaultValue = "8085", property = "devServerPort")
+    protected int devServerPort;
+
+    /**
+     * The 'main' artifact-id for this project that has the index.html
+     * and other sources to host. If not configured, we try to pick the
+     * first artifact with a `src/main/webapp/index.html`, defaulting
+     * to {@link #webappDirectory}.
+     */
+    @Parameter(property = "devServerRootArtifactId")
+    protected String devServerRootArtifactId;
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
@@ -180,7 +201,7 @@ public class WatchMojo extends AbstractBuildMojo {
 //                                apps.add(e);
                             } else if (goal.equals("build") && shouldCompileBuild()) {
                                 System.out.println("Found build " + execution);
-                                XmlDomClosureConfig config = new XmlDomClosureConfig(configuration, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, compilationLevel, rewritePolyfills, reactorProject.getArtifactId(), DependencyOptions.DependencyMode.SORT_ONLY, enableSourcemaps, webappDirectory);
+                                XmlDomClosureConfig config = new XmlDomClosureConfig(configuration, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, compilationLevel, rewritePolyfills, reactorProject.getArtifactId(), DependencyOptions.DependencyMode.SORT_ONLY, false, webappDirectory);
 
                                 // Load up all the dependencies in the requested scope for the current project
                                 CachedProject p = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, true, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, getDependencyReplacements(), "* ");
@@ -204,23 +225,59 @@ public class WatchMojo extends AbstractBuildMojo {
         }
         diskCache.release();
 
+        DevServer devServer = null;
+        if (devServerEnable) {
+            Path devServerRoot;
+            if (devServerRootArtifactId != null) {
+                devServerRoot = Paths.get(webappDirectory).resolve(devServerRootArtifactId);
+            } else {
+                // could not find index.html... default to webappDirectory
+                devServerRoot = Paths.get(webappDirectory);
+
+                /*
+                 if we can find a webapps/index.html, lets use that
+                 instead of webappDirectory.
+                */
+                for (MavenProject project : reactorProjects) {
+                    Path indexHtml = Paths.get(project.getBasedir().toPath().toAbsolutePath() +
+                                               "/src/main/webapp/index.html");
+                    if (Files.exists(indexHtml)) {
+                        devServerRoot = Paths.get(webappDirectory).resolve(project.getArtifactId());
+                        break;
+                    }
+                }
+            }
+
+            devServer = new DevServer(devServerRoot, devServerPort);
+
+            // initial build
+            devServer.notifyBuilding();
+            DevServer finalDevServer = devServer;
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                .thenRun(finalDevServer::notifyBuildStepComplete);
+        }
+
         for (CachedProject app : projects.values()) {
             //TODO instead of N threads per project, combine threads?
             try {
-                app.watch();
+                app.watch(webappDirectory, devServer);
             } catch (IOException ex) {
                 ex.printStackTrace();
                 //TODO fall back to polling or another strategy
             }
         }
 
-        // TODO replace this dumb timer with a System.in loop so we can watch for some commands from the user
-        try {
-            Thread.sleep(TimeUnit.MINUTES.toMillis(30));
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+        if (devServerEnable) {
+            new Thread(devServer).start();
         }
 
+        // Any user input will stop watch goal.
+        try {
+            System.out.println("Press any key to stop watching");
+            System.in.read();
+        } catch (IOException e) {
+            throw new MojoExecutionException("Error awaiting user input: " + e.getMessage());
+        }
     }
 
     private Xpp3Dom merge(Xpp3Dom pluginConfiguration, Xpp3Dom configuration) {

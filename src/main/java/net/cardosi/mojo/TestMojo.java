@@ -196,7 +196,7 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
             // only this should have the scope=test deps on it
             List<CachedProject> children = new ArrayList<>(source.getChildren());
             children.add(source);
-            CachedProject e = new CachedProject(diskCache, project.getArtifact(), project, children, project.getTestCompileSourceRoots(), project.getTestResources());
+            CachedProject e = new CachedProject(diskCache, project.getArtifact(), project, children, project.getTestCompileSourceRoots(), project.getTestResources(), null);
 
             diskCache.release();
 
@@ -233,7 +233,7 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
                 // Synthesize a new project which only depends on the last one, and only contains the named test's .testsuite content, remade into a one-off JS file
                 ArrayList<CachedProject> finalChildren = new ArrayList<>(e.getChildren());
                 finalChildren.add(e);
-                CachedProject t = new CachedProject(diskCache, project.getArtifact(), project, finalChildren, Collections.singletonList(tmp.toString()), Collections.emptyList());
+                CachedProject t = new CachedProject(diskCache, project.getArtifact(), project, finalChildren, Collections.singletonList(tmp.toString()), Collections.emptyList(), null);
                 TestConfig config = new TestConfig(testClass, this);
 
                 // build this project normally

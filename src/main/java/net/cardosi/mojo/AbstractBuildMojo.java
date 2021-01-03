@@ -24,6 +24,8 @@ import org.eclipse.aether.resolution.ArtifactResolutionException;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -215,9 +217,15 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
             p = seen.get(key);
             p.replace(artifact, currentProject, children);
         } else {
-            p = new CachedProject(diskCache, artifact, currentProject, children);
-            seen.put(key, p);
+            Path webappPath = null;
+            File basedir = currentProject.getBasedir();
+            if (basedir != null) {
+                webappPath = basedir.toPath().resolve("src/main/webapp");
+                if (!Files.exists(webappPath)) webappPath = null;
+            }
 
+            p = new CachedProject(diskCache, artifact, currentProject, children, webappPath);
+            seen.put(key, p);
             p.markDirty();
         }
 
