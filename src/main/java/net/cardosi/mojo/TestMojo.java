@@ -190,7 +190,7 @@ public class TestMojo extends AbstractBuildMojo implements ClosureBuildConfigura
 
         try {
             // Build the dependency tree for the project itself. Note that this picks up the scope of the test side of things, but uses the app sources, which isn't exactly right.
-            CachedProject source = loadDependenciesIntoCache(project.getArtifact(), project, false, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_TEST, getDependencyReplacements(), "* ");
+            CachedProject source = loadDependenciesIntoCache(project.getArtifact(), project, true, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_TEST, getDependencyReplacements(), "* ");
 
             // Given that set of tasks, we'll chain one more on the end - this is the one that will have the actual test sources+resources. To be fully correct,
             // only this should have the scope=test deps on it

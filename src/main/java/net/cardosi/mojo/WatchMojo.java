@@ -4,6 +4,7 @@ import com.google.javascript.jscomp.DependencyOptions;
 import net.cardosi.mojo.cache.CachedProject;
 import net.cardosi.mojo.cache.DiskCache;
 import net.cardosi.mojo.cache.TranspiledCacheEntry;
+import net.cardosi.mojo.cache.WatchServiceManager;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.model.Plugin;
 import org.apache.maven.model.PluginExecution;
@@ -23,6 +24,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -183,13 +186,14 @@ public class WatchMojo extends AbstractBuildMojo {
                                 XmlDomClosureConfig config = new XmlDomClosureConfig(configuration, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, compilationLevel, rewritePolyfills, reactorProject.getArtifactId(), DependencyOptions.DependencyMode.SORT_ONLY, enableSourcemaps, webappDirectory);
 
                                 // Load up all the dependencies in the requested scope for the current project
-                                CachedProject p = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, true, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, getDependencyReplacements(), "* ");
+                                CachedProject p = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject,true, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, getDependencyReplacements(), "* ");
 
                                 CompletableFuture<TranspiledCacheEntry> f;
                                 if (config.getCompilationLevel().equalsIgnoreCase(CachedProject.BUNDLE_JAR)) {
                                     f = p.registerAsChunkedApp(config);
                                 } else {
                                     f = p.registerAsApp(config);
+
                                 }
                                 futures.add(f);
                                 apps.add(p);
@@ -204,15 +208,23 @@ public class WatchMojo extends AbstractBuildMojo {
         }
         diskCache.release();
 
-        for (CachedProject app : projects.values()) {
-            //TODO instead of N threads per project, combine threads?
+        for (Future f : futures) {
             try {
-                app.watch();
-            } catch (IOException ex) {
-                ex.printStackTrace();
-                //TODO fall back to polling or another strategy
+                f.get();
+            } catch (ExecutionException| InterruptedException e) {
+                e.printStackTrace();
             }
         }
+
+        try {
+            // sleep 500ms, so the printouts aren't muddled
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        WatchServiceManager watchManager = new WatchServiceManager( projects.values().toArray( new CachedProject[projects.size()]));
+        watchManager.start();
 
         // TODO replace this dumb timer with a System.in loop so we can watch for some commands from the user
         try {

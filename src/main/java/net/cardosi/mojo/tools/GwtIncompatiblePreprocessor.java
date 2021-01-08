@@ -1,17 +1,23 @@
 package net.cardosi.mojo.tools;
 
 import com.google.common.collect.ImmutableMap;
-import com.google.j2cl.common.FrontendUtils.FileInfo;
+import com.google.j2cl.common.J2clUtils;
 import com.google.j2cl.common.Problems;
+import com.google.common.io.MoreFiles;
 import com.google.j2cl.tools.gwtincompatible.GwtIncompatibleStripper;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+
+import static com.google.j2cl.tools.gwtincompatible.GwtIncompatibleStripper.strip;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * Takes a directory of sources, and removes any types or members that are
@@ -27,64 +33,32 @@ public class GwtIncompatiblePreprocessor {
         }
     }
 
-    public List<FileInfo> preprocess(List<FileInfo> unprocessedFiles) throws IOException {
+    public void preprocess(File sourceDir, List<Path> unprocessedFiles) throws IOException {
         Problems problems = new Problems();
 
-        List<FileInfo> result = new ArrayList<>();
-        File processed = File.createTempFile("preprocessed", ".jar");
-        try (FileSystem out = initZipOutput(processed.getAbsolutePath(), problems)) {
-
-            GwtIncompatibleStripper.preprocessFiles(unprocessedFiles, out.getPath("/"), problems);
-
-            if (problems.hasErrors()) {
-                throw new IllegalStateException(problems.getErrors().toString());
-            }
-
-            // TODO when the preprocessor doesn't require writing to a zip, we can
-            //      change this to just write to the output dir directly
-            Path path = out.getPath("/");
-            Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
-                @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    Path relativePathInZip = path.relativize(file);
-                    Path targetPath = Paths.get(outputDirectory.toURI()).resolve(relativePathInZip.toString());
-
-                    Files.createDirectories(targetPath.getParent());
-                    Files.copy(file, targetPath);
-                    result.add(FileInfo.create(targetPath.toString(), targetPath.toString()));
-
-                    return FileVisitResult.CONTINUE;
+        //System.out.println("strip sourceDir" + sourceDir);
+        for (Path file : unprocessedFiles) {
+            Path localPath = sourceDir.toPath().relativize(file);
+            final Path targetPath = outputDirectory.toPath().resolve(localPath);
+            Files.createDirectories(targetPath.getParent());
+            Files.deleteIfExists(targetPath);
+            if (file.toString().endsWith(".java")) {
+                String fileContent = MoreFiles.asCharSource(file, UTF_8).read();
+                String processedFileContent = strip(fileContent);
+                // Write the processed file to output
+                //System.out.println("strip write" + targetPath + ":" + file);
+                Path writePath = Files.write(targetPath, Collections.singleton(processedFileContent), StandardCharsets.UTF_8);
+                //System.out.println("strip writePath: " + writePath);
+                //targetPath.toFile().setLastModified(file.toFile().lastModified()); // last modified must be same, for calculated ChangeSet
+                if (problems.hasErrors()) {
+                    System.out.println("strip error: " + problems.getErrors().toString());
+                    throw new IOException(problems.getErrors().toString());
                 }
-            });
-        } catch (Throwable t) {
-            problems.getErrors().forEach(System.out::println);
-            throw t;
-        } finally {
-            processed.delete();
-        }
-        return result;
-    }
-
-    // copied from com.google.j2cl.tools.gwtincompatible.GwtIncompatibleStripper, since it is no longer part of FrontendUtils
-    private static FileSystem initZipOutput(String output, Problems problems) {
-        Path outputPath = Paths.get(output);
-        if (Files.isDirectory(outputPath)) {
-            problems.fatal(Problems.FatalError.OUTPUT_LOCATION, outputPath);
-        }
-
-        try {
-            // Ensures that we will not fail if the zip already exists.
-            Files.delete(outputPath);
-            if (!Files.exists(outputPath.getParent())) {
-                Files.createDirectories(outputPath.getParent());
+            } else {
+                Files.copy(file, targetPath);
+                //System.out.println("strip copy: " + file + ":" + targetPath);
+                //targetPath.toFile().setLastModified(file.toFile().lastModified()); // last modified must be same, for calculated ChangeSet
             }
-
-            return FileSystems.newFileSystem(
-                    URI.create("jar:" + outputPath.toAbsolutePath().toUri()),
-                    ImmutableMap.of("create", "true"));
-        } catch (IOException e) {
-            problems.fatal(Problems.FatalError.CANNOT_CREATE_ZIP, outputPath, e.getMessage());
-            return null;
         }
     }
 }
