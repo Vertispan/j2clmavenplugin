@@ -18,4 +18,43 @@
             <url>https://oss.sonatype.org/content/repositories/google-snapshots/</url>
         </repository>
     </repositories>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <!-- Define the version just once -->
+                <plugin>
+                    <groupId>com.vertispan.j2cl</groupId>
+                    <artifactId>j2cl-maven-plugin</artifactId>
+                    <version>0.17mdp-SNAPSHOT</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
+        <plugins>
+            <!--
+            Define settings to use when running dev mode. these aren't inherited, so they won't affect other modules
+            when they run. Note that if an app specifies something, it automatically overrides anything here - use
+            profiles to swap between dev and prod configuration instead.
+            -->
+            <plugin>
+                <groupId>com.vertispan.j2cl</groupId>
+                <artifactId>j2cl-maven-plugin</artifactId>
+                <inherited>false</inherited>
+                <executions>
+                    <execution>
+                        <id>build-js</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>build</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <webappDirectory>/Users/mdproctor/dev/j2clmavenplugin/app/target/gwt/launcherDir</webappDirectory>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
 </project>

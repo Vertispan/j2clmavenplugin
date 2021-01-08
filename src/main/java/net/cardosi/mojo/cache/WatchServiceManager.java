@@ -91,9 +91,9 @@ public class WatchServiceManager {
 
         @Override
         public void onEvent(DirectoryChangeEvent event) {
-            Path contextPath = event.context();
+            Path rootPath = event.rootPath();
             Path path = event.path();
-            CachedProject cachedProject = contexts.get(path);
+            CachedProject cachedProject = contexts.get(rootPath);
 
             synchronized (lock) {
 

@@ -17,12 +17,13 @@
             <version>1.0</version>
         </dependency>
     </dependencies>
+
     <build>
         <plugins>
             <plugin>
-                <groupId>@project.groupId@</groupId>
-                <artifactId>@project.artifactId@</artifactId>
-                <version>@project.version@</version>
+                <groupId>com.vertispan.j2cl</groupId>
+                <artifactId>j2cl-maven-plugin</artifactId>
+                <version>0.17mdp-SNAPSHOT</version>
                 <executions>
                     <execution>
                         <id>build-js</id>
@@ -35,4 +36,22 @@
             </plugin>
         </plugins>
     </build>
+    <!--    <build>-->
+    <!--        <plugins>-->
+    <!--            <plugin>-->
+    <!--                <groupId>com.vertispan.j2cl</groupId>-->
+    <!--                <artifactId>j2cl-maven-plugin</artifactId>-->
+    <!--                <version>0.17mdp-SNAPSHOT</version>-->
+    <!--                <executions>-->
+    <!--                    <execution>-->
+    <!--                        <id>build-js</id>-->
+    <!--                        <phase>prepare-package</phase>-->
+    <!--                        <goals>-->
+    <!--                            <goal>build</goal>-->
+    <!--                        </goals>-->
+    <!--                    </execution>-->
+    <!--                </executions>-->
+    <!--            </plugin>-->
+    <!--        </plugins>-->
+    <!--    </build>-->
 </project>
