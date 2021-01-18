@@ -1,6 +1,6 @@
 package net.cardosi.mojo.tools;
 
-import com.google.j2cl.common.FrontendUtils.FileInfo;
+import com.google.j2cl.common.SourceUtils.FileInfo;
 
 import javax.lang.model.SourceVersion;
 import javax.tools.*;

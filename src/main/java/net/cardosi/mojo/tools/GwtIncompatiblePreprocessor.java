@@ -1,7 +1,7 @@
 package net.cardosi.mojo.tools;
 
 import com.google.common.collect.ImmutableMap;
-import com.google.j2cl.common.FrontendUtils.FileInfo;
+import com.google.j2cl.common.SourceUtils.FileInfo;
 import com.google.j2cl.common.Problems;
 import com.google.j2cl.tools.gwtincompatible.GwtIncompatibleStripper;
 
@@ -65,7 +65,7 @@ public class GwtIncompatiblePreprocessor {
         return result;
     }
 
-    // copied from com.google.j2cl.tools.gwtincompatible.GwtIncompatibleStripper, since it is no longer part of FrontendUtils
+    // copied from com.google.j2cl.tools.gwtincompatible.GwtIncompatibleStripper, since it is no longer part of SourceUtils
     private static FileSystem initZipOutput(String output, Problems problems) {
         Path outputPath = Paths.get(output);
         if (Files.isDirectory(outputPath)) {

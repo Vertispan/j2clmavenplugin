@@ -3,7 +3,7 @@ package net.cardosi.mojo.cache;
 import com.google.common.base.Preconditions;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.j2cl.common.FrontendUtils;
+import com.google.j2cl.common.SourceUtils;
 import com.google.javascript.jscomp.*;
 import net.cardosi.mojo.ClosureBuildConfiguration;
 import net.cardosi.mojo.Hash;
@@ -724,14 +724,14 @@ public class CachedProject {
 
 
         }, (bytecodeDeps, entry) -> {
-            List<FrontendUtils.FileInfo> sourcesToCompile = getFileInfoInDir(Paths.get(entry.getStrippedSourcesDir().toURI()), javaMatcher);
+            List<SourceUtils.FileInfo> sourcesToCompile = getFileInfoInDir(Paths.get(entry.getStrippedSourcesDir().toURI()), javaMatcher);
             if (!sourcesToCompile.isEmpty()) {
                 //invoke j2cl on these sources, classpath
                 List<File> strippedClasspath = new ArrayList<>(bytecodeDeps.stream().map(TranspiledCacheEntry::getStrippedBytecodeDir).collect(Collectors.toList()));
                 strippedClasspath.addAll(diskCache.getExtraClasspath());
 
                 J2cl j2cl = new J2cl(strippedClasspath, diskCache.getBootstrap(), entry.getTranspiledSourcesDir());
-                List<FrontendUtils.FileInfo> nativeSources = getFileInfoInDir(entry.getStrippedSourcesDir().toPath(), nativeJsMatcher);
+                List<SourceUtils.FileInfo> nativeSources = getFileInfoInDir(entry.getStrippedSourcesDir().toPath(), nativeJsMatcher);
 
                 boolean j2clSuccess = j2cl.transpile(sourcesToCompile, nativeSources);
                 if (!j2clSuccess) {
@@ -743,7 +743,7 @@ public class CachedProject {
             Path outSources = entry.getTranspiledSourcesDir().toPath();
             getFileInfoInDir(entry.getStrippedSourcesDir().toPath(), path -> jsMatcher.matches(path) && !nativeJsMatcher.matches(path))
                     .stream()
-                    .map(FrontendUtils.FileInfo::sourcePath).map(Paths::get)
+                    .map(SourceUtils.FileInfo::sourcePath).map(Paths::get)
                     .map(p -> entry.getStrippedSourcesDir().toPath().relativize(p))
                     .forEach(path -> {
                         try {
@@ -788,7 +788,7 @@ public class CachedProject {
             File strippedBytecode = entry.getStrippedBytecodeDir();
             try {
                 Javac javac = new Javac(null, strippedClasspath, strippedBytecode, diskCache.getBootstrap());
-                List<FrontendUtils.FileInfo> sourcesToCompile = getFileInfoInDir(Paths.get(entry.getStrippedSourcesDir().toURI()), javaMatcher);
+                List<SourceUtils.FileInfo> sourcesToCompile = getFileInfoInDir(Paths.get(entry.getStrippedSourcesDir().toURI()), javaMatcher);
                 if (sourcesToCompile.isEmpty()) {
                     return entry;
                 }
@@ -817,7 +817,7 @@ public class CachedProject {
 
             return generatedSources().join();
         }, (generatedSources, entry) -> {
-            List<FrontendUtils.FileInfo> sourcesToStrip = new ArrayList<>();
+            List<SourceUtils.FileInfo> sourcesToStrip = new ArrayList<>();
 
             try {
                 if (hasSourcesMapped()) {
@@ -838,7 +838,7 @@ public class CachedProject {
                                 try (InputStream inputStream = zipInputFile.getInputStream(z)) {
                                     Files.createDirectories(outPath.getParent());
                                     Files.copy(inputStream, outPath);
-                                    sourcesToStrip.add(FrontendUtils.FileInfo.create(outPath.toString(), z.getName()));
+                                    sourcesToStrip.add(SourceUtils.FileInfo.create(outPath.toString(), z.getName()));
                                 }
                             }
                         }
@@ -885,7 +885,7 @@ public class CachedProject {
                 plainClasspath.addAll(resources.stream().map(FileSet::getDirectory).map(File::new).collect(Collectors.toList()));
 //                plainClasspath.addAll(compileSourceRoots.stream().map(File::new).collect(Collectors.toList()));
 
-                List<FrontendUtils.FileInfo> sources = compileSourceRoots.stream().flatMap(dir -> getFileInfoInDir(Paths.get(dir), javaMatcher).stream()).collect(Collectors.toList());
+                List<SourceUtils.FileInfo> sources = compileSourceRoots.stream().flatMap(dir -> getFileInfoInDir(Paths.get(dir), javaMatcher).stream()).collect(Collectors.toList());
                 if (sources.isEmpty()) {
                     return entry;
                 }
@@ -969,13 +969,13 @@ public class CachedProject {
         });
     }
 
-    private List<FrontendUtils.FileInfo> getFileInfoInDir(Path dir, PathMatcher... matcher) {
+    private List<SourceUtils.FileInfo> getFileInfoInDir(Path dir, PathMatcher... matcher) {
         if (!Files.exists(dir)) {
             return Collections.emptyList();
         }
         try {
             return Files.find(dir, Integer.MAX_VALUE, ((path, basicFileAttributes) -> Arrays.stream(matcher).anyMatch(m -> m.matches(path))))
-                    .map(p -> FrontendUtils.FileInfo.create(p.toString(), dir.toAbsolutePath().relativize(p).toString()))
+                    .map(p -> SourceUtils.FileInfo.create(p.toString(), dir.toAbsolutePath().relativize(p).toString()))
                     .collect(Collectors.toList());
         } catch (IOException e) {
             throw new UncheckedIOException(e);

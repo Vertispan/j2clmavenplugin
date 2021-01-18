@@ -1,6 +1,6 @@
 package net.cardosi.mojo.tools;
 
-import com.google.j2cl.common.FrontendUtils;
+import com.google.j2cl.common.SourceUtils;
 import com.google.javascript.jscomp.*;
 import com.google.javascript.jscomp.Compiler;
 import com.google.javascript.jscomp.parsing.Config;
@@ -24,9 +24,9 @@ public class JsChecker {
         this.upstreamExterns = upstreamExterns;
     }
 
-    public boolean checkAndGenerateExterns(List<FrontendUtils.FileInfo> jsInputs, File externsFile) {
+    public boolean checkAndGenerateExterns(List<SourceUtils.FileInfo> jsInputs, File externsFile) {
 //        upstreamExterns.forEach(System.out::println);
-//        jsInputs.stream().map(FrontendUtils.FileInfo::sourcePath).forEach(System.out::println);
+//        jsInputs.stream().map(SourceUtils.FileInfo::sourcePath).forEach(System.out::println);
         // configure compiler
         Compiler compiler = new Compiler();
         CompilerOptions options = new CompilerOptions();
@@ -53,7 +53,7 @@ public class JsChecker {
         compiler.disableThreads();
         Result result = compiler.compile(
                 Collections.emptyList(),
-                jsInputs.stream().map(FrontendUtils.FileInfo::sourcePath).map(SourceFile::fromFile).collect(Collectors.toList()),
+                jsInputs.stream().map(SourceUtils.FileInfo::sourcePath).map(SourceFile::fromFile).collect(Collectors.toList()),
                 options);
 
         if (!result.success) {

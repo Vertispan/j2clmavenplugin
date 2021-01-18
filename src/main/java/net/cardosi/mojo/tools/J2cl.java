@@ -1,8 +1,9 @@
 package net.cardosi.mojo.tools;
 
-import com.google.j2cl.common.FrontendUtils;
+import com.google.j2cl.common.SourceUtils;
 import com.google.j2cl.common.Problems;
-import com.google.j2cl.frontend.Frontend;
+import com.google.j2cl.transpiler.backend.Backend;
+import com.google.j2cl.transpiler.frontend.Frontend;
 import com.google.j2cl.transpiler.J2clTranspiler;
 import com.google.j2cl.transpiler.J2clTranspilerOptions;
 
@@ -19,6 +20,7 @@ public class J2cl {
     public J2cl(List<File> strippedClasspath, File bootstrap, File jsOutDir) {
         optionsBuilder = J2clTranspilerOptions.newBuilder()
                 .setFrontend(Frontend.JDT)
+                .setBackend(Backend.CLOSURE)
                 .setClasspaths(Stream.concat(Stream.of(bootstrap), strippedClasspath.stream())
                         .map(File::getAbsolutePath)
                         .collect(Collectors.toList())
@@ -29,14 +31,14 @@ public class J2cl {
                 .setGenerateKytheIndexingMetadata(false);
     }
 
-    public boolean transpile(List<FrontendUtils.FileInfo> sourcesToCompile, List<FrontendUtils.FileInfo> nativeSources) {
+    public boolean transpile(List<SourceUtils.FileInfo> sourcesToCompile, List<SourceUtils.FileInfo> nativeSources) {
         J2clTranspilerOptions options = optionsBuilder
                 .setSources(sourcesToCompile)
                 .setNativeSources(nativeSources)
                 .build();
-        Problems problems;
+        Problems problems = new Problems();
         try {
-            problems = J2clTranspiler.transpile(options);
+            J2clTranspiler.transpile(options, problems);
         } catch (Throwable t) {
             System.out.println(options);
             throw t;
