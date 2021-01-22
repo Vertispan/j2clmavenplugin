@@ -51,7 +51,7 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <webappDirectory>/Users/mdproctor/dev/j2clmavenplugin/app/target/gwt/launcherDir</webappDirectory>
+                    <webappDirectory>target/gwt/launcherDir</webappDirectory>
                 </configuration>
             </plugin>
         </plugins>
