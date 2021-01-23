@@ -12,18 +12,19 @@ import java.nio.channels.SocketChannel;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CharsetEncoder;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import static java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME;
 import java.util.Base64;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Phaser;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * <p>This class serves resources to the client and manages live-reloading.</p>
@@ -48,6 +49,9 @@ public class DevServer implements Runnable {
 
     // webserver root
     private final Path root;
+    // base href to deploy and test on
+    private final String baseHref;
+    private final Pattern baseHrefPattern;
     // path to index.html, whether it currently exists or not
     private final Path indexHtmlPath;
     // webserver port
@@ -94,11 +98,26 @@ public class DevServer implements Runnable {
 
     /**
      * @param root Path to host files from
+     * @param baseHref Equivalent to {@code <base href="">}
      * @param port Port to bind on localhost
      */
-    public DevServer(Path root, int port) {
+    public DevServer(Path root, String baseHref, int port) {
         this.root = root;
+        
+        // make sure baseHref starts and ends with '/'
+        if (!baseHref.equals("/")) {
+            if (!baseHref.startsWith("/")) {
+                baseHref = "/" + baseHref;
+            }
+            if (!baseHref.endsWith("/")) {
+                baseHref += "/";
+            }
+        }
+        this.baseHref = baseHref;
+        baseHrefPattern = Pattern.compile("^" + baseHref);
+        
         indexHtmlPath = root.resolve("index.html");
+        
         this.port = port;
 
         String js = "<script>" +
@@ -167,7 +186,7 @@ public class DevServer implements Runnable {
             if (Files.exists(indexHtmlPath) &&
                 Desktop.isDesktopSupported() &&
                 (desktop = Desktop.getDesktop()).isSupported(Desktop.Action.BROWSE)) {
-                desktop.browse(URI.create("http://localhost:" + port));
+                desktop.browse(URI.create("http://localhost:" + port + baseHref));
             }
 
             while (true) {
@@ -197,6 +216,14 @@ public class DevServer implements Runnable {
                     sc.close();
                     System.err.println("Malformed Request.. could not find GET header");
                     continue;
+                }
+                
+                /*
+                Remove baseHref from request, if found
+                 */
+                Matcher baseHrefMatcher = baseHrefPattern.matcher(req);
+                if (baseHrefMatcher.find()) {
+                    req = baseHrefMatcher.replaceFirst("/");
                 }
 
                 /*

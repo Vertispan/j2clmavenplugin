@@ -1,6 +1,13 @@
 package net.cardosi.mojo;
 
 import com.google.javascript.jscomp.DependencyOptions;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import net.cardosi.mojo.cache.CachedProject;
 import net.cardosi.mojo.cache.DiskCache;
 import net.cardosi.mojo.cache.TranspiledCacheEntry;
@@ -19,14 +26,6 @@ import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.ProjectBuildingException;
 import org.apache.maven.project.ProjectBuildingRequest;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
 
 /**
  * Attempts to do the setup for various test and build goals declared in the current project or in child projects,
@@ -105,6 +104,19 @@ public class WatchMojo extends AbstractBuildMojo {
      */
     @Parameter(defaultValue = "8085", property = "devServerPort")
     protected int devServerPort;
+    
+    /**
+     * The base href from which your application will be deployed
+     * (and therefore, should be tested on). For example, if you will deploy
+     * your app to myserver.com/my-app/, set devServerBaseHref=/my-app.
+     * This way, requested resources will be served correctly. The default
+     * value is '/'.
+     * <p>
+     * Note that using the {@code <base>} tag in index.html is a best practice
+     * to allow relative hrefs.
+     */
+    @Parameter(defaultValue = "/", property = "devServerBaseHref")
+    protected String devServerBaseHref;
 
     /**
      * The 'main' artifact-id for this project that has the index.html
@@ -248,7 +260,7 @@ public class WatchMojo extends AbstractBuildMojo {
                 }
             }
 
-            devServer = new DevServer(devServerRoot, devServerPort);
+            devServer = new DevServer(devServerRoot, devServerBaseHref, devServerPort);
 
             // initial build
             devServer.notifyBuilding();
