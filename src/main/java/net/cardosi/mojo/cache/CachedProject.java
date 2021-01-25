@@ -750,7 +750,7 @@ public class CachedProject {
 
                 J2cl j2cl = new J2cl(bytecodeClasspath, diskCache.getBootstrap(), entry.getTranspiledSourcesDir(), hasSourcesMapped());
                 List<Path> nativeSources = getFileInfoInDir(entry.getStrippedSourcesDir().toPath(), true, nativeJsMatcher);
-
+                maybeAddNativeJs(sourcesToCompile, nativeSources);
                 boolean j2clSuccess = j2cl.transpile(sourcesToCompile, nativeSources);
                 if (!j2clSuccess) {
                     throw new IllegalStateException("j2cl failed, check log for details");
@@ -765,7 +765,7 @@ public class CachedProject {
                     .forEach(path -> {
                         try {
                             Files.createDirectories(outSources.resolve(path).getParent());
-                            Files.copy(entry.getStrippedSourcesDir().toPath().resolve(path), outSources.resolve(path));
+                            Files.copy(entry.getStrippedSourcesDir().toPath().resolve(path), outSources.resolve(path), StandardCopyOption.REPLACE_EXISTING);
                         } catch (IOException e) {
                             throw new UncheckedIOException(e);
                         }
@@ -773,6 +773,15 @@ public class CachedProject {
 
             return entry;
         });
+    }
+
+    private void maybeAddNativeJs(List<Path> sourcesToCompile, List<Path> nativeSources) {
+        for (Path path : sourcesToCompile) {
+            File maybeNativeJs = new File(path.toString().replaceAll("\\.java","\\.native.js"));
+            if(maybeNativeJs.exists() && !nativeSources.contains(maybeNativeJs.toPath())) {
+                nativeSources.add(maybeNativeJs.toPath());
+            }
+        }
     }
 
     private CompletableFuture<TranspiledCacheEntry> strippedBytecode() {
