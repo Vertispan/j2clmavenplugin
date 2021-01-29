@@ -5,6 +5,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.j2cl.common.SourceUtils;
 import com.google.javascript.jscomp.*;
+import io.methvin.watcher.hashing.FileHash;
 import io.methvin.watchservice.MacOSXListeningWatchService;
 import io.methvin.watchservice.WatchablePath;
 import net.cardosi.mojo.ClosureBuildConfiguration;
@@ -64,7 +65,7 @@ public class CachedProject {
     private List<CachedProject> children;
     private final List<CachedProject> dependents = new ArrayList<>();
     private final List<String> compileSourceRoots;
-    private final List<Resource> resources;
+    private final List<Resource>                 resources;
 
     private final Map<String, CompletableFuture<TranspiledCacheEntry>> steps = new ConcurrentHashMap<>();
 
@@ -910,12 +911,12 @@ public class CachedProject {
             try {
                 if (!compileSourceRoots.isEmpty()) {
                     for (String compileSourceRoot : compileSourceRoots) {
-                        appendHashOfAllSources(hash, Paths.get(compileSourceRoot));
+                        appendHashOfAllSources(hash, Paths.get(compileSourceRoot), diskCache);
                     }
                 } else {
                     try (FileSystem zip = FileSystems.newFileSystem(URI.create("jar:" + getArtifact().getFile().toURI()), Collections.emptyMap())) {
                         for (Path rootDirectory : zip.getRootDirectories()) {
-                            appendHashOfAllSources(hash, rootDirectory);
+                            appendHashOfAllSources(hash, rootDirectory, diskCache);
                         }
                     }
                 }
@@ -928,7 +929,7 @@ public class CachedProject {
         });
     }
 
-    private static void appendHashOfAllSources(Hash hash, Path rootDirectory) throws IOException {
+    private static void appendHashOfAllSources(Hash hash, Path rootDirectory, DiskCache diskCache) throws IOException {
         // TODO filter to only source files - probably will just blacklist .class files?
 
         // If no sources are found, we still need to consider this as a provided classpath item, but the
@@ -941,7 +942,13 @@ public class CachedProject {
 
             @Override
             public FileVisitResult visitFile(Path path, BasicFileAttributes basicFileAttributes) throws IOException {
-                hash.append(Files.readAllBytes(path));
+                byte[] bytes = diskCache.getHashes().get(path);
+                if ( bytes != null) {
+                    hash.append(bytes);
+                } else {
+                    hash.append(Files.readAllBytes(path));
+                }
+
                 return FileVisitResult.CONTINUE;
             }
 

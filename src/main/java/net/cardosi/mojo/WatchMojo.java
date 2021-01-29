@@ -222,7 +222,8 @@ public class WatchMojo extends AbstractBuildMojo {
             e.printStackTrace();
         }
 
-        FileService watchManager = new FileService(projects.values().toArray(new CachedProject[projects.size()]));
+        FileService watchManager = new FileService(diskCache, projects.values().toArray(new CachedProject[projects.size()]));
+
         watchManager.start();
 
         // TODO replace this dumb timer with a System.in loop so we can watch for some commands from the user

@@ -13,19 +13,23 @@ import java.util.stream.Collectors;
 
 import io.methvin.watcher.DirectoryWatcher;
 import io.methvin.watcher.changeset.ChangeSet;
+import io.methvin.watcher.changeset.ChangeSetEntry;
 import io.methvin.watcher.changeset.ChangeSetListener;
+import io.methvin.watcher.hashing.FileHash;
 ;
 
 public class FileService {
 
-    private final DirectoryWatcher  watcher;
-    private final ChangeSetListener listener;
-    private       AtomicBoolean     run;
-    private Map<Path, CachedProject>       projects        = new HashMap<>();
+    private final DirectoryWatcher          watcher;
+    private final ChangeSetListener         listener;
+    private       AtomicBoolean             run;
+    private final Map<Path, CachedProject>  projects        = new HashMap<>();
+    private final DiskCache                 diskCache;
 
-    public FileService(CachedProject... cachedProjects) {
+    public FileService(DiskCache diskCache, CachedProject... cachedProjects) {
         int                            watchSize       = 0;
         Map<CachedProject, List<Path>> projectsToWatch = new HashMap<>();
+        this.diskCache = diskCache;
 
 
         List<CachedProject> cachedProjectsList = new ArrayList<>();
@@ -53,9 +57,10 @@ public class FileService {
     }
 
     public void start() {
-        this.watcher.watchAsync();
+        watcher.watchAsync();
 
-        UserInputRunner inputRunner = new UserInputRunner(run, this.listener, projects);
+        UserInputRunner inputRunner = new UserInputRunner(watcher, diskCache, run,
+                                                          listener, projects);
         new Thread(inputRunner).start();
     }
 
@@ -76,11 +81,15 @@ public class FileService {
     }
 
     public static class UserInputRunner implements Runnable {
-        private AtomicBoolean            run;
-        private ChangeSetListener        listener;
-        private Map<Path, CachedProject> projects;
+        private final AtomicBoolean            run;
+        private final ChangeSetListener        listener;
+        private final Map<Path, CachedProject> projects;
+        private final DirectoryWatcher         watcher;
+        private final DiskCache                diskCache;
 
-        public UserInputRunner(AtomicBoolean run, ChangeSetListener listener, Map<Path, CachedProject> projects) {
+        public UserInputRunner(DirectoryWatcher  watcher, DiskCache diskCache, AtomicBoolean run, ChangeSetListener listener, Map<Path, CachedProject> projects) {
+            this.watcher = watcher;
+            this.diskCache = diskCache;
             this.run = run;
             this.listener = listener;
             this.projects = projects;
@@ -93,8 +102,22 @@ public class FileService {
                     System.out.println("waiting read");
                     System.in.read();
                     Map<Path, ChangeSet> changeSets = listener.getChangeSet();
-
                     System.out.println("received changeSet " + changeSets);
+
+                    // iterate all the Paths in all the ChangeSets, and get and put their hashes.
+                    Map<Path, FileHash> updatedPathHashes = watcher.pathHashes();
+                    for (Map.Entry<Path, ChangeSet> changeSet : changeSets.entrySet()) {
+
+                        for(ChangeSetEntry entry : changeSet.getValue().created()) {
+                            diskCache.getHashes().put(entry.path(), updatedPathHashes.get(entry.path()).asBytes());
+                        }
+                        for(ChangeSetEntry entry : changeSet.getValue().modified()) {
+                            diskCache.getHashes().put(entry.path(), updatedPathHashes.get(entry.path()).asBytes());
+                        }
+                        for(ChangeSetEntry entry : changeSet.getValue().deleted()) {
+                            diskCache.getHashes().put(entry.path(), updatedPathHashes.get(entry.path()).asBytes());
+                        }
+                    }
 
                     for (Map.Entry<Path, ChangeSet> entry : changeSets.entrySet()) {
                         Path path = entry.getKey();
