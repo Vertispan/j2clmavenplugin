@@ -3,6 +3,7 @@ package net.cardosi.mojo;
 import com.google.javascript.jscomp.DependencyOptions;
 import net.cardosi.mojo.cache.CachedProject;
 import net.cardosi.mojo.cache.DiskCache;
+import net.cardosi.mojo.cache.FileService;
 import net.cardosi.mojo.cache.TranspiledCacheEntry;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.model.Plugin;
@@ -23,6 +24,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -204,15 +207,23 @@ public class WatchMojo extends AbstractBuildMojo {
         }
         diskCache.release();
 
-        for (CachedProject app : projects.values()) {
-            //TODO instead of N threads per project, combine threads?
+        for (Future f : futures) {
             try {
-                app.watch();
-            } catch (IOException ex) {
-                ex.printStackTrace();
-                //TODO fall back to polling or another strategy
+                f.get();
+            } catch (ExecutionException | InterruptedException e) {
+                e.printStackTrace();
             }
         }
+
+        try {
+            // sleep 500ms, so the printouts aren't muddled
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        FileService watchManager = new FileService(projects.values().toArray(new CachedProject[projects.size()]));
+        watchManager.start();
 
         // TODO replace this dumb timer with a System.in loop so we can watch for some commands from the user
         try {

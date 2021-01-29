@@ -5,6 +5,8 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.j2cl.common.SourceUtils;
 import com.google.javascript.jscomp.*;
+import io.methvin.watchservice.MacOSXListeningWatchService;
+import io.methvin.watchservice.WatchablePath;
 import net.cardosi.mojo.ClosureBuildConfiguration;
 import net.cardosi.mojo.Hash;
 import net.cardosi.mojo.tools.*;
@@ -36,6 +38,7 @@ import java.util.zip.ZipFile;
 public class CachedProject {
     public static final String BUNDLE_JAR = "BUNDLE_JAR";
     private static final String BUNDLE_JAR_BASE_FILE = "j2cl-base.js";
+
     private enum Step {
         Hash,
         ProcessAnnotations,
@@ -78,6 +81,11 @@ public class CachedProject {
         this(diskCache, artifact, currentProject, children, currentProject.getCompileSourceRoots(), currentProject.getResources());
     }
 
+
+    public List<String> compileSourceRoots() {
+        return compileSourceRoots;
+    }
+
     public void replace(Artifact artifact, MavenProject currentProject, List<CachedProject> children) {
         assert this.children == null || (this.children.isEmpty() && this.currentProject.getArtifacts().isEmpty());
 
@@ -97,10 +105,10 @@ public class CachedProject {
      *
      * TODO this could be updated to compare before/after hash and avoid marking children as dirty
      */
-    public void markDirty() {
+    public CompletableFuture<Void> markDirty() {
         synchronized (steps) {
             if (steps.isEmpty()) {
-                return;
+                return null;
             }
             // cancel all running work
             for (CompletableFuture<TranspiledCacheEntry> cf : steps.values()) {
@@ -125,8 +133,10 @@ public class CachedProject {
 
         //TODO cache those "compile me" or "test me" values so we don't pass around like this
         if (!registeredBuildTerminals.isEmpty()) {
-            build();
+            return build();
         }
+
+        return null;
     }
 
     //TODO instead of these, consider a .test() method instead?
@@ -162,43 +172,6 @@ public class CachedProject {
     public boolean hasSourcesMapped() {
         //TODO should eventually support external artifact source dirs so we can watch that instead of using jars
         return !compileSourceRoots.isEmpty();
-    }
-
-    public void watch() throws IOException {
-        Map<FileSystem, List<Path>> fileSystemsToWatch = compileSourceRoots.stream().map(Paths::get).collect(Collectors.groupingBy(Path::getFileSystem));
-        for (Map.Entry<FileSystem, List<Path>> entry : fileSystemsToWatch.entrySet()) {
-            WatchService watchService = entry.getKey().newWatchService();
-            for (Path path : entry.getValue()) {
-                Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
-                    @Override
-                    public FileVisitResult preVisitDirectory(Path path, BasicFileAttributes basicFileAttributes) throws IOException {
-                        path.register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_MODIFY);
-                        return FileVisitResult.CONTINUE;
-                    }
-                });
-                path.register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_MODIFY);
-            }
-            new Thread() {
-                @Override
-                public void run() {
-                    while (true) {
-                        try {
-                            WatchKey key = watchService.poll(10, TimeUnit.SECONDS);
-                            if (key == null) {
-                                continue;
-                            }
-                            //TODO if it was a create, register it (recursively?)
-                            key.pollEvents();//clear the events out
-                            key.reset();//reset to go again
-                            markDirty();
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                            return;
-                        }
-                    }
-                }
-            }.start();
-        }
     }
 
     public CompletableFuture<TranspiledCacheEntry> registerAsApp(ClosureBuildConfiguration config) {
@@ -253,8 +226,8 @@ public class CachedProject {
                 while (!stepDir.mkdir()) {
                     // wait for complete/failed markers, if either exists, we can bail early
                     Path stepDirPath = stepDir.toPath();
-                    try (WatchService w = stepDirPath.getFileSystem().newWatchService()) {
-                        stepDirPath.register(w, StandardWatchEventKinds.ENTRY_CREATE);
+                    try (WatchService w = createWatchService()) {
+                        registerWatch(stepDirPath, w);
                         // first check to see if it exists, then wait for next event to occur
                         do {
                             if (!stepDir.exists()) {
@@ -313,6 +286,21 @@ public class CachedProject {
                 }).join();
             }, diskCache.queueingPool());
         });
+    }
+
+    public WatchService createWatchService() throws IOException {
+        boolean isMac = System.getProperty("os.name").toLowerCase().contains("mac");
+        if (isMac) {
+            return new MacOSXListeningWatchService(new MacOSXListeningWatchService.Config() {});
+        } else {
+            return FileSystems.getDefault().newWatchService();
+        }
+    }
+
+    private void registerWatch(Path stepDirPath, WatchService w) throws IOException {
+        boolean isMac = System.getProperty("os.name").toLowerCase().contains("mac");
+        Watchable watchable = isMac ? new WatchablePath(stepDirPath) : stepDirPath;
+        watchable.register(w, StandardWatchEventKinds.ENTRY_CREATE);
     }
 
     private <T> CompletableFuture<TranspiledCacheEntry> getOrCreate(String step, Supplier<T> dependencies, BiFunction<T, TranspiledCacheEntry, TranspiledCacheEntry> work) {
