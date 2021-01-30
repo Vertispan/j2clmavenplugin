@@ -22,15 +22,12 @@ public class FileService {
 
     private final DirectoryWatcher          watcher;
     private final ChangeSetListener         listener;
-    private       AtomicBoolean             run;
-    private final Map<Path, CachedProject>  projects        = new HashMap<>();
+    private       AtomicBoolean             run       = new AtomicBoolean(false);
+    private final Map<Path, CachedProject>  projects  = new HashMap<>();
     private final DiskCache                 diskCache;
 
     public FileService(DiskCache diskCache, CachedProject... cachedProjects) {
-        int                            watchSize       = 0;
-        Map<CachedProject, List<Path>> projectsToWatch = new HashMap<>();
         this.diskCache = diskCache;
-
 
         List<CachedProject> cachedProjectsList = new ArrayList<>();
 
@@ -54,9 +51,23 @@ public class FileService {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
+
+        // Ensure all of the hashes are cached, before the tasks need them. Otherwise it'll call hash twice per Path.
+        watcher.pathHashes().entrySet().stream()
+               .forEach(entry -> diskCache.getHashes().put(entry.getKey(),
+                                                           entry.getValue().asBytes()));
+
     }
 
     public void start() {
+        // guarantee this goes true
+        while ( run.compareAndSet(false,true) ) {
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+            }
+        }
+
         watcher.watchAsync();
 
         UserInputRunner inputRunner = new UserInputRunner(watcher, diskCache, run,
@@ -65,7 +76,7 @@ public class FileService {
     }
 
     public void stop() {
-        // guarantee this goes false, so all threads stop.
+        // guarantee this goes false
         while ( run.compareAndSet(true,false) ) {
             try {
                 Thread.sleep(50);
@@ -87,7 +98,8 @@ public class FileService {
         private final DirectoryWatcher         watcher;
         private final DiskCache                diskCache;
 
-        public UserInputRunner(DirectoryWatcher  watcher, DiskCache diskCache, AtomicBoolean run, ChangeSetListener listener, Map<Path, CachedProject> projects) {
+        public UserInputRunner(DirectoryWatcher  watcher, DiskCache diskCache, AtomicBoolean run,
+                               ChangeSetListener listener, Map<Path, CachedProject> projects) {
             this.watcher = watcher;
             this.diskCache = diskCache;
             this.run = run;
@@ -99,12 +111,16 @@ public class FileService {
         public void run() {
             while (run.get()) {
                 try {
-                    System.out.println("waiting read");
+                    System.out.println("Waiting for key press followed by enter...");
                     System.in.read();
+
+                    // Calls the thread safe method, that is an Exchange pattern to get the accumulated ChangeSet
                     Map<Path, ChangeSet> changeSets = listener.getChangeSet();
-                    System.out.println("received changeSet " + changeSets);
+                    // System.out.println("received changeSet " + changeSets); // debug message
 
                     // iterate all the Paths in all the ChangeSets, and get and put their hashes.
+                    // So only files that changed will have their hash cache entry updated.
+                    // This cache is then used so that re-hashing CachedProjects is faster.
                     Map<Path, FileHash> updatedPathHashes = watcher.pathHashes();
                     for (Map.Entry<Path, ChangeSet> changeSet : changeSets.entrySet()) {
 
@@ -115,16 +131,17 @@ public class FileService {
                             diskCache.getHashes().put(entry.path(), updatedPathHashes.get(entry.path()).asBytes());
                         }
                         for(ChangeSetEntry entry : changeSet.getValue().deleted()) {
-                            diskCache.getHashes().put(entry.path(), updatedPathHashes.get(entry.path()).asBytes());
+                            diskCache.getHashes().remove(entry.path());
                         }
                     }
 
                     for (Map.Entry<Path, ChangeSet> entry : changeSets.entrySet()) {
                         Path path = entry.getKey();
                         CachedProject cachedProject = projects.get(path);//entry.getKey();
-                        ChangeSet changeSet = entry.getValue(); // we aren't doing anything with this yet.
+                        ChangeSet changeSet = entry.getValue(); // We aren't doing anything with this yet.
+                                                                // But eventually it can be used for a more target MakeDirty
 
-                        System.out.println("MakeDirty..." + cachedProject.getArtifact());
+                        // System.out.println("MakeDirty..." + cachedProject.getArtifact()); // debug message
                         cachedProject.markDirty();
                     }
                 } catch (IOException e) {

@@ -5,6 +5,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.j2cl.common.SourceUtils;
 import com.google.javascript.jscomp.*;
+import com.sun.xml.internal.ws.util.CompletedFuture;
 import io.methvin.watcher.hashing.FileHash;
 import io.methvin.watchservice.MacOSXListeningWatchService;
 import io.methvin.watchservice.WatchablePath;
@@ -39,6 +40,7 @@ import java.util.zip.ZipFile;
 public class CachedProject {
     public static final String BUNDLE_JAR = "BUNDLE_JAR";
     private static final String BUNDLE_JAR_BASE_FILE = "j2cl-base.js";
+    public static final boolean IS_MAC = System.getProperty("os.name").toLowerCase().contains("mac");
 
     private enum Step {
         Hash,
@@ -65,7 +67,7 @@ public class CachedProject {
     private List<CachedProject> children;
     private final List<CachedProject> dependents = new ArrayList<>();
     private final List<String> compileSourceRoots;
-    private final List<Resource>                 resources;
+    private final List<Resource> resources;
 
     private final Map<String, CompletableFuture<TranspiledCacheEntry>> steps = new ConcurrentHashMap<>();
 
@@ -106,10 +108,10 @@ public class CachedProject {
      *
      * TODO this could be updated to compare before/after hash and avoid marking children as dirty
      */
-    public CompletableFuture<Void> markDirty() {
+    public void markDirty() {
         synchronized (steps) {
             if (steps.isEmpty()) {
-                return null;
+                return;
             }
             // cancel all running work
             for (CompletableFuture<TranspiledCacheEntry> cf : steps.values()) {
@@ -134,10 +136,9 @@ public class CachedProject {
 
         //TODO cache those "compile me" or "test me" values so we don't pass around like this
         if (!registeredBuildTerminals.isEmpty()) {
-            return build();
+            build();
+            return;
         }
-
-        return null;
     }
 
     //TODO instead of these, consider a .test() method instead?
@@ -290,8 +291,7 @@ public class CachedProject {
     }
 
     public WatchService createWatchService() throws IOException {
-        boolean isMac = System.getProperty("os.name").toLowerCase().contains("mac");
-        if (isMac) {
+        if (IS_MAC) {
             return new MacOSXListeningWatchService(new MacOSXListeningWatchService.Config() {});
         } else {
             return FileSystems.getDefault().newWatchService();
@@ -299,8 +299,7 @@ public class CachedProject {
     }
 
     private void registerWatch(Path stepDirPath, WatchService w) throws IOException {
-        boolean isMac = System.getProperty("os.name").toLowerCase().contains("mac");
-        Watchable watchable = isMac ? new WatchablePath(stepDirPath) : stepDirPath;
+        Watchable watchable = IS_MAC ? new WatchablePath(stepDirPath) : stepDirPath;
         watchable.register(w, StandardWatchEventKinds.ENTRY_CREATE);
     }
 
