@@ -1,4 +1,4 @@
-package net.cardosi.mojo.build;
+package com.vertispan.j2cl.build;
 
 /**
  * A dependency is a reference to another project's contents, scoped to indicate whether these are

@@ -1,4 +1,4 @@
-package net.cardosi.mojo.build;
+package com.vertispan.j2cl.build;
 
 import java.util.List;
 
@@ -12,6 +12,10 @@ public class Project {
 
     private List<Dependency> dependencies;
     private List<String> sourceRoots;
+
+    public String getKey() {
+        return key;
+    }
 
     public List<Dependency> getDependencies() {
         return dependencies;
@@ -31,5 +35,20 @@ public class Project {
 
     public boolean hasSourcesMapped() {
         return sourceRoots.stream().noneMatch(root -> root.endsWith(".jar"));
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        Project project = (Project) o;
+
+        return key.equals(project.key);
+    }
+
+    @Override
+    public int hashCode() {
+        return key.hashCode();
     }
 }

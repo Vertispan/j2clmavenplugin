@@ -7,6 +7,7 @@ import com.google.j2cl.transpiler.frontend.Frontend;
 import com.google.j2cl.transpiler.J2clTranspiler;
 import com.google.j2cl.transpiler.J2clTranspilerOptions;
 
+import javax.annotation.Nonnull;
 import java.io.File;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -17,7 +18,7 @@ public class J2cl {
 
     private final J2clTranspilerOptions.Builder optionsBuilder;
 
-    public J2cl(List<File> strippedClasspath, File bootstrap, File jsOutDir) {
+    public J2cl(List<File> strippedClasspath, @Nonnull File bootstrap, File jsOutDir) {
         optionsBuilder = J2clTranspilerOptions.newBuilder()
                 .setFrontend(Frontend.JDT)
                 .setBackend(Backend.CLOSURE)

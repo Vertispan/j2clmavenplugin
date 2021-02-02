@@ -1,4 +1,4 @@
-package net.cardosi.mojo.build;
+package com.vertispan.j2cl.build;
 
 /**
  * Default output types - these are just strings, extensions can provide their own
@@ -46,6 +46,7 @@ public interface OutputTypes {
     String TRANSPILED_JS_HEADERS = "transpiled_js_headers";
 
     String BUNDLED_JS = "bundled_js";
+    String BUNDLED_JS_APP = "bundled_js_app";
 
     String OPTIMIZED_JS = "optimized_js";
 }
