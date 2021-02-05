@@ -942,11 +942,11 @@ public class CachedProject {
             @Override
             public FileVisitResult visitFile(Path path, BasicFileAttributes basicFileAttributes) throws IOException {
                 byte[] bytes = diskCache.getHashes().get(path);
-                if ( bytes != null) {
-                    hash.append(bytes);
-                } else {
-                    hash.append(Files.readAllBytes(path));
+                if ( bytes == null) {
+                    // Defensive program during beta testing, so we can ensure it's not happening.
+                    throw new RuntimeException("Unable to find cached hash for path: " + path.toAbsolutePath());
                 }
+                hash.append(bytes);
 
                 return FileVisitResult.CONTINUE;
             }
