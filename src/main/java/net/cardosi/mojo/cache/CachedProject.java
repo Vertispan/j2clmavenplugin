@@ -5,6 +5,10 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.j2cl.common.SourceUtils;
 import com.google.javascript.jscomp.*;
+import com.sun.xml.internal.ws.util.CompletedFuture;
+import io.methvin.watcher.hashing.FileHash;
+import io.methvin.watchservice.MacOSXListeningWatchService;
+import io.methvin.watchservice.WatchablePath;
 import net.cardosi.mojo.ClosureBuildConfiguration;
 import net.cardosi.mojo.Hash;
 import net.cardosi.mojo.tools.*;
@@ -36,6 +40,8 @@ import java.util.zip.ZipFile;
 public class CachedProject {
     public static final String BUNDLE_JAR = "BUNDLE_JAR";
     private static final String BUNDLE_JAR_BASE_FILE = "j2cl-base.js";
+    public static final boolean IS_MAC = System.getProperty("os.name").toLowerCase().contains("mac");
+
     private enum Step {
         Hash,
         ProcessAnnotations,
@@ -76,6 +82,11 @@ public class CachedProject {
 
     public CachedProject(DiskCache diskCache, Artifact artifact, MavenProject currentProject, List<CachedProject> children) {
         this(diskCache, artifact, currentProject, children, currentProject.getCompileSourceRoots(), currentProject.getResources());
+    }
+
+
+    public List<String> compileSourceRoots() {
+        return compileSourceRoots;
     }
 
     public void replace(Artifact artifact, MavenProject currentProject, List<CachedProject> children) {
@@ -126,6 +137,7 @@ public class CachedProject {
         //TODO cache those "compile me" or "test me" values so we don't pass around like this
         if (!registeredBuildTerminals.isEmpty()) {
             build();
+            return;
         }
     }
 
@@ -162,43 +174,6 @@ public class CachedProject {
     public boolean hasSourcesMapped() {
         //TODO should eventually support external artifact source dirs so we can watch that instead of using jars
         return !compileSourceRoots.isEmpty();
-    }
-
-    public void watch() throws IOException {
-        Map<FileSystem, List<Path>> fileSystemsToWatch = compileSourceRoots.stream().map(Paths::get).collect(Collectors.groupingBy(Path::getFileSystem));
-        for (Map.Entry<FileSystem, List<Path>> entry : fileSystemsToWatch.entrySet()) {
-            WatchService watchService = entry.getKey().newWatchService();
-            for (Path path : entry.getValue()) {
-                Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
-                    @Override
-                    public FileVisitResult preVisitDirectory(Path path, BasicFileAttributes basicFileAttributes) throws IOException {
-                        path.register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_MODIFY);
-                        return FileVisitResult.CONTINUE;
-                    }
-                });
-                path.register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_MODIFY);
-            }
-            new Thread() {
-                @Override
-                public void run() {
-                    while (true) {
-                        try {
-                            WatchKey key = watchService.poll(10, TimeUnit.SECONDS);
-                            if (key == null) {
-                                continue;
-                            }
-                            //TODO if it was a create, register it (recursively?)
-                            key.pollEvents();//clear the events out
-                            key.reset();//reset to go again
-                            markDirty();
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                            return;
-                        }
-                    }
-                }
-            }.start();
-        }
     }
 
     public CompletableFuture<TranspiledCacheEntry> registerAsApp(ClosureBuildConfiguration config) {
@@ -253,8 +228,8 @@ public class CachedProject {
                 while (!stepDir.mkdir()) {
                     // wait for complete/failed markers, if either exists, we can bail early
                     Path stepDirPath = stepDir.toPath();
-                    try (WatchService w = stepDirPath.getFileSystem().newWatchService()) {
-                        stepDirPath.register(w, StandardWatchEventKinds.ENTRY_CREATE);
+                    try (WatchService w = createWatchService()) {
+                        registerWatch(stepDirPath, w);
                         // first check to see if it exists, then wait for next event to occur
                         do {
                             if (!stepDir.exists()) {
@@ -313,6 +288,19 @@ public class CachedProject {
                 }).join();
             }, diskCache.queueingPool());
         });
+    }
+
+    public WatchService createWatchService() throws IOException {
+        if (IS_MAC) {
+            return new MacOSXListeningWatchService(new MacOSXListeningWatchService.Config() {});
+        } else {
+            return FileSystems.getDefault().newWatchService();
+        }
+    }
+
+    private void registerWatch(Path stepDirPath, WatchService w) throws IOException {
+        Watchable watchable = IS_MAC ? new WatchablePath(stepDirPath) : stepDirPath;
+        watchable.register(w, StandardWatchEventKinds.ENTRY_CREATE);
     }
 
     private <T> CompletableFuture<TranspiledCacheEntry> getOrCreate(String step, Supplier<T> dependencies, BiFunction<T, TranspiledCacheEntry, TranspiledCacheEntry> work) {
@@ -922,12 +910,12 @@ public class CachedProject {
             try {
                 if (!compileSourceRoots.isEmpty()) {
                     for (String compileSourceRoot : compileSourceRoots) {
-                        appendHashOfAllSources(hash, Paths.get(compileSourceRoot));
+                        appendHashOfAllSources(hash, Paths.get(compileSourceRoot), diskCache);
                     }
                 } else {
                     try (FileSystem zip = FileSystems.newFileSystem(URI.create("jar:" + getArtifact().getFile().toURI()), Collections.emptyMap())) {
                         for (Path rootDirectory : zip.getRootDirectories()) {
-                            appendHashOfAllSources(hash, rootDirectory);
+                            appendHashOfAllSources(hash, rootDirectory, diskCache);
                         }
                     }
                 }
@@ -940,7 +928,7 @@ public class CachedProject {
         });
     }
 
-    private static void appendHashOfAllSources(Hash hash, Path rootDirectory) throws IOException {
+    private static void appendHashOfAllSources(Hash hash, Path rootDirectory, DiskCache diskCache) throws IOException {
         // TODO filter to only source files - probably will just blacklist .class files?
 
         // If no sources are found, we still need to consider this as a provided classpath item, but the
@@ -953,7 +941,13 @@ public class CachedProject {
 
             @Override
             public FileVisitResult visitFile(Path path, BasicFileAttributes basicFileAttributes) throws IOException {
-                hash.append(Files.readAllBytes(path));
+                byte[] bytes = diskCache.getHashes().get(path);
+                if ( bytes == null) {
+                    // Defensive program during beta testing, so we can ensure it's not happening.
+                    throw new RuntimeException("Unable to find cached hash for path: " + path.toAbsolutePath());
+                }
+                hash.append(bytes);
+
                 return FileVisitResult.CONTINUE;
             }
 

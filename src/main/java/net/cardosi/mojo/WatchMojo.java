@@ -3,6 +3,7 @@ package net.cardosi.mojo;
 import com.google.javascript.jscomp.DependencyOptions;
 import net.cardosi.mojo.cache.CachedProject;
 import net.cardosi.mojo.cache.DiskCache;
+import net.cardosi.mojo.cache.FileService;
 import net.cardosi.mojo.cache.TranspiledCacheEntry;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.model.Plugin;
@@ -23,6 +24,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -136,6 +139,7 @@ public class WatchMojo extends AbstractBuildMojo {
         List<CachedProject> apps = new ArrayList<>();
         List<CompletableFuture<?>> futures = new ArrayList<>();
 
+        List<Runnable> runnables = new ArrayList<>();
         try {
 
             for (MavenProject reactorProject : reactorProjects) {
@@ -185,14 +189,20 @@ public class WatchMojo extends AbstractBuildMojo {
                                 // Load up all the dependencies in the requested scope for the current project
                                 CachedProject p = loadDependenciesIntoCache(reactorProject.getArtifact(), reactorProject, true, projectBuilder, request, diskCache, pluginVersion, projects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, getDependencyReplacements(), "* ");
 
-                                CompletableFuture<TranspiledCacheEntry> f;
-                                if (config.getCompilationLevel().equalsIgnoreCase(CachedProject.BUNDLE_JAR)) {
-                                    f = p.registerAsChunkedApp(config);
-                                } else {
-                                    f = p.registerAsApp(config);
-                                }
-                                futures.add(f);
-                                apps.add(p);
+                                // This part must be delayed until all CachedProject's are created, and FileService started.
+                                Runnable runnable = new Runnable() {
+                                    @Override public void run() {
+                                        CompletableFuture<TranspiledCacheEntry> f;
+                                        if (config.getCompilationLevel().equalsIgnoreCase(CachedProject.BUNDLE_JAR)) {
+                                            f = p.registerAsChunkedApp(config);
+                                        } else {
+                                            f = p.registerAsApp(config);
+                                        }
+                                        futures.add(f);
+                                        apps.add(p);
+                                    }
+                                };
+                                runnables.add(runnable);
                             }
                         }
                     }
@@ -204,14 +214,33 @@ public class WatchMojo extends AbstractBuildMojo {
         }
         diskCache.release();
 
-        for (CachedProject app : projects.values()) {
-            //TODO instead of N threads per project, combine threads?
+        for (Future f : futures) {
             try {
-                app.watch();
-            } catch (IOException ex) {
-                ex.printStackTrace();
-                //TODO fall back to polling or another strategy
+                f.get();
+            } catch (ExecutionException | InterruptedException e) {
+                e.printStackTrace();
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(e);
             }
+        }
+
+        // commenting out for now, but without this printouts may be muddled. Uncomment during debug.
+//        try {
+//            // sleep 500ms, so the printouts aren't muddled
+//            Thread.sleep(500);
+//        } catch (InterruptedException e) {
+//            e.printStackTrace();
+//        }
+
+        FileService fileService = new FileService(diskCache, projects.values().toArray(new CachedProject[projects.size()]));
+
+        fileService.start();
+
+        try {
+            // Now that FileService is started this can run. It needs access to the hash cache, to avoid doing it twice.
+            runnables.stream().forEach(r -> r.run());
+        } catch (Exception e) {
+            throw new MojoExecutionException("Failed to build project structure", e);
         }
 
         // TODO replace this dumb timer with a System.in loop so we can watch for some commands from the user

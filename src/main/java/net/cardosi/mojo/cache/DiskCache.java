@@ -1,14 +1,19 @@
 package net.cardosi.mojo.cache;
 
 import com.google.javascript.jscomp.PersistentInputStore;
+import io.methvin.watcher.hashing.FileHash;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class DiskCache {
@@ -25,6 +30,8 @@ public class DiskCache {
     private final List<File> extraJsZips;
     private final PersistentInputStore persistentInputStore = new PersistentInputStore();
 
+    private final Map<Path, byte[]> pathHashes;
+
     public DiskCache(String pluginVersion, File jsZipCacheDir, File bootstrap, List<File> extraClasspath, List<File> extraJsZips) {
 
         this.pluginVersion = pluginVersion;
@@ -40,6 +47,8 @@ public class DiskCache {
                 throw new UncheckedIOException(e);
             }
         }
+
+        pathHashes = new ConcurrentHashMap<>();
     }
 
     public void takeLock() {
@@ -61,6 +70,10 @@ public class DiskCache {
         }
 
         return new TranspiledCacheEntry(hash, artifactId, cacheDir);
+    }
+
+    public Map<Path, byte[]> getHashes() {
+        return pathHashes;
     }
 
     public ExecutorService pool() {
