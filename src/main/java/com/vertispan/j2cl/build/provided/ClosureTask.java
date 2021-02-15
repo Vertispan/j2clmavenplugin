@@ -29,7 +29,7 @@ public class ClosureTask extends TaskFactory {
     }
 
     @Override
-    public Task resolve(Project project, Config config) {
+    public Task resolve(Project project, PropertyTrackingConfig config) {
         List<Input> jsSources = Stream.concat(
                 Stream.of(input(project, OutputTypes.TRANSPILED_JS)),
                 scope(project.getDependencies(), Dependency.Scope.RUNTIME)

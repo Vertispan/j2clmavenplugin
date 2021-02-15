@@ -40,13 +40,26 @@ public interface OutputTypes {
      */
     String TRANSPILED_JS = "transpiled_js";
 
+    //TODO accumulate other JS from classpath, perhaps built into bundle and optimized instead of making j2cl copy them?
+
     /**
      * Simplified JS sources.
      */
+    @Deprecated//this probably won't exist for long, see TODO above
     String TRANSPILED_JS_HEADERS = "transpiled_js_headers";
 
+    /**
+     * Single JS file with all sources, unpruned, from a project
+     */
     String BUNDLED_JS = "bundled_js";
+
+    /**
+     * Runnable app including all bundled_js files from a project's runtime classpath
+     */
     String BUNDLED_JS_APP = "bundled_js_app";
 
+    /**
+     * Optimized build including all js from a project's runtime classpath
+     */
     String OPTIMIZED_JS = "optimized_js";
 }

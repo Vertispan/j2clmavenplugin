@@ -1,6 +1,7 @@
 package com.vertispan.j2cl.mojo;
 
 import com.google.javascript.jscomp.DependencyOptions;
+import com.vertispan.j2cl.build.*;
 import net.cardosi.mojo.AbstractBuildMojo;
 import net.cardosi.mojo.ClosureBuildConfiguration;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -8,9 +9,7 @@ import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 @Mojo(name = "build", requiresDependencyResolution = ResolutionScope.COMPILE_PLUS_RUNTIME)
 //@Execute(phase = LifecyclePhase.PROCESS_CLASSES)
@@ -73,6 +72,29 @@ public class BuildMojo extends AbstractBuildMojo implements ClosureBuildConfigur
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
+        //accumulate configs
+        Map<String, Object> config;
+
+        // build project from maven project and dependencies, recursively
+        Project p = new Project();
+
+        // given the build output, determine what tasks we're going to run
+        String outputTask = getCompilationLevel();
+
+        // construct other required elements to get the work done
+        TaskScheduler taskScheduler = new TaskScheduler();
+        TaskRegistry taskRegistry = new TaskRegistry(new HashMap<>());
+        DiskCache diskCache = new DiskCache(gwt3BuildCacheDir);
+
+
+
+        // Given these, start processing the work needed for the given output we want
+        BuildService buildService = new BuildService(taskRegistry, taskScheduler, diskCache);
+        buildService.assignProjects(Collections.singleton(p));
+
+        // initial update (or expect assignProjects to scan?)
+        buildService.updateFiles();
+
 
 
 

@@ -18,7 +18,7 @@ public class BundleJarTask extends TaskFactory {
     }
 
     @Override
-    public Task resolve(Project project, Config config) {
+    public Task resolve(Project project, PropertyTrackingConfig config) {
         List<Input> jsSources = Stream.concat(
                 Stream.of(input(project, OutputTypes.BUNDLED_JS)),
                 scope(project.getDependencies(), Dependency.Scope.RUNTIME)

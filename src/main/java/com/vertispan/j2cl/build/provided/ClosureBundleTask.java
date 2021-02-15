@@ -30,7 +30,7 @@ public class ClosureBundleTask extends TaskFactory {
     }
 
     @Override
-    public Task resolve(Project project, Config config) {
+    public Task resolve(Project project, PropertyTrackingConfig config) {
         Input js = input(project, OutputTypes.TRANSPILED_JS);
         return outputPath -> {
             Closure closureCompiler = new Closure();

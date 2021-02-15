@@ -1,7 +1,7 @@
 package com.vertispan.j2cl.build.provided;
 
 import com.google.auto.service.AutoService;
-import com.vertispan.j2cl.build.Config;
+import com.vertispan.j2cl.build.PropertyTrackingConfig;
 import com.vertispan.j2cl.build.OutputTypes;
 import com.vertispan.j2cl.build.Project;
 import com.vertispan.j2cl.build.TaskFactory;
@@ -24,7 +24,7 @@ public class IJarTask extends TaskFactory {
     }
 
     @Override
-    public Task resolve(Project project, Config config) {
+    public Task resolve(Project project, PropertyTrackingConfig config) {
         input(project, OutputTypes.STRIPPED_BYTECODE);
         return outputPath -> {
 

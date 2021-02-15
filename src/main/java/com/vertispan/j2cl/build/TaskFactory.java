@@ -20,10 +20,16 @@ import java.util.stream.Collectors;
  * work once those can be resolved.
  *
  * Task implementations can be registered to replace the default wiring.
+ *
+ * This is part of the public API, new implementations can be provided, even for output types
+ * that aren't known by the plugin.
+ *
+ *
  */
 public abstract class TaskFactory {
     private static ThreadLocal<CollectedTaskInputs> collectorForThread = new ThreadLocal<>();
 
+    @Deprecated//TODO not this
     public static void setCollectorForThread(CollectedTaskInputs collectorForThread) {
         //TODO inject into Input instances instead
         TaskFactory.collectorForThread.set(collectorForThread);
@@ -67,12 +73,35 @@ public abstract class TaskFactory {
         }
     }
 
+    /**
+     * @todo consider removing this, just assume that the name in the registry is enough to know what it is for?
+     */
     public abstract String getOutputType();
+
+    /**
+     * The name to look for in configuration to specify an implementation
+     */
     public abstract String getTaskName();
 
+    /**
+     * Complete the work, based on the inputs requested and the configs accessed.
+     */
     @FunctionalInterface
     public interface Task {
         void execute(Path outputPath) throws Exception;
+    }
+
+    /**
+     * Interface to indicate that there is a bit more work to do to collect the
+     * actual output to be consumed. This work (probably) needs to be done
+     * regardless of cache state since the output path is likely outside of our
+     * control. As a result, config properties can be used here and are not
+     * required to be made part of the cache key.
+     *
+     * Subject to change: the output path will still be provided, no need to read that from config
+     */
+    public interface FinalOutputTask {
+        void finish(Path outputPath);
     }
 
     /**
@@ -89,6 +118,6 @@ public abstract class TaskFactory {
      * @return a task that will be executed each time the given project
      * needs to be built, which should use created inputs and configs
      */
-    public abstract Task resolve(Project project, Config config);
+    public abstract Task resolve(Project project, PropertyTrackingConfig config);
 
 }

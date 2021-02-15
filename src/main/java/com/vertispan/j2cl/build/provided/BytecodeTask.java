@@ -30,7 +30,7 @@ public class BytecodeTask extends TaskFactory {
     }
 
     @Override
-    public Task resolve(Project project, Config config) {
+    public Task resolve(Project project, PropertyTrackingConfig config) {
         if (!project.hasSourcesMapped()) {
             // TODO instead copy the bytecode?
             return ignore -> {};

@@ -17,7 +17,7 @@ public class AptTask extends TaskFactory {
     }
 
     @Override
-    public Task resolve(Project project, Config config) {
+    public Task resolve(Project project, PropertyTrackingConfig config) {
         if (!project.hasSourcesMapped()) {
             // we explicitly don't copy the generated sources, they already exist in the proj sources
             return ignored -> {};

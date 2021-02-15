@@ -1,14 +1,20 @@
 package com.vertispan.j2cl.build;
 
 import java.nio.file.Path;
+import java.nio.file.PathMatcher;
 
 public class Input {
     private final Project project;
     private final String outputType;
+//    private final PathMatcher[] filters;
 
     public Input(Project project, String outputType) {
         this.project = project;
         this.outputType = outputType;
+    }
+
+    public Input filter(PathMatcher... filters) {
+        return this;
     }
 
     public Project getProject() {

@@ -21,7 +21,7 @@ public class IJsTask extends TaskFactory {
     }
 
     @Override
-    public Task resolve(Project project, Config config) {
+    public Task resolve(Project project, PropertyTrackingConfig config) {
         Input js = input(project, OutputTypes.TRANSPILED_JS);
         return outputPath -> {
 
