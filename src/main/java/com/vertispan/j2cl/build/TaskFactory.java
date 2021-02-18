@@ -35,14 +35,6 @@ public abstract class TaskFactory {
         TaskFactory.collectorForThread.set(collectorForThread);
     }
 
-    private TaskRegistry registry;
-
-    protected final void init(TaskRegistry registry) {
-        this.registry = registry;
-    }
-    protected final TaskRegistry getRegistry() {
-        return registry;
-    }
     protected Input input(Dependency dependency, String outputType) {
         return input(dependency.getProject(), outputType);
     }
@@ -58,19 +50,6 @@ public abstract class TaskFactory {
                 .filter(d -> d.getScope() == scope)
                 .map(Dependency::getProject)
                 .collect(Collectors.toList());
-    }
-
-    protected List<SourceUtils.FileInfo> getFileInfoInDir(Path dir, PathMatcher... matcher) {
-        if (!Files.exists(dir)) {
-            return Collections.emptyList();
-        }
-        try {
-            return Files.find(dir, Integer.MAX_VALUE, ((path, basicFileAttributes) -> Arrays.stream(matcher).anyMatch(m -> m.matches(path))))
-                    .map(p -> SourceUtils.FileInfo.create(p.toString(), dir.toAbsolutePath().relativize(p).toString()))
-                    .collect(Collectors.toList());
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
     }
 
     /**

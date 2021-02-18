@@ -31,18 +31,21 @@ public class ClosureBundleTask extends TaskFactory {
 
     @Override
     public Task resolve(Project project, PropertyTrackingConfig config) {
+        // TODO filter to just JS and sourcemaps? probably not required unless we also get sources
+        //      from the actual input source instead of copying it along each step
         Input js = input(project, OutputTypes.TRANSPILED_JS);
+
         return outputPath -> {
             Closure closureCompiler = new Closure();
 
             assert Files.isDirectory(outputPath);
             File closureOutputDir = outputPath.toFile();
 
-            Path transpiledJsSources = js.resolve(getRegistry());
+            Path transpiledJsSources = js.getPath();
 
             // even though we're already making the file in our own hash dir, we also want to
             // name the file by a hash so it has a unique filename based on its contents
-            String hash = js.hash();//TODO consider factoring in the rest of this task's hash
+            String hash ="TODO_HASH";// js.hash();//TODO consider factoring in the rest of this task's hash
             String outputFile = closureOutputDir + "/" + project.getKey() + hash;
 
             // if there are no js sources, write an empty file and exit

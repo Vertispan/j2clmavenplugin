@@ -26,7 +26,6 @@ public class TaskRegistry {
         ServiceLoader<TaskFactory> loader = ServiceLoader.load(TaskFactory.class);
         for (TaskFactory task : loader) {
             if (task.getTaskName().equals(outputToNameMappings.get(task.getOutputType()))) {
-                task.init(this);
                 outputTypeToTaskMappings.put(task.getOutputType(), task);
             }
         }

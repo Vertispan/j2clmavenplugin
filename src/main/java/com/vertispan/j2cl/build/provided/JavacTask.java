@@ -1,11 +1,13 @@
 package com.vertispan.j2cl.build.provided;
 
 import com.google.auto.service.AutoService;
+import com.google.j2cl.common.SourceUtils;
 import com.vertispan.j2cl.build.*;
 import net.cardosi.mojo.tools.Javac;
 
 import java.io.File;
 import java.nio.file.FileSystems;
+import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -29,20 +31,33 @@ public class JavacTask extends TaskFactory {
     @Override
     public Task resolve(Project project, PropertyTrackingConfig config) {
         // emits only stripped bytecode, so we're not worried about anything other than .java files to compile and .class on the classpath
-
         Input ownSources = input(project, OutputTypes.STRIPPED_SOURCES).filter(JAVA_SOURCES);
+
         List<Input> classpathHeaders = scope(project.getDependencies(), Dependency.Scope.COMPILE)
                 .stream()
                 .map(inputs(OutputTypes.STRIPPED_BYTECODE_HEADERS))
+                // we only want bytecode _changes_, but we'll use the whole dir
                 .map(input -> input.filter(JAVA_BYTECODE))
                 .collect(Collectors.toList());
 
+        File bootstrapClasspath = config.getBootstrapClasspath();
         return outputPath -> {
-            File bootstrapClasspath = config.getBootstrapClasspath();
-            Javac javac = new Javac(null, classpathHeaders.stream().map(i -> i.resolve(getRegistry()).toFile()).collect(Collectors.toList()), outputPath.toFile(), bootstrapClasspath);
+            List<File> classpathDirs = classpathHeaders.stream()
+                    .map(i -> i.getPath().toFile())
+                    .collect(Collectors.toList());
 
-            //TODO convention for mapping to original file paths, provide FileInfo out of Inputs instead of Paths?
-            javac.compile(getFileInfoInDir(ownSources.resolve(getRegistry()), FileSystems.getDefault().getPathMatcher("glob:**/*.java")));
+            Javac javac = new Javac(null, classpathDirs, outputPath.toFile(), bootstrapClasspath);
+
+            // TODO convention for mapping to original file paths, provide FileInfo out of Inputs instead of Paths,
+            //      automatically relativized?
+            Path dir = ownSources.getPath();
+            List<SourceUtils.FileInfo> sources = ownSources.getFilesAndHashes()
+                    .keySet()
+                    .stream()
+                    .map(p -> SourceUtils.FileInfo.create(p.toString(), dir.toAbsolutePath().relativize(p).toString()))
+                    .collect(Collectors.toList());
+
+            javac.compile(sources);
         };
     }
 }

@@ -12,6 +12,11 @@ tasks can be started. Each task specifies the inputs it needs and configuration 
 each build, those are hashed to see if the work needs to be performed again. When files are changed on disk,
 those file hashes then can affect any other task which was relying on it as input.
 
+There is also a separate API for consumers of the build to replace specific tasks. A new TaskFactory can
+be declared to produce the desired outputs, and this can be specified at runtime (through maven plugin
+configuration, for example). New output types can be specified as well, to circumvent the usual tasks, or
+to introduce new intermediate tasks (for sharing work or adding parallelism).
+
 The BuildService is given a set of projects that need to be built - when asked to watch, it will defer to
 a watch service. BuildService starts up by collecting tasks from the projects and their dependencies, and
 ensuring that hashes of all sources are ready, to be used by either when watching for changes or to cache

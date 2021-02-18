@@ -27,7 +27,9 @@ public class BuildService {
     }
 
     /**
-     * Specifies a project+task that this service is responsible for.
+     * Specifies a project+task that this service is responsible for, should be called once for each
+     * project that will be built, with the configuration expected. This configuration will be applied
+     * to all projects - if conflicting configurations are applied to some work
      */
     public void assignProject(Project project, String finalTask, Map<String, String> config) {
         // find the tasks and their upstream tasks
@@ -51,10 +53,18 @@ public class BuildService {
         CollectedTaskInputs collectedInputs = new CollectedTaskInputs(taskName, project);
         TaskFactory.setCollectorForThread(collectedInputs);
         PropertyTrackingConfig propertyTrackingConfig = new PropertyTrackingConfig(config);
+
+        // build the task lambda that we'll use here
         TaskFactory.Task task = taskRegistry.taskForOutputType(taskName).resolve(project, propertyTrackingConfig);
+
+        // prevent the config object from being used incorrectly
+        propertyTrackingConfig.close();
+
         collectedInputs.setTask(task);
         collectedInputs.setUsedConfigs(propertyTrackingConfig.getUsedConfigs());
         collectedSoFar.put(newInput, collectedInputs);
+
+        // prep any other tasks that are needed
         for (Input input : collectedInputs.getInputs()) {
             collectTasksFromProject(input.getOutputType(), input.getProject(), config, collectedSoFar);
         }

@@ -30,6 +30,9 @@ public class ClosureTask extends TaskFactory {
 
     @Override
     public Task resolve(Project project, PropertyTrackingConfig config) {
+        // collect current project JS sources and runtime deps JS sources
+        // TODO filter to just JS and sourcemaps? probably not required unless we also get sources
+        //      from the actual input source instead of copying it along each step
         List<Input> jsSources = Stream.concat(
                 Stream.of(input(project, OutputTypes.TRANSPILED_JS)),
                 scope(project.getDependencies(), Dependency.Scope.RUNTIME)
