@@ -1,10 +1,7 @@
 package com.vertispan.j2cl.build;
 
-import com.vertispan.j2cl.build.impl.CollectedTaskInputs;
-
 import java.nio.file.Path;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.ServiceLoader;
 
@@ -32,6 +29,9 @@ public class TaskRegistry {
     }
 
     public TaskFactory taskForOutputType(String outputType) {
+        if (outputType.equals(OutputTypes.INPUT_SOURCES)) {
+            //TODO create something specific for this? or hijack it when setting up the input instead?
+        }
         return outputTypeToTaskMappings.get(outputType);
     }
 

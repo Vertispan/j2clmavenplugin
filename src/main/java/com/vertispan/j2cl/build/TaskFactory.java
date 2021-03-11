@@ -24,16 +24,16 @@ import java.util.stream.Collectors;
  * This is part of the public API, new implementations can be provided, even for output types
  * that aren't known by the plugin.
  *
- *
+ * @todo add a version property so we can tell when it changes
  */
 public abstract class TaskFactory {
-    private static ThreadLocal<CollectedTaskInputs> collectorForThread = new ThreadLocal<>();
+//    private static ThreadLocal<CollectedTaskInputs> collectorForThread = new ThreadLocal<>();
 
-    @Deprecated//TODO not this
-    public static void setCollectorForThread(CollectedTaskInputs collectorForThread) {
-        //TODO inject into Input instances instead
-        TaskFactory.collectorForThread.set(collectorForThread);
-    }
+//    @Deprecated//TODO not this
+//    public static void setCollectorForThread(CollectedTaskInputs collectorForThread) {
+//        //TODO inject into Input instances instead
+//        TaskFactory.collectorForThread.set(collectorForThread);
+//    }
 
     protected Input input(Dependency dependency, String outputType) {
         return input(dependency.getProject(), outputType);

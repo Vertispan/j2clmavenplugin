@@ -58,16 +58,20 @@ public class Input {
     }
 
     /**
-     * Internal API
+     * Internal API.
+     *
      * Before a task is invoked we must assign contents to each input, and work out
-     * the expected hash for the task, so we know where to put its outputs
+     * the expected hash for the task, so we know where to put its outputs. This is
+     * called by the DiskCache or TaskScheduler as they accumulate the output from
+     * a task.
      */
     public void setCurrentContents(TaskOutput contents) {
         this.contents = contents;
     }
 
     /**
-     * Internal API
+     * Internal API.
+     *
      * Updates the given hash object with the filtered file inputs - their paths and their
      * hashes, so that if files are moved or changed we change the hash value, but we don't
      * re-hash each file every time we ask.
@@ -80,14 +84,14 @@ public class Input {
     }
 
     /**
-     * Internal API
+     * Internal API.
      */
     public Project getProject() {
         return project;
     }
 
     /**
-     * Internal API
+     * Internal API.
      */
     public String getOutputType() {
         return outputType;
@@ -95,6 +99,7 @@ public class Input {
 
     /**
      * Public API for tasks.
+     *
      * Provides the whole directory - avoid this if you are using filters, as your task will not
      * get called again for changed files.
      */
@@ -104,6 +109,7 @@ public class Input {
 
     /**
      * Public API for tasks.
+     *
      * Gets the current files of this input and their hashes that match the filters.
      */
     public Map<Path, FileHash> getFilesAndHashes() {

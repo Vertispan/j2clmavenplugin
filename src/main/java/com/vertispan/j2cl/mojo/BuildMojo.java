@@ -9,7 +9,9 @@ import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 
+import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.Executors;
 
 @Mojo(name = "build", requiresDependencyResolution = ResolutionScope.COMPILE_PLUS_RUNTIME)
 //@Execute(phase = LifecyclePhase.PROCESS_CLASSES)
@@ -73,7 +75,7 @@ public class BuildMojo extends AbstractBuildMojo implements ClosureBuildConfigur
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         //accumulate configs
-        Map<String, Object> config;
+        Map<String, String> config = null;
 
         // build project from maven project and dependencies, recursively
         Project p = new Project();
@@ -82,15 +84,20 @@ public class BuildMojo extends AbstractBuildMojo implements ClosureBuildConfigur
         String outputTask = getCompilationLevel();
 
         // construct other required elements to get the work done
-        TaskScheduler taskScheduler = new TaskScheduler();
+        final DiskCache diskCache;
+        try {
+            diskCache = new DefaultDiskCache(gwt3BuildCacheDir);
+        } catch (IOException ioException) {
+            throw new MojoExecutionException("Failed to create cache", ioException);
+        }
+        TaskScheduler taskScheduler = new TaskScheduler(Executors.newFixedThreadPool(4), diskCache);
         TaskRegistry taskRegistry = new TaskRegistry(new HashMap<>());
-        DiskCache diskCache = new DiskCache(gwt3BuildCacheDir);
-
+//        WatchService watchService = new WatchService();
 
 
         // Given these, start processing the work needed for the given output we want
         BuildService buildService = new BuildService(taskRegistry, taskScheduler, diskCache);
-        buildService.assignProjects(Collections.singleton(p));
+        buildService.assignProject(p, outputTask, config);
 
         // initial update (or expect assignProjects to scan?)
         buildService.updateFiles();
