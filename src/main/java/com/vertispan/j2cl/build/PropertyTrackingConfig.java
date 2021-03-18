@@ -112,4 +112,8 @@ public class PropertyTrackingConfig {
         //TODO implement this, perhaps as scope=runtime dependency instead?
         return null;
     }
+
+    public String getLanguageOut() {
+        return getString("languageOut");
+    }
 }

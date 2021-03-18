@@ -60,10 +60,8 @@ public class TaskScheduler {
 
         Set<CollectedTaskInputs> remainingWork = new HashSet<>(inputs);
         CompletableFuture<Void> result = new CompletableFuture<>();
-        Runnable scheduleWork = () -> {
-            scheduleAvailableWork(ready, allInputs, remainingWork, result);
-        };
-        scheduleWork.run();
+
+        scheduleAvailableWork(ready, allInputs, remainingWork, result);
 
         return result;
     }

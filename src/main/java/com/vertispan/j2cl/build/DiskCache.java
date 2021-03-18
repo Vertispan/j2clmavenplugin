@@ -111,7 +111,8 @@ public abstract class DiskCache {
                             try {
                                 knownOutputs.put(path, makeOutput(path));
                                 status = Status.SUCCESS;
-                            } catch (IOException ioException) {
+                            } catch (UncheckedIOException ioException) {
+                                // failure to hash is pretty terrible, we're in trouble
                                 ioException.printStackTrace();
                                 status = Status.FAILED;
                             }
@@ -138,33 +139,44 @@ public abstract class DiskCache {
         }
     }
 
-    private TaskOutput makeOutput(Path taskDir) throws IOException {
+    private TaskOutput makeOutput(Path taskDir) {
         Path outputDir = outputDir(taskDir);
+        Map<Path, FileHash> fileHashes = hashContents(outputDir);
+        return new TaskOutput(outputDir, fileHashes);
+    }
+
+    /**
+     * Helper like PathUtils.initWatcherState to produce the relative paths of any files
+     * in a path, and their corresponding hashes.
+     */
+    public static Map<Path, FileHash> hashContents(Path path) {
         HashMap<Path, FileHash> fileHashes = new HashMap<>();
         FileHasher fileHasher = FileHasher.DEFAULT_FILE_HASHER;
-        Files.walkFileTree(
-                outputDir,
-            new SimpleFileVisitor<Path>() {
-              @Override
-              public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
-                  throws IOException {
-                return FileVisitResult.CONTINUE;
-              }
-
-              @Override
-              public FileVisitResult visitFile(Path file11, BasicFileAttributes attrs)
-                  throws IOException {
-                  FileHash hash = PathUtils.hash(fileHasher, file11);
-                  if (hash == null) {
-                      //file could have been deleted or was otherwise unreadable
-                      //TODO how do we handle this? For now skipping as PathUtils does
-                  } else {
-                      fileHashes.put(file11, hash);
+        try {
+            Files.walkFileTree(
+                    path,
+                new SimpleFileVisitor<Path>() {
+                  @Override
+                  public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+                    return FileVisitResult.CONTINUE;
                   }
-                return FileVisitResult.CONTINUE;
-              }
-            });
-        return new TaskOutput(outputDir, fileHashes);
+
+                  @Override
+                  public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                      FileHash hash = PathUtils.hash(fileHasher, file);
+                      if (hash == null) {
+                          //file could have been deleted or was otherwise unreadable
+                          //TODO how do we handle this? For now skipping as PathUtils does
+                      } else {
+                          fileHashes.put(path.relativize(file), hash);
+                      }
+                    return FileVisitResult.CONTINUE;
+                  }
+                });
+        } catch (IOException ioException) {
+            throw new UncheckedIOException(ioException);
+        }
+        return fileHashes;
     }
 
     public void close() throws IOException {

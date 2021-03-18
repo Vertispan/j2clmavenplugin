@@ -12,6 +12,7 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 
 @Mojo(name = "build", requiresDependencyResolution = ResolutionScope.COMPILE_PLUS_RUNTIME)
 //@Execute(phase = LifecyclePhase.PROCESS_CLASSES)
@@ -73,6 +74,11 @@ public class BuildMojo extends AbstractBuildMojo implements ClosureBuildConfigur
     }
 
     @Override
+    public String getLanguageOut() {
+        return null;
+    }
+
+    @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         //accumulate configs
         Map<String, String> config = null;
@@ -83,6 +89,9 @@ public class BuildMojo extends AbstractBuildMojo implements ClosureBuildConfigur
         // given the build output, determine what tasks we're going to run
         String outputTask = getCompilationLevel();
 
+        // check if any task wiring was specified
+        HashMap<String, String> outputToNameMappings = new HashMap<>();
+
         // construct other required elements to get the work done
         final DiskCache diskCache;
         try {
@@ -90,21 +99,18 @@ public class BuildMojo extends AbstractBuildMojo implements ClosureBuildConfigur
         } catch (IOException ioException) {
             throw new MojoExecutionException("Failed to create cache", ioException);
         }
-        TaskScheduler taskScheduler = new TaskScheduler(Executors.newFixedThreadPool(4), diskCache);
-        TaskRegistry taskRegistry = new TaskRegistry(new HashMap<>());
-//        WatchService watchService = new WatchService();
+        ScheduledExecutorService executor = Executors.newScheduledThreadPool(4);
+        TaskScheduler taskScheduler = new TaskScheduler(executor, diskCache);
+        TaskRegistry taskRegistry = new TaskRegistry(outputToNameMappings);
 
-
-        // Given these, start processing the work needed for the given output we want
+        // Given these, build the graph of work we need to complete
         BuildService buildService = new BuildService(taskRegistry, taskScheduler, diskCache);
         buildService.assignProject(p, outputTask, config);
 
-        // initial update (or expect assignProjects to scan?)
-        buildService.updateFiles();
+        // Get the hash of all current files
+        buildService.initialHashes();
 
-
-
-
-
+        // perform the build
+        buildService.requestBuild().join();
     }
 }

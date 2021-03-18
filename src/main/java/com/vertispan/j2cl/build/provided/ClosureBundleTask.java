@@ -2,6 +2,7 @@ package com.vertispan.j2cl.build.provided;
 
 import com.google.auto.service.AutoService;
 import com.google.javascript.jscomp.CompilationLevel;
+import com.google.javascript.jscomp.CompilerOptions;
 import com.google.javascript.jscomp.DependencyOptions;
 import com.vertispan.j2cl.build.*;
 import net.cardosi.mojo.tools.Closure;
@@ -64,6 +65,7 @@ public class ClosureBundleTask extends TaskFactory {
             boolean success = closureCompiler.compile(
                     CompilationLevel.BUNDLE,
                     DependencyOptions.DependencyMode.SORT_ONLY,
+                    CompilerOptions.LanguageMode.NO_TRANSPILE,
                     sources,
                     Collections.emptyList(),
                     Collections.emptyList(),

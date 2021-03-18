@@ -2,6 +2,7 @@ package com.vertispan.j2cl.build.provided;
 
 import com.google.auto.service.AutoService;
 import com.google.javascript.jscomp.CompilationLevel;
+import com.google.javascript.jscomp.CompilerOptions;
 import com.google.javascript.jscomp.DependencyOptions;
 import com.vertispan.j2cl.build.*;
 import net.cardosi.mojo.tools.Closure;
@@ -47,6 +48,7 @@ public class ClosureTask extends TaskFactory {
         Map<String, String> configDefines = config.getDefines();
         DependencyOptions.DependencyMode dependencyMode = config.getDependencyMode();
         List<String> entrypoint = config.getEntrypoint();
+        CompilerOptions.LanguageMode languageOut = CompilerOptions.LanguageMode.fromString(config.getLanguageOut());
         //TODO probably kill this, or at least make it work like an import via another task so we detect changes
         Collection<String> externs = config.getExterns();
         boolean checkAssertions = config.getCheckAssertions();
@@ -92,6 +94,7 @@ public class ClosureTask extends TaskFactory {
             boolean success = closureCompiler.compile(
                     compilationLevel,
                     dependencyMode,
+                    languageOut,
                     sources,
                     extraJsZips,
                     entrypoint,
