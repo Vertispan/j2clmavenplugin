@@ -4,7 +4,7 @@ import com.google.auto.service.AutoService;
 import com.google.javascript.jscomp.CompilationLevel;
 import com.google.javascript.jscomp.CompilerOptions;
 import com.google.javascript.jscomp.DependencyOptions;
-import com.vertispan.j2cl.build.*;
+import com.vertispan.j2cl.build.task.*;
 import net.cardosi.mojo.tools.Closure;
 import org.apache.commons.io.FileUtils;
 
@@ -31,7 +31,7 @@ public class ClosureBundleTask extends TaskFactory {
     }
 
     @Override
-    public Task resolve(Project project, PropertyTrackingConfig config) {
+    public Task resolve(Project project, Config config) {
         // TODO filter to just JS and sourcemaps? probably not required unless we also get sources
         //      from the actual input source instead of copying it along each step
         Input js = input(project, OutputTypes.TRANSPILED_JS);

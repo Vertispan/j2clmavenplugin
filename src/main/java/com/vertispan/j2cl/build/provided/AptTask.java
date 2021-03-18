@@ -1,7 +1,7 @@
 package com.vertispan.j2cl.build.provided;
 
 import com.google.auto.service.AutoService;
-import com.vertispan.j2cl.build.*;
+import com.vertispan.j2cl.build.task.*;
 
 import java.nio.file.FileSystems;
 import java.nio.file.PathMatcher;
@@ -21,7 +21,7 @@ public class AptTask extends TaskFactory {
     }
 
     @Override
-    public Task resolve(Project project, PropertyTrackingConfig config) {
+    public Task resolve(Project project, Config config) {
         if (!project.hasSourcesMapped()) {
             // we explicitly don't copy the generated sources, they already exist in the proj sources
             return ignored -> {};

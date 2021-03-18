@@ -7,17 +7,19 @@ import java.util.List;
  * can contain directories of sources, or a jar containing sources, but not both - if it doesn't
  * point at a source jar, the contents can be watched for changes.
  */
-public class Project {
+public class Project implements com.vertispan.j2cl.build.task.Project {
     private String key;
 
     private List<Dependency> dependencies;
     private List<String> sourceRoots;
 
+    @Override
     public String getKey() {
         return key;
     }
 
-    public List<Dependency> getDependencies() {
+    @Override
+    public List<? extends com.vertispan.j2cl.build.task.Dependency> getDependencies() {
         return dependencies;
     }
 
@@ -33,6 +35,7 @@ public class Project {
         this.sourceRoots = sourceRoots;
     }
 
+    @Override
     public boolean hasSourcesMapped() {
         return sourceRoots.stream().noneMatch(root -> root.endsWith(".jar"));
     }

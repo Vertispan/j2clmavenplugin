@@ -1,4 +1,4 @@
-package com.vertispan.j2cl.build;
+package com.vertispan.j2cl.build.task;
 
 /**
  * Default output types - these are just strings, extensions can provide their own
@@ -45,7 +45,7 @@ public interface OutputTypes {
     /**
      * Simplified JS sources.
      */
-    @Deprecated//this probably won't exist for long, see TODO above
+    @Deprecated //this probably won't exist for long, see TODO above
     String TRANSPILED_JS_HEADERS = "transpiled_js_headers";
 
     /**

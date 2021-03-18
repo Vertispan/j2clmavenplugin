@@ -1,6 +1,8 @@
 package com.vertispan.j2cl.build;
 
 import com.vertispan.j2cl.build.impl.CollectedTaskInputs;
+import com.vertispan.j2cl.build.task.OutputTypes;
+import com.vertispan.j2cl.build.task.TaskFactory;
 import io.methvin.watcher.hashing.FileHash;
 
 import java.nio.file.Path;

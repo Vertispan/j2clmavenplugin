@@ -8,39 +8,12 @@ package com.vertispan.j2cl.build;
  * This build tooling doesn't automatically resolve transitive dependencies or handle conflicts, but
  * assumes that each project's dependencies are already resolved.
  */
-public class Dependency {
-    public enum Scope {
-        COMPILE,
-        RUNTIME,
-        BOTH;
-
-        private boolean isCompileScope() {
-            return this != RUNTIME;
-        }
-
-        private boolean isRuntimeScope() {
-            return this != COMPILE;
-        }
-
-        /**
-         * TODO this isn't clear how you use it, probably should split into two enums, or offer an enumset
-         */
-        private boolean matches(Scope scope) {
-            switch (this) {
-                case COMPILE:
-                    return scope.isCompileScope();
-                case RUNTIME:
-                    return scope.isRuntimeScope();
-                case BOTH:
-                    return scope == BOTH;
-            }
-            return false;
-        }
-    }
+public class Dependency implements com.vertispan.j2cl.build.task.Dependency {
     private Project project;
 
-    private Scope scope = Scope.BOTH;
+    private Scope scope = com.vertispan.j2cl.build.task.Dependency.Scope.BOTH;
 
+    @Override
     public Project getProject() {
         return project;
     }
@@ -49,6 +22,7 @@ public class Dependency {
         this.project = project;
     }
 
+    @Override
     public Scope getScope() {
         return scope;
     }

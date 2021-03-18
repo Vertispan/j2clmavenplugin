@@ -1,6 +1,7 @@
 package com.vertispan.j2cl.build;
 
 import com.vertispan.j2cl.build.impl.CollectedTaskInputs;
+import com.vertispan.j2cl.build.task.OutputTypes;
 
 import java.util.*;
 import java.util.concurrent.*;

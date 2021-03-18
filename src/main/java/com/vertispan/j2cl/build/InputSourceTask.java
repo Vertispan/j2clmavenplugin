@@ -1,5 +1,10 @@
 package com.vertispan.j2cl.build;
 
+import com.vertispan.j2cl.build.task.Config;
+import com.vertispan.j2cl.build.task.OutputTypes;
+import com.vertispan.j2cl.build.task.Project;
+import com.vertispan.j2cl.build.task.TaskFactory;
+
 // note that we don't bother to register this, it can't be overridden
 public class InputSourceTask extends TaskFactory {
     @Override
@@ -13,7 +18,7 @@ public class InputSourceTask extends TaskFactory {
     }
 
     @Override
-    public Task resolve(Project project, PropertyTrackingConfig config) {
+    public Task resolve(Project project, Config config) {
         return outputPath -> {
 
         };

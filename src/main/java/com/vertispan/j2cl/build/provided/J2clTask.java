@@ -2,7 +2,7 @@ package com.vertispan.j2cl.build.provided;
 
 import com.google.auto.service.AutoService;
 import com.google.j2cl.common.SourceUtils;
-import com.vertispan.j2cl.build.*;
+import com.vertispan.j2cl.build.task.*;
 import net.cardosi.mojo.tools.J2cl;
 
 import java.io.File;
@@ -30,12 +30,12 @@ public class J2clTask extends TaskFactory {
     }
 
     @Override
-    public Task resolve(Project project, PropertyTrackingConfig config) {
+    public Task resolve(Project project, Config config) {
         // J2CL is only interested in .java and .native.js files in our own sources
         Input ownSources = input(project, OutputTypes.STRIPPED_SOURCES).filter(JAVA_SOURCES, NATIVE_JS_SOURCES);
 
         // From our classpath, j2cl is only interested in our compile classpath's bytecode
-        List<Input> classpathHeaders = scope(project.getDependencies(), Dependency.Scope.COMPILE)
+        List<Input> classpathHeaders = scope(project.getDependencies(), com.vertispan.j2cl.build.task.Dependency.Scope.COMPILE)
                 .stream()
                 .map(inputs(OutputTypes.STRIPPED_BYTECODE_HEADERS))
                 // we only want bytecode _changes_, but we'll use the whole dir

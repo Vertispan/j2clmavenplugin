@@ -1,15 +1,7 @@
-package com.vertispan.j2cl.build;
+package com.vertispan.j2cl.build.task;
 
-import com.google.j2cl.common.SourceUtils;
-import com.vertispan.j2cl.build.impl.CollectedTaskInputs;
-
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.PathMatcher;
-import java.util.Arrays;
-import java.util.Collections;
+import java.util.Collection;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -39,13 +31,13 @@ public abstract class TaskFactory {
         return input(dependency.getProject(), outputType);
     }
     protected Input input(Project dependencyProject, String outputType) {
-        return new Input(dependencyProject, outputType);
+        return new com.vertispan.j2cl.build.Input((com.vertispan.j2cl.build.Project) dependencyProject, outputType);
     }
     protected Function<Project, Input> inputs(String outputType) {
         return p -> input(p, outputType);
     }
 
-    protected List<Project> scope(List<Dependency> dependencies, Dependency.Scope scope) {
+    protected List<Project> scope(Collection<? extends Dependency> dependencies, Dependency.Scope scope) {
         return dependencies.stream()
                 .filter(d -> d.getScope() == scope)
                 .map(Dependency::getProject)
@@ -79,7 +71,7 @@ public abstract class TaskFactory {
      *
      * Subject to change: the output path will still be provided, no need to read that from config
      */
-    public interface FinalOutputTask {
+    public interface FinalOutputTask extends Task {
         void finish(Path outputPath);
     }
 
@@ -97,6 +89,6 @@ public abstract class TaskFactory {
      * @return a task that will be executed each time the given project
      * needs to be built, which should use created inputs and configs
      */
-    public abstract Task resolve(Project project, PropertyTrackingConfig config);
+    public abstract Task resolve(Project project, Config config);
 
 }

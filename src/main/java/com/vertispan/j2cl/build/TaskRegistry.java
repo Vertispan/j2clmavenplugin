@@ -1,5 +1,8 @@
 package com.vertispan.j2cl.build;
 
+import com.vertispan.j2cl.build.task.OutputTypes;
+import com.vertispan.j2cl.build.task.TaskFactory;
+
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;

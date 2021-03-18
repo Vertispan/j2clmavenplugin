@@ -22,7 +22,7 @@ import java.util.zip.Checksum;
  * are already hashed, and each Input instance will filter to just the files it is
  * interested in, and take the hash of the hashes to represent
  */
-public class Input {
+public class Input implements com.vertispan.j2cl.build.task.Input {
     private static final PathMatcher[] EMPTY_PATH_MATCHER_ARRAY = new PathMatcher[0];
     private final Project project;
     private final String outputType;
@@ -39,12 +39,7 @@ public class Input {
         this.filters = filters;
     }
 
-    /**
-     * Public API for tasks, builder to limit input scope.
-     *
-     * Specifies that only part of this input is required. A path entry that matches any
-     * of the provided filters will be included.
-     */
+    @Override
     public Input filter(PathMatcher... filters) {
         if (this.filters.length == 0) {
             return new Input(project, outputType, filters);
@@ -97,21 +92,12 @@ public class Input {
         return outputType;
     }
 
-    /**
-     * Public API for tasks.
-     *
-     * Provides the whole directory - avoid this if you are using filters, as your task will not
-     * get called again for changed files.
-     */
+    @Override
     public Path getPath() {
         return contents.getPath();
     }
 
-    /**
-     * Public API for tasks.
-     *
-     * Gets the current files of this input and their hashes that match the filters.
-     */
+    @Override
     public Map<Path, FileHash> getFilesAndHashes() {
         return contents.filesAndHashes().stream()
                 .filter(entry -> Arrays.stream(filters).anyMatch(f -> f.matches(entry.getKey())))

@@ -2,7 +2,7 @@ package com.vertispan.j2cl.build.provided;
 
 import com.google.auto.service.AutoService;
 import com.google.j2cl.common.SourceUtils;
-import com.vertispan.j2cl.build.*;
+import com.vertispan.j2cl.build.task.*;
 import net.cardosi.mojo.tools.Javac;
 
 import java.io.File;
@@ -29,11 +29,11 @@ public class JavacTask extends TaskFactory {
     }
 
     @Override
-    public Task resolve(Project project, PropertyTrackingConfig config) {
+    public Task resolve(Project project, Config config) {
         // emits only stripped bytecode, so we're not worried about anything other than .java files to compile and .class on the classpath
         Input ownSources = input(project, OutputTypes.STRIPPED_SOURCES).filter(JAVA_SOURCES);
 
-        List<Input> classpathHeaders = scope(project.getDependencies(), Dependency.Scope.COMPILE)
+        List<Input> classpathHeaders = scope(project.getDependencies(), com.vertispan.j2cl.build.task.Dependency.Scope.COMPILE)
                 .stream()
                 .map(inputs(OutputTypes.STRIPPED_BYTECODE_HEADERS))
                 // we only want bytecode _changes_, but we'll use the whole dir

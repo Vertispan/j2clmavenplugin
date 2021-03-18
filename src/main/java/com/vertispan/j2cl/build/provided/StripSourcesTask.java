@@ -2,7 +2,7 @@ package com.vertispan.j2cl.build.provided;
 
 import com.google.auto.service.AutoService;
 import com.google.j2cl.common.SourceUtils;
-import com.vertispan.j2cl.build.*;
+import com.vertispan.j2cl.build.task.*;
 import net.cardosi.mojo.tools.GwtIncompatiblePreprocessor;
 
 import java.nio.file.FileSystems;
@@ -25,7 +25,7 @@ public class StripSourcesTask extends TaskFactory {
     }
 
     @Override
-    public Task resolve(Project project, PropertyTrackingConfig config) {
+    public Task resolve(Project project, Config config) {
         Input inputSources = input(project, OutputTypes.INPUT_SOURCES).filter(JAVA_SOURCES);
         Input generatedSources = input(project, OutputTypes.GENERATED_SOURCES).filter(JAVA_SOURCES);
 

@@ -1,10 +1,10 @@
 package com.vertispan.j2cl.build.provided;
 
 import com.google.auto.service.AutoService;
-import com.vertispan.j2cl.build.OutputTypes;
-import com.vertispan.j2cl.build.Project;
-import com.vertispan.j2cl.build.PropertyTrackingConfig;
-import com.vertispan.j2cl.build.TaskFactory;
+import com.vertispan.j2cl.build.task.Config;
+import com.vertispan.j2cl.build.task.OutputTypes;
+import com.vertispan.j2cl.build.task.Project;
+import com.vertispan.j2cl.build.task.TaskFactory;
 
 /**
  * Disables annotation processors from within this build, and relies instead on some other tooling
@@ -25,7 +25,7 @@ public class SkipAptTask extends TaskFactory {
     }
 
     @Override
-    public Task resolve(Project project, PropertyTrackingConfig config) {
+    public Task resolve(Project project, Config config) {
         return outputPath -> {};
     }
 }

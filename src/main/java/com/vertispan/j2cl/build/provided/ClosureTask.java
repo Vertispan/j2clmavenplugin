@@ -4,11 +4,12 @@ import com.google.auto.service.AutoService;
 import com.google.javascript.jscomp.CompilationLevel;
 import com.google.javascript.jscomp.CompilerOptions;
 import com.google.javascript.jscomp.DependencyOptions;
-import com.vertispan.j2cl.build.*;
+import com.vertispan.j2cl.build.task.*;
 import net.cardosi.mojo.tools.Closure;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -30,13 +31,13 @@ public class ClosureTask extends TaskFactory {
     }
 
     @Override
-    public Task resolve(Project project, PropertyTrackingConfig config) {
+    public Task resolve(Project project, Config config) {
         // collect current project JS sources and runtime deps JS sources
         // TODO filter to just JS and sourcemaps? probably not required unless we also get sources
         //      from the actual input source instead of copying it along each step
         List<Input> jsSources = Stream.concat(
                 Stream.of(input(project, OutputTypes.TRANSPILED_JS)),
-                scope(project.getDependencies(), Dependency.Scope.RUNTIME)
+                scope(project.getDependencies(), com.vertispan.j2cl.build.task.Dependency.Scope.RUNTIME)
                 .stream()
                 .map(inputs(OutputTypes.TRANSPILED_JS))
         ).collect(Collectors.toList());
@@ -57,17 +58,19 @@ public class ClosureTask extends TaskFactory {
         List<File> extraJsZips = config.getExtraJsZips();
 
         String sourcemapDirectory = "sources";
-        return outputPath -> {
-            Closure closureCompiler = new Closure();
+        return new FinalOutputTask() {
+            @Override
+            public void execute(Path outputPath) throws Exception {
+                Closure closureCompiler = new Closure();
 
-            File closureOutputDir = outputPath.toFile();
+                File closureOutputDir = outputPath.toFile();
 
-            CompilationLevel compilationLevel = CompilationLevel.fromString(compilationLevelConfig);
+                CompilationLevel compilationLevel = CompilationLevel.fromString(compilationLevelConfig);
 
-            // set up a source directory to build from, and to make sourcemaps work
-            // TODO move logic to the "post" phase to decide whether or not to copy the sourcemap dir
-            String jsOutputDir = new File(closureOutputDir + "/" + initialScriptFilename).getParent();
-            File sources = new File(jsOutputDir, sourcemapDirectory);
+                // set up a source directory to build from, and to make sourcemaps work
+                // TODO move logic to the "post" phase to decide whether or not to copy the sourcemap dir
+                String jsOutputDir = new File(closureOutputDir + "/" + initialScriptFilename).getParent();
+                File sources = new File(jsOutputDir, sourcemapDirectory);
 //            if (compilationLevel == CompilationLevel.BUNDLE) {
 //                if (!config.getSourcemapsEnabled()) {
 //                    //TODO warn that sourcemaps are there anyway, we can't disable in bundle modes?
@@ -82,36 +85,42 @@ public class ClosureTask extends TaskFactory {
 //
 //            }
 
-            Files.createDirectories(Paths.get(closureOutputDir.getAbsolutePath(), initialScriptFilename).getParent());
+                Files.createDirectories(Paths.get(closureOutputDir.getAbsolutePath(), initialScriptFilename).getParent());
 
 
-            Map<String, String> defines = new LinkedHashMap<>(configDefines);
+                Map<String, String> defines = new LinkedHashMap<>(configDefines);
 
-            if (compilationLevel == CompilationLevel.BUNDLE) {
-                defines.putIfAbsent("goog.ENABLE_DEBUG_LOADER", "false");//TODO maybe overwrite instead?
+                if (compilationLevel == CompilationLevel.BUNDLE) {
+                    defines.putIfAbsent("goog.ENABLE_DEBUG_LOADER", "false");//TODO maybe overwrite instead?
+                }
+
+                boolean success = closureCompiler.compile(
+                        compilationLevel,
+                        dependencyMode,
+                        languageOut,
+                        sources,
+                        extraJsZips,
+                        entrypoint,
+                        defines,
+                        externs,
+                        null,
+                        true,//TODO have this be passed in,
+                        checkAssertions,
+                        rewritePolyfills,
+                        sourcemapsEnabled,
+                        closureOutputDir + "/" + initialScriptFilename
+                );
+
+                if (!success) {
+                    throw new IllegalStateException("Closure Compiler failed, check log for details");
+                }
+
             }
 
-            boolean success = closureCompiler.compile(
-                    compilationLevel,
-                    dependencyMode,
-                    languageOut,
-                    sources,
-                    extraJsZips,
-                    entrypoint,
-                    defines,
-                    externs,
-                    null,
-                    true,//TODO have this be passed in,
-                    checkAssertions,
-                    rewritePolyfills,
-                    sourcemapsEnabled,
-                    closureOutputDir + "/" + initialScriptFilename
-            );
+            @Override
+            public void finish(Path outputPath) {
 
-            if (!success) {
-                throw new IllegalStateException("Closure Compiler failed, check log for details");
             }
-
         };
     }
 }

@@ -2,11 +2,11 @@ package com.vertispan.j2cl.build.impl;
 
 import com.vertispan.j2cl.build.Input;
 import com.vertispan.j2cl.build.Project;
-import com.vertispan.j2cl.build.TaskFactory;
+import com.vertispan.j2cl.build.task.Config;
+import com.vertispan.j2cl.build.task.TaskFactory;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Badly named.

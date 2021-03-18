@@ -1,7 +1,7 @@
 package com.vertispan.j2cl.build.provided;
 
 import com.google.auto.service.AutoService;
-import com.vertispan.j2cl.build.*;
+import com.vertispan.j2cl.build.task.*;
 
 /**
  * TODO implement using JsChecker
@@ -21,7 +21,7 @@ public class IJsTask extends TaskFactory {
     }
 
     @Override
-    public Task resolve(Project project, PropertyTrackingConfig config) {
+    public Task resolve(Project project, Config config) {
         Input js = input(project, OutputTypes.TRANSPILED_JS);
         return outputPath -> {
 

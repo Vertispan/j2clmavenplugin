@@ -2,7 +2,7 @@ package com.vertispan.j2cl.build.provided;
 
 import com.google.auto.service.AutoService;
 import com.google.j2cl.common.SourceUtils;
-import com.vertispan.j2cl.build.*;
+import com.vertispan.j2cl.build.task.*;
 import net.cardosi.mojo.tools.Javac;
 
 import java.io.File;
@@ -38,7 +38,7 @@ public class BytecodeTask extends TaskFactory {
     }
 
     @Override
-    public Task resolve(Project project, PropertyTrackingConfig config) {
+    public Task resolve(Project project, Config config) {
         if (!project.hasSourcesMapped()) {
             // TODO instead copy the bytecode out of the jar so it can be used by downtream bytecode/apt tasks
             return ignore -> {};
@@ -46,7 +46,7 @@ public class BytecodeTask extends TaskFactory {
 
         Input inputSources = input(project, OutputTypes.INPUT_SOURCES).filter(JAVA_SOURCES);
 
-        List<Input> bytecodeClasspath = scope(project.getDependencies(), Dependency.Scope.COMPILE)
+        List<Input> bytecodeClasspath = scope(project.getDependencies(), com.vertispan.j2cl.build.task.Dependency.Scope.COMPILE)
                 .stream()
                 .map(inputs(OutputTypes.BYTECODE))
                 .collect(Collectors.toList());
