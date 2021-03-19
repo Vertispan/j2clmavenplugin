@@ -12,33 +12,22 @@ import java.io.UncheckedIOException;
 import java.nio.file.*;
 import java.nio.file.WatchService;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 /**
  * Manages the cached task inputs and outputs.
  */
 public abstract class DiskCache {
-    public enum Status {
-        NOT_STARTED,
-        //        RUNNING,
-        FAILED,
-        SUCCESS;
-    }
     public class CacheResult {
-        private final Status status;
         private final Path taskDir;
 
-        public CacheResult(Status status, Path taskDir) {
-            this.status = status;
+        public CacheResult(Path taskDir) {
             this.taskDir = taskDir;
         }
 
-        public Status status() {
-            return status;
-        }
         public Path logFile() {
             //TODO finish building a logger that will write to this
             return DiskCache.this.logFile(taskDir);
@@ -48,10 +37,7 @@ public abstract class DiskCache {
         }
 
         public TaskOutput output() {
-            if (status == Status.SUCCESS) {
-                return knownOutputs.get(taskDir);
-            }
-            throw new IllegalStateException("Can't get output for a task in state " + status);
+            return knownOutputs.get(taskDir);
         }
 
         public void markSuccess() {
@@ -77,7 +63,7 @@ public abstract class DiskCache {
     private Map<Input, TaskOutput> lastSuccessfulOutputs = new ConcurrentHashMap<>();
 
     private final Map<Path, Path> knownMarkers = new ConcurrentHashMap<>();
-    private final Map<Path, CompletableFuture<CacheResult>> taskFutures = new HashMap<>();
+    private final Map<Path, Set<PendingCacheResult>> taskFutures = new HashMap<>();
 
     public DiskCache(File cacheDir) throws IOException {
         this.cacheDir = cacheDir;
@@ -105,30 +91,28 @@ public abstract class DiskCache {
                         // task ended one way or the other
                         Path path = (Path) event.context();
                         Path taskDir = knownMarkers.get(path);
-                        CompletableFuture<CacheResult> future = taskFutures.get(taskDir);
-                        Status status;
+                        Set<PendingCacheResult> listeners = taskFutures.get(taskDir);
                         if (path.equals(successMarker(taskDir))) {
                             try {
                                 knownOutputs.put(path, makeOutput(path));
-                                status = Status.SUCCESS;
+                                listeners.forEach(PendingCacheResult::success);
                             } catch (UncheckedIOException ioException) {
                                 // failure to hash is pretty terrible, we're in trouble
                                 ioException.printStackTrace();
-                                status = Status.FAILED;
+                                listeners.forEach(l -> l.error(ioException));
                             }
                         } else {
                             assert path.equals(failureMarker(taskDir));
-                            status = Status.FAILED;
+                            listeners.forEach(PendingCacheResult::failure);
                         }
-                        future.complete(new CacheResult(status, taskDir));
                     } else if (event.kind() == StandardWatchEventKinds.ENTRY_DELETE) {
                         // task was canceled, we should attempt to take over
                         Path taskDir = (Path) event.context();
-                        CompletableFuture<CacheResult> future = taskFutures.get(taskDir);
+                        Set<PendingCacheResult> listeners = taskFutures.get(taskDir);
 
                         //TODO prep for new attempt, attempt to take over instead of this
 //                        future.complete(new CacheResult(Status.NOT_STARTED, taskDir));
-                        future.completeExceptionally(new IllegalStateException("Existing task was canceled, not yet supported, "));
+                        listeners.forEach(l -> l.error(new IllegalStateException("Existing task was canceled, not yet supported")));
                     }
                 }
                 key.reset();
@@ -155,24 +139,24 @@ public abstract class DiskCache {
         try {
             Files.walkFileTree(
                     path,
-                new SimpleFileVisitor<Path>() {
-                  @Override
-                  public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
-                    return FileVisitResult.CONTINUE;
-                  }
+                    new SimpleFileVisitor<Path>() {
+                        @Override
+                        public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+                            return FileVisitResult.CONTINUE;
+                        }
 
-                  @Override
-                  public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-                      FileHash hash = PathUtils.hash(fileHasher, file);
-                      if (hash == null) {
-                          //file could have been deleted or was otherwise unreadable
-                          //TODO how do we handle this? For now skipping as PathUtils does
-                      } else {
-                          fileHashes.put(path.relativize(file), hash);
-                      }
-                    return FileVisitResult.CONTINUE;
-                  }
-                });
+                        @Override
+                        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                            FileHash hash = PathUtils.hash(fileHasher, file);
+                            if (hash == null) {
+                                //file could have been deleted or was otherwise unreadable
+                                //TODO how do we handle this? For now skipping as PathUtils does
+                            } else {
+                                fileHashes.put(path.relativize(file), hash);
+                            }
+                            return FileVisitResult.CONTINUE;
+                        }
+                    });
         } catch (IOException ioException) {
             throw new UncheckedIOException(ioException);
         }
@@ -190,82 +174,149 @@ public abstract class DiskCache {
     protected abstract Path logFile(Path taskDir);
     protected abstract Path outputDir(Path taskDir);
 
+    interface Listener {
+        void onReady(CacheResult result);
+        void onFailure(CacheResult result);
+        void onError(Throwable throwable);
+        void onSuccess(CacheResult result);
+    }
+    public class PendingCacheResult {
+        private final Path taskDir;
+        private final Listener listener;
+        private boolean done;
+
+        public PendingCacheResult(Path taskDir, Listener listener) {
+            this.taskDir = taskDir;
+            this.listener = listener;
+        }
+
+        private synchronized void error(Throwable throwable) {
+            if (done) {
+                return;
+            }
+            remove();
+            listener.onError(throwable);
+        }
+
+        private synchronized void success() {
+            if (done) {
+                return;
+            }
+            remove();
+            listener.onSuccess(new CacheResult(taskDir));
+        }
+
+        private void remove() {
+            // mop up so that this won't be called/retained any more
+            //TODO this shouldn't be necessary if all the calls to remove() already mean removing this
+            taskFutures.get(taskDir).remove(this);
+
+            // ensure we won't call any listener method
+            done = true;
+        }
+
+        /**
+         * Caller is no longer interested in starting the work, and if no one is, we should avoid
+         * trying to acquire the lock.
+         */
+        public synchronized void cancel() {
+            remove();
+            // TODO notify that we're not listening any more
+        }
+
+        private synchronized void ready() {
+            if (done) {
+                return;
+            }
+            remove();
+            listener.onReady(new CacheResult(taskDir));
+        }
+
+        private synchronized void failure() {
+            if (done) {
+                return;
+            }
+            remove();
+            listener.onFailure(new CacheResult(taskDir));
+        }
+    }
     /**
      * Returns a future which is successful if the tasks either finishes normally or reports an error.
      * The future only fails if there was a problem in managing the cache - this is a fatal problem
      * but doesn't reflect that there was an issue with doing the requested work.
      * @param taskDetails details about the work being requested to either find existing work or
      *                    make a new location for it
+     * @param listener an instance to be notified of the state of the task. If onReady is called, the work
+     *                 may not be canceled
      * @return a future that will describe where details about the task should be located
      */
-    public CompletableFuture<CacheResult> waitForTask(CollectedTaskInputs taskDetails) {
+    public PendingCacheResult waitForTask(CollectedTaskInputs taskDetails, Listener listener) {
         final Path taskDir = taskDir(taskDetails);
-        return taskFutures.compute(taskDir, (path, existing) -> {
-            // TODO this isn't quite right, need to be able to change the future's contained value for future calls...
-            //      Only the first caller to this method should get the "ok, start" signal
-            CompletableFuture<CacheResult> f = new CompletableFuture<>();
-            try {
-                Path outputDir = outputDir(taskDir);
+        PendingCacheResult cancelable = new PendingCacheResult(taskDir, listener);
+        taskFutures.computeIfAbsent(taskDir, ignore -> Collections.newSetFromMap(new ConcurrentHashMap<>())).add(cancelable);
+        try {
+            Path outputDir = outputDir(taskDir);
 
-                // make sure the parent dir exists, we'll need it to one way or the other
-                if (!taskDir.getParent().toFile().exists()) {
-                    Files.createDirectories(taskDir.getParent());
-                }
-                // first check if it isn't already on disk
+            // make sure the parent dir exists, we'll need it to one way or the other
+            if (!taskDir.getParent().toFile().exists()) {
+                Files.createDirectories(taskDir.getParent());
+            }
+            // first check if it isn't already on disk
 
-                // try to create the task directory - if we succeed, we own it (this is atomic), if we fail, someone else already made it and we wait for them to finish
-                if (taskDir.toFile().mkdir()) {
-                    // caller can begin work right away
-                    Files.createDirectory(outputDir);
-                    Files.createFile(logFile(taskDir));
-                    f.complete(new CacheResult(Status.NOT_STARTED, taskDir));
-                    return f;
-                }
-
-                // caller will need to wait until the current owner completes it
-                //TODO register the future instance so the service can let us know when it is up
-
-                // set up markers in case we finish registration very fast
-                Path successMarker = successMarker(taskDir);
-                Path failureMarker = failureMarker(taskDir);
-                knownMarkers.put(successMarker, taskDir);
-                knownMarkers.put(failureMarker, taskDir);
-
-                // register to watch if a marker is made so we can get a call back, then check for existing markers
-                WatchKey key = taskDir.register(this.service, StandardWatchEventKinds.ENTRY_CREATE);
-
-                // check once more if we can take over the task dir, if we raced with the registration
-                if (taskDir.toFile().mkdir()) {
-                    //TODO mark this as "nevermind" further?
-                    key.cancel();
-                    Files.createDirectory(outputDir);
-                    Files.createFile(logFile(taskDir));
-                    f.complete(new CacheResult(Status.NOT_STARTED, taskDir));
-                    return f;
-                }
-
-                if (successMarker.toFile().exists()) {
-                    // already finished, success, no need to actually wait
-                    f.complete(new CacheResult(Status.SUCCESS, taskDir));
-                    //TODO mark as "nevermind" further?
-                    key.cancel();
-                    return f;
-                }
-
-                if (failureMarker.toFile().exists()) {
-                    // already finished, failure, no need to actually wait
-                    f.complete(new CacheResult(Status.FAILED, taskDir));
-                    //TODO mark as "nevermind" further?
-                    key.cancel();
-                    return f;
-                }
-            } catch (IOException ioException) {
-                f.completeExceptionally(new IOException("Failure when interacting with the disk cache", ioException));
+            // try to create the task directory - if we succeed, we own it (this is atomic), if we fail, someone else already made it and we wait for them to finish
+            //TODO one more check here that we even want to make this and start the work
+            if (taskDir.toFile().mkdir()) {
+                // caller can begin work right away
+                Files.createDirectory(outputDir);
+                Files.createFile(logFile(taskDir));
+                cancelable.ready();
+                return cancelable;
             }
 
-            // we're waiting for real now, give up on this thread
-            return f;
-        });
+            // caller will need to wait until the current owner completes it
+            //TODO register the future instance so the service can let us know when it is up
+
+            // set up markers in case we finish registration very fast
+            Path successMarker = successMarker(taskDir);
+            Path failureMarker = failureMarker(taskDir);
+            knownMarkers.put(successMarker, taskDir);
+            knownMarkers.put(failureMarker, taskDir);
+
+            // register to watch if a marker is made so we can get a call back, then check for existing markers
+            WatchKey key = taskDir.register(this.service, StandardWatchEventKinds.ENTRY_CREATE);
+
+            // check once more if we can take over the task dir, if we raced with the registration
+            //TODO one more check here that we even want to make this and start the work
+            if (taskDir.toFile().mkdir()) {
+                //TODO mark this as "nevermind" further?
+                key.cancel();
+                Files.createDirectory(outputDir);
+                Files.createFile(logFile(taskDir));
+                cancelable.ready();
+                return cancelable;
+            }
+
+            if (successMarker.toFile().exists()) {
+                // already finished, success, no need to actually wait
+                cancelable.success();
+                //TODO mark as "nevermind" further?
+                key.cancel();
+                return cancelable;
+            }
+
+            if (failureMarker.toFile().exists()) {
+                // already finished, failure, no need to actually wait
+                cancelable.failure();
+                //TODO mark as "nevermind" further?
+                key.cancel();
+                return cancelable;
+            }
+        } catch (IOException ioException) {
+            cancelable.error(new IOException("Error when interacting with the disk cache", ioException));
+        }
+
+        // we're waiting for real now, give up on this thread
+        return cancelable;
     }
 
     public void markFinished(CacheResult successfulResult) {

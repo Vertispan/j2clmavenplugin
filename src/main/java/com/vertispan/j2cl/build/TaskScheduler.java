@@ -75,15 +75,30 @@ public class TaskScheduler {
 
         // for each thing which has no unmet dependencies, ask disk cache if it needs doing
         canBeBuilt.forEach(taskDetails -> {
-            diskCache.waitForTask(taskDetails).whenComplete((cacheResult, failure) -> {
-                if (failure != null) {
-                    // Give up now, something catastrophic happened
-                    result.completeExceptionally(failure);
-                    return;
+            DiskCache.PendingCacheResult waiting = diskCache.waitForTask(taskDetails, new DiskCache.Listener() {
+                @Override
+                public void onReady(DiskCache.CacheResult cacheResult) {
+                    // we can now begin this work off-thread, will be woke up when it finishes
+                    executor.execute(() -> execute(taskDetails, cacheResult));
                 }
 
-                // if succeeded amd we didn't do it ourselves, continue, schedule more work
-                if (cacheResult.status() == DiskCache.Status.SUCCESS) {
+                @Override
+                public void onFailure(DiskCache.CacheResult cacheResult) {
+                    //TODO stop any future work, try to cancel existing
+                    //TODO better logs, better message
+                    result.completeExceptionally(new IllegalStateException("Failed, see logs"));
+                }
+
+                @Override
+                public void onError(Throwable throwable) {
+                    //TODO can't proceed, shut things down - not just stopping the CF, but everything
+                    result.completeExceptionally(throwable);
+                }
+
+                @Override
+                public void onSuccess(DiskCache.CacheResult cacheResult) {
+                    // succeeded, didn't do it ourselves, schedule more work
+
                     // when something finishes, remove it from the various dependency lists and see if we can run the loop again with more work
                     remainingWork.remove(taskDetails);
 
@@ -93,22 +108,6 @@ public class TaskScheduler {
                     }
 
                     scheduleAvailableWork(ready, allInputs, remainingWork, result);
-                    return;
-                }
-
-                // if failed, give up (stop existing work? probably not until we have a new call)
-                if (cacheResult.status() == DiskCache.Status.FAILED) {
-                    //TODO stop any future work, try to cancel existing
-                    //TODO better logs, better message
-                    result.completeExceptionally(new IllegalStateException("Failed, see logs"));
-                    return;
-                }
-
-                // if we now have the lock, submit the work (only allow one {project,task} to run at a time, do this by locking on the Task instance)
-                if (cacheResult.status() == DiskCache.Status.NOT_STARTED) {
-                    // we can now begin this work off-thread, will be woke up when it finishes
-                    executor.execute(() -> execute(taskDetails, cacheResult));
-                    //return;
                 }
             });
         });
