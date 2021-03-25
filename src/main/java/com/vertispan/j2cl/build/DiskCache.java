@@ -180,7 +180,7 @@ public abstract class DiskCache {
         void onError(Throwable throwable);
         void onSuccess(CacheResult result);
     }
-    public class PendingCacheResult {
+    public class PendingCacheResult implements Cancelable {
         private final Path taskDir;
         private final Listener listener;
         private boolean done;
@@ -244,13 +244,18 @@ public abstract class DiskCache {
      * Returns a future which is successful if the tasks either finishes normally or reports an error.
      * The future only fails if there was a problem in managing the cache - this is a fatal problem
      * but doesn't reflect that there was an issue with doing the requested work.
+     *
+     * Note that this method does not actually block, but notifies when the task is finished. This
+     * cannot directly be canceled, though the notification that a task was successful or failed can
+     * be ignored (though notification on ready-to-build cannot be ignored). If the listener is told
+     * to start the work, it will happen before this method returns.
+     *
      * @param taskDetails details about the work being requested to either find existing work or
      *                    make a new location for it
      * @param listener an instance to be notified of the state of the task. If onReady is called, the work
      *                 may not be canceled
-     * @return a future that will describe where details about the task should be located
      */
-    public PendingCacheResult waitForTask(CollectedTaskInputs taskDetails, Listener listener) {
+    public void waitForTask(CollectedTaskInputs taskDetails, Listener listener) {
         final Path taskDir = taskDir(taskDetails);
         PendingCacheResult cancelable = new PendingCacheResult(taskDir, listener);
         taskFutures.computeIfAbsent(taskDir, ignore -> Collections.newSetFromMap(new ConcurrentHashMap<>())).add(cancelable);
@@ -270,7 +275,7 @@ public abstract class DiskCache {
                 Files.createDirectory(outputDir);
                 Files.createFile(logFile(taskDir));
                 cancelable.ready();
-                return cancelable;
+                return;
             }
 
             // caller will need to wait until the current owner completes it
@@ -293,7 +298,7 @@ public abstract class DiskCache {
                 Files.createDirectory(outputDir);
                 Files.createFile(logFile(taskDir));
                 cancelable.ready();
-                return cancelable;
+                return;
             }
 
             if (successMarker.toFile().exists()) {
@@ -301,7 +306,7 @@ public abstract class DiskCache {
                 cancelable.success();
                 //TODO mark as "nevermind" further?
                 key.cancel();
-                return cancelable;
+                return;
             }
 
             if (failureMarker.toFile().exists()) {
@@ -309,14 +314,13 @@ public abstract class DiskCache {
                 cancelable.failure();
                 //TODO mark as "nevermind" further?
                 key.cancel();
-                return cancelable;
+                return;
             }
         } catch (IOException ioException) {
             cancelable.error(new IOException("Error when interacting with the disk cache", ioException));
         }
 
         // we're waiting for real now, give up on this thread
-        return cancelable;
     }
 
     public void markFinished(CacheResult successfulResult) {

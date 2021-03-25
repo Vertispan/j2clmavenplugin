@@ -72,7 +72,7 @@ public abstract class TaskFactory {
      * Subject to change: the output path will still be provided, no need to read that from config
      */
     public interface FinalOutputTask extends Task {
-        void finish(Path outputPath);
+        void finish();
     }
 
     /**

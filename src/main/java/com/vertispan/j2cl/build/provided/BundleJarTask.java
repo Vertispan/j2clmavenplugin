@@ -34,7 +34,7 @@ public class BundleJarTask extends TaskFactory {
             }
 
             @Override
-            public void finish(Path outputPath) {
+            public void finish() {
 
             }
         };

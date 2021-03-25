@@ -118,7 +118,7 @@ public class ClosureTask extends TaskFactory {
             }
 
             @Override
-            public void finish(Path outputPath) {
+            public void finish() {
 
             }
         };

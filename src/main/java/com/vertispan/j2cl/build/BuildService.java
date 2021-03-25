@@ -11,7 +11,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 public class BuildService {
@@ -24,6 +23,8 @@ public class BuildService {
 
     // hashes of each file in each project, updated under lock
     private final Map<Project, Map<Path, FileHash>> currentProjectSourceHash = new HashMap<>();
+
+    private BlockingBuildListener prevBuild;
 
     public BuildService(TaskRegistry taskRegistry, TaskScheduler taskScheduler, DiskCache diskCache) {
         this.taskRegistry = taskRegistry;
@@ -81,7 +82,7 @@ public class BuildService {
     }
 
     /**
-     * Assign the initial hashes for files in the project.
+     * Assign the initial hashes for files in the project. Call if there is no watch service enabled.
      */
     public synchronized void initialHashes() {
         // for each project which has sources, hash them
@@ -120,12 +121,59 @@ public class BuildService {
         // callers will indicate it is time for this with requestBuild()
     }
 
-    public synchronized CompletableFuture<Void> requestBuild() {
+
+    /**
+     * Only one build can take place at a time, be sure to stop the previous build before submitting a new one,
+     * or the new one will have to wait until the first finishes
+     * @param buildListener support for notifications about the status of the work
+     * @return an object which can cancel remaining unstarted work
+     */
+    public synchronized Cancelable requestBuild(BuildListener buildListener) throws InterruptedException {
+        // wait for the previous build, if any, to finish
+        if (prevBuild != null) {
+            prevBuild.blockUntilFinished();
+        }
+
         // TODO update inputs with the hash changes we've seen
-        
+        inputs.keySet().stream()
+                .filter(i -> i.getProject().hasSourcesMapped())
+                .forEach(i -> {
+
+                });
 
         // this could possibly be more fine grained, only submit the projects which could be affected by changes
-        return taskScheduler.submit(inputs.values());
+        prevBuild = new WrappedBlockingBuildListener(buildListener);
+        return taskScheduler.submit(inputs.values(), prevBuild);
+    }
+    class WrappedBlockingBuildListener extends BlockingBuildListener {
+        private final BuildListener wrapped;
+
+        WrappedBlockingBuildListener(BuildListener wrapped) {
+            this.wrapped = wrapped;
+        }
+
+        @Override
+        public void onProgress(int completedCount, int startedCount, int pendingCount, String task, Project project, Activity activity) {
+            wrapped.onProgress(completedCount, startedCount, pendingCount, task, project, activity);
+        }
+
+        @Override
+        public void onSuccess() {
+            super.onSuccess();
+            wrapped.onSuccess();
+        }
+
+        @Override
+        public void onFailure() {
+            super.onFailure();
+            wrapped.onFailure();
+        }
+
+        @Override
+        public void onError(Throwable throwable) {
+            super.onError(throwable);
+            wrapped.onError(throwable);
+        }
     }
 
 }

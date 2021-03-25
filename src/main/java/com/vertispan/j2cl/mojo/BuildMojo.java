@@ -111,6 +111,12 @@ public class BuildMojo extends AbstractBuildMojo implements ClosureBuildConfigur
         buildService.initialHashes();
 
         // perform the build
-        buildService.requestBuild().join();
+        BlockingBuildListener listener = new BlockingBuildListener();
+        try {
+            buildService.requestBuild(listener);
+            listener.blockUntilFinished();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 }

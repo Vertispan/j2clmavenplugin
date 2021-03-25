@@ -83,7 +83,7 @@ public class WatchService {
         // wait a moment then start a build (this should be pluggable)
         //TODO need to debounce this call so we only ever have one at a time pending
         //TODO if requestBuild() is ever blocking (so that the lock is held), we can't enqueue to the same executor as task work is done on
-        executorService.schedule(buildService::requestBuild, 100, TimeUnit.MILLISECONDS);
+//        executorService.schedule(buildService::requestBuild, 100, TimeUnit.MILLISECONDS);
     }
 
     public void close() throws IOException {
