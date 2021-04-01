@@ -8,10 +8,14 @@ import java.util.List;
  * point at a source jar, the contents can be watched for changes.
  */
 public class Project implements com.vertispan.j2cl.build.task.Project {
-    private String key;
+    private final String key;
 
     private List<Dependency> dependencies;
     private List<String> sourceRoots;
+
+    public Project(String key) {
+        this.key = key;
+    }
 
     @Override
     public String getKey() {

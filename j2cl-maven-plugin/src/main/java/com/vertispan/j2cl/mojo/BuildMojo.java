@@ -4,9 +4,11 @@ import com.vertispan.j2cl.build.*;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
+import org.apache.maven.plugin.descriptor.PluginDescriptor;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
+import org.apache.maven.project.*;
 
 import java.io.IOException;
 import java.util.*;
@@ -167,23 +169,35 @@ public class BuildMojo extends AbstractBuildMojo {
     @Parameter(defaultValue = "false")
     protected boolean checkAssertions;
 
-    @Deprecated
-    @Parameter(defaultValue = "SORT_ONLY")
-    protected String dependencyMode;
+//    @Deprecated
+//    @Parameter(defaultValue = "SORT_ONLY")
+//    protected String dependencyMode;
 
     @Parameter(defaultValue = "false")
     protected boolean enableSourcemaps;
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        //accumulate configs
+        //accumulate configs and defaults, flatten into map
+        //TODO
         Map<String, String> config = null;
 
+        PluginDescriptor pluginDescriptor = (PluginDescriptor) getPluginContext().get("pluginDescriptor");
+        String pluginVersion = pluginDescriptor.getVersion();
+
+        ProjectBuildingRequest request = new DefaultProjectBuildingRequest(mavenSession.getProjectBuildingRequest());
+
         // build project from maven project and dependencies, recursively
-        Project p = new Project();
+        LinkedHashMap<String, Project> builtProjects = new LinkedHashMap<>();
+        Project p;
+        try {
+            p = buildProject(project, project.getArtifact(), false, projectBuilder, request, pluginVersion, builtProjects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, getDependencyReplacements());
+        } catch (ProjectBuildingException e) {
+            throw new MojoExecutionException("Failed to build project structure", e);
+        }
 
         // given the build output, determine what tasks we're going to run
-        String outputTask = null;
+        String outputTask = getOutputTask(compilationLevel);
 
         // check if any task wiring was specified
         HashMap<String, String> outputToNameMappings = new HashMap<>();
@@ -195,7 +209,7 @@ public class BuildMojo extends AbstractBuildMojo {
         } catch (IOException ioException) {
             throw new MojoExecutionException("Failed to create cache", ioException);
         }
-        ScheduledExecutorService executor = Executors.newScheduledThreadPool(4);
+        ScheduledExecutorService executor = Executors.newScheduledThreadPool(4);//TODO parameterize this
         TaskScheduler taskScheduler = new TaskScheduler(executor, diskCache);
         TaskRegistry taskRegistry = new TaskRegistry(outputToNameMappings);
 
@@ -203,7 +217,7 @@ public class BuildMojo extends AbstractBuildMojo {
         BuildService buildService = new BuildService(taskRegistry, taskScheduler, diskCache);
         buildService.assignProject(p, outputTask, config);
 
-        // Get the hash of all current files
+        // Get the hash of all current files, since we aren't running a watch service
         buildService.initialHashes();
 
         // perform the build
