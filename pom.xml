@@ -5,11 +5,18 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.vertispan.j2cl</groupId>
-  <artifactId>j2cl-maven-plugin</artifactId>
-  <version>0.17-SNAPSHOT</version>
-  <packaging>maven-plugin</packaging>
+  <artifactId>j2cl-tools</artifactId>
+  <version>0.18-SNAPSHOT</version>
+  <packaging>pom</packaging>
 
-  <name>J2CL Maven Plugin</name>
+  <name>J2CL Build Tools</name>
+  <description>Collection of tools to make it easier to create J2CL build systems</description>
+
+  <modules>
+    <module>build-caching</module>
+    <module>j2cl-tools</module>
+    <module>j2cl-maven-plugin</module>
+  </modules>
 
   <properties>
     <!-- Plugin dependencies versions-->
@@ -233,172 +240,8 @@
     </dependencies>
   </dependencyManagement>
 
-  <dependencies>
-    <!-- Plugin dependencies -->
-    <dependency>
-      <groupId>org.apache.maven</groupId>
-      <artifactId>maven-plugin-api</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.maven</groupId>
-      <artifactId>maven-core</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.maven.shared</groupId>
-      <artifactId>maven-shared-utils</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.maven</groupId>
-      <artifactId>maven-model</artifactId>
-    </dependency>
-    <dependency>
-    <groupId>org.apache.maven</groupId>
-    <artifactId>maven-artifact</artifactId>
-  </dependency>
-    <dependency>
-      <groupId>org.codehaus.plexus</groupId>
-      <artifactId>plexus-utils</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.maven.resolver</groupId>
-      <artifactId>maven-resolver-api</artifactId>
-      <version>${maven.resolver.version}</version>
-    </dependency>
-
-    <!-- dependencies to annotations -->
-    <dependency>
-      <groupId>org.apache.maven.plugin-tools</groupId>
-      <artifactId>maven-plugin-annotations</artifactId>
-      <version>3.3</version>
-      <scope>provided</scope>
-    </dependency>
-
-
-
-    <!-- j2cl dependencies -->
-    <dependency>
-      <groupId>com.vertispan.j2cl</groupId>
-      <artifactId>transpiler</artifactId>
-      <version>${j2cl.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>com.google.javascript</groupId>
-          <artifactId>closure-compiler-unshaded</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>com.vertispan.j2cl</groupId>
-      <artifactId>gwt-incompatible-stripper</artifactId>
-      <version>${j2cl.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.vertispan.j2cl</groupId>
-      <artifactId>frontend</artifactId>
-      <version>${j2cl.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>com.google.errorprone</groupId>
-          <artifactId>javac</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>com.vertispan.j2cl</groupId>
-      <artifactId>common</artifactId>
-      <version>${j2cl.version}</version>
-    </dependency>
-
-    <!-- closure compiler dependencies -->
-    <dependency>
-      <groupId>com.vertispan.javascript</groupId>
-      <artifactId>closure-compiler-unshaded</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>commons-codec</groupId>
-      <artifactId>commons-codec</artifactId>
-      <version>${commons.codec.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>commons-io</groupId>
-      <artifactId>commons-io</artifactId>
-      <version>${commons.io.version}</version>
-    </dependency>
-
-    <dependency>
-      <groupId>com.google.guava</groupId>
-      <artifactId>guava</artifactId>
-    </dependency>
-
-    <!-- watch service -->
-    <dependency>
-      <groupId>io.methvin</groupId>
-      <artifactId>directory-watcher</artifactId>
-      <version>0.14.0</version>
-    </dependency>
-
-    <!-- test goal dependencies -->
-    <dependency>
-      <groupId>org.seleniumhq.selenium</groupId>
-      <artifactId>selenium-support</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.seleniumhq.selenium</groupId>
-      <artifactId>selenium-api</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.seleniumhq.selenium</groupId>
-      <artifactId>selenium-chrome-driver</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.seleniumhq.selenium</groupId>
-      <artifactId>htmlunit-driver</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.jsoup</groupId>
-      <artifactId>jsoup</artifactId>
-      <version>${jsoup.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.eclipse.jetty</groupId>
-      <artifactId>jetty-server</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>com.google.auto.service</groupId>
-      <artifactId>auto-service</artifactId>
-      <version>1.0-rc7</version>
-      <scope>provided</scope>
-    </dependency>
-
-    <!-- Test -->
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <scope>test</scope>
-    </dependency>
-  </dependencies>
-
   <build>
     <plugins>
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>templating-maven-plugin</artifactId>
-        <version>1.0.0</version>
-        <executions>
-          <execution>
-            <id>generate-version-class</id>
-            <goals>
-              <goal>filter-sources</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-plugin-plugin</artifactId>
-        <version>3.5</version>
-      </plugin>
       <!-- https://maven.apache.org/enforcer/enforcer-rules/dependencyConvergence.html -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -417,31 +260,6 @@
             </goals>
           </execution>
         </executions>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-invoker-plugin</artifactId>
-        <version>3.0.1</version>
-        <executions>
-          <execution>
-            <goals>
-              <goal>install</goal>
-              <goal>integration-test</goal>
-              <goal>verify</goal>
-            </goals>
-          </execution>
-        </executions>
-        <configuration>
-          <cloneProjectsTo>${project.build.directory}/it-tests</cloneProjectsTo>
-          <localRepositoryPath>${project.build.directory}/it-repo</localRepositoryPath>
-          <settingsFile>src/it/settings.xml</settingsFile>
-        </configuration>
-      </plugin>
-
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-site-plugin</artifactId>
-        <version>3.7.1</version>
       </plugin>
     </plugins>
   </build>
@@ -533,21 +351,4 @@
     </repository>
   </repositories>
 
-  <reporting>
-    <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-plugin-plugin</artifactId>
-        <version>3.5</version>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-project-info-reports-plugin</artifactId>
-        <version>3.0.0</version>
-        <configuration>
-          <skip>true</skip>
-        </configuration>
-      </plugin>
-    </plugins>
-  </reporting>
 </project>

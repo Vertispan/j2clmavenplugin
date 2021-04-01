@@ -3,7 +3,6 @@ package com.vertispan.j2cl.build;
 import io.methvin.watcher.hashing.FileHash;
 import io.methvin.watcher.hashing.Murmur3F;
 
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
@@ -11,7 +10,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.stream.Collectors;
-import java.util.zip.Checksum;
 
 /**
  * New instances of this are made at every chance, and equality is only based on the

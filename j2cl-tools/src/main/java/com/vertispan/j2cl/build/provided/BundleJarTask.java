@@ -1,6 +1,11 @@
 package com.vertispan.j2cl.build.provided;
 
-import com.vertispan.j2cl.build.task.*;
+import com.vertispan.j2cl.build.task.OutputTypes;
+import com.vertispan.j2cl.build.task.Config;
+import com.vertispan.j2cl.build.task.Project;
+import com.vertispan.j2cl.build.task.Dependency;
+import com.vertispan.j2cl.build.task.Input;
+import com.vertispan.j2cl.build.task.TaskFactory;
 
 import java.nio.file.Path;
 import java.util.List;

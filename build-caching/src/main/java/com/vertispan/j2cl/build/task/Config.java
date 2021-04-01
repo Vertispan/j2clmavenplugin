@@ -1,7 +1,5 @@
 package com.vertispan.j2cl.build.task;
 
-import com.google.javascript.jscomp.DependencyOptions;
-
 import java.io.File;
 import java.util.Collection;
 import java.util.List;
@@ -20,7 +18,7 @@ public interface Config {
     List<String> getEntrypoint();
 
     @Deprecated
-    DependencyOptions.DependencyMode getDependencyMode();
+    String getDependencyMode();
 
     Collection<String> getExterns();
 

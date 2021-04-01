@@ -1,6 +1,5 @@
 package com.vertispan.j2cl.build;
 
-import com.google.javascript.jscomp.DependencyOptions;
 import com.vertispan.j2cl.build.task.Config;
 import io.methvin.watcher.hashing.FileHasher;
 import io.methvin.watcher.hashing.Murmur3F;
@@ -80,9 +79,8 @@ public class PropertyTrackingConfig implements Config {
 
     @Override
     @Deprecated
-    public DependencyOptions.DependencyMode getDependencyMode() {
-        String value = getString("dependencyMode");
-        return DependencyOptions.DependencyMode.valueOf(value);
+    public String getDependencyMode() {
+        return getString("dependencyMode");
     }
 
     @Override

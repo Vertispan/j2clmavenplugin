@@ -5,7 +5,7 @@ import com.vertispan.j2cl.build.task.OutputTypes;
 import com.vertispan.j2cl.build.task.TaskFactory;
 
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.Executor;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 

@@ -1,4 +1,4 @@
-package net.cardosi.mojo.config;
+package com.vertispan.j2cl.mojo;
 
 import org.apache.maven.RepositoryUtils;
 import org.apache.maven.artifact.Artifact;

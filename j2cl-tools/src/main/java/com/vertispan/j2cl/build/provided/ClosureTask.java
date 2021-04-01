@@ -37,7 +37,7 @@ public class ClosureTask extends TaskFactory {
         //      from the actual input source instead of copying it along each step
         List<Input> jsSources = Stream.concat(
                 Stream.of(input(project, OutputTypes.TRANSPILED_JS)),
-                scope(project.getDependencies(), com.vertispan.j2cl.build.task.Dependency.Scope.RUNTIME)
+                scope(project.getDependencies(), Dependency.Scope.RUNTIME)
                 .stream()
                 .map(inputs(OutputTypes.TRANSPILED_JS))
         ).collect(Collectors.toList());
@@ -47,7 +47,7 @@ public class ClosureTask extends TaskFactory {
         String compilationLevelConfig = config.getCompilationLevel();
         String initialScriptFilename = config.getInitialScriptFilename();
         Map<String, String> configDefines = config.getDefines();
-        DependencyOptions.DependencyMode dependencyMode = config.getDependencyMode();
+        DependencyOptions.DependencyMode dependencyMode = DependencyOptions.DependencyMode.valueOf(config.getDependencyMode());
         List<String> entrypoint = config.getEntrypoint();
         CompilerOptions.LanguageMode languageOut = CompilerOptions.LanguageMode.fromString(config.getLanguageOut());
         //TODO probably kill this, or at least make it work like an import via another task so we detect changes
