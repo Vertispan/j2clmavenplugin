@@ -252,6 +252,9 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
     }
 
     private Dependency.Scope translateScope(String scope) {
+        if (scope == null) {
+            return Dependency.Scope.BOTH;
+        }
         switch (scope) {
             case Artifact.SCOPE_COMPILE:
             case Artifact.SCOPE_TEST:
