@@ -10,13 +10,16 @@ import java.io.UncheckedIOException;
 import java.util.*;
 
 public class PropertyTrackingConfig implements Config {
+    public interface ConfigValueProvider {
+        String readValueWithKey(String key);
+    }
 
-    private final Map<String, String> config;
+    private final ConfigValueProvider config;
     private final Map<String, String> usedKeys = new TreeMap<>();
 
     private boolean closed = false;
 
-    public PropertyTrackingConfig(Map<String, String> config) {
+    public PropertyTrackingConfig(ConfigValueProvider config) {
         this.config = config;
     }
 
@@ -28,7 +31,7 @@ public class PropertyTrackingConfig implements Config {
     public String getString(String key) {
         checkClosed(key);
         //TODO default handling...
-        String value = config.get(key);
+        String value = config.readValueWithKey(key);
         usedKeys.put(key, value);
         return value;
     }
@@ -43,7 +46,13 @@ public class PropertyTrackingConfig implements Config {
     public File getFile(String key) {
         checkClosed(key);
 
-        File value = new File(config.get(key));
+        String pathname = config.readValueWithKey(key);
+        if (pathname == null) {
+            usedKeys.put(key, null);
+            return null;
+        }
+
+        File value = new File(pathname);
 
         if (value.exists() && value.isFile()) {
             Murmur3F hash = new Murmur3F();

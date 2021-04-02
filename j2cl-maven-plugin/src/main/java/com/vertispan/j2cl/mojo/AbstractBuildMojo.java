@@ -25,7 +25,6 @@ import org.eclipse.aether.resolution.ArtifactRequest;
 import org.eclipse.aether.resolution.ArtifactResolutionException;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -77,6 +76,9 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
             new DependencyReplacement("com.google.gwt:gwt-servlet", null)
     );
 
+    @Parameter
+    protected String workerThreadCount = "4";
+
     // tools to resolve dependencies
     @Component
     protected RepositorySystem repoSystem;
@@ -96,6 +98,13 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
         return key;
     }
 
+    protected int getWorkerTheadCount() {
+        // Use the same algorithm as org.apache.maven.cli.MavenCli
+        if (workerThreadCount.contains("C")) {
+            return (int) (Float.parseFloat(workerThreadCount.replace("C", "")) * Runtime.getRuntime().availableProcessors());
+        }
+        return Integer.parseInt(workerThreadCount);
+    }
 
     protected File getFileWithMavenCoords(String coords) throws MojoExecutionException {
         ArtifactRequest request = new ArtifactRequest()
@@ -196,8 +205,7 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
                 if (p != null) {
                     child = buildProject(p, mavenDependency, lookupReactorProjects, projectBuilder, request, pluginVersion, builtProjects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, dependencyReplacements);
                 } else {
-                    // non-reactor project, build a project for it
-
+                    // non-reactor project (or we don't want it to be from reactor), build a project for it
                     request.setProject(null);
                     request.setResolveDependencies(true);
                     request.setRemoteRepositories(null);

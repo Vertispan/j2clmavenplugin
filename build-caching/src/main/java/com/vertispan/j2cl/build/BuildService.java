@@ -38,12 +38,12 @@ public class BuildService {
      * to all projects - if conflicting configurations need to be applied to some work, it should be
      * submitted to separate BuildServices.
      */
-    public void assignProject(Project project, String finalTask, Map<String, String> config) {
+    public void assignProject(Project project, String finalTask, PropertyTrackingConfig.ConfigValueProvider config) {
         // find the tasks and their upstream tasks
         collectTasksFromProject(finalTask, project, config, inputs);
     }
 
-    private void collectTasksFromProject(String taskName, Project project, Map<String, String> config, Map<Input, CollectedTaskInputs> collectedSoFar) {
+    private void collectTasksFromProject(String taskName, Project project, PropertyTrackingConfig.ConfigValueProvider config, Map<Input, CollectedTaskInputs> collectedSoFar) {
         Input newInput = new Input(project, taskName);
         if (collectedSoFar.containsKey(newInput)) {
             // don't build a step twice
