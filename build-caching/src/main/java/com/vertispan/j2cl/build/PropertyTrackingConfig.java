@@ -13,6 +13,7 @@ public class PropertyTrackingConfig implements Config {
     public interface ConfigValueProvider {
         String readStringWithKey(String key);
         File readFileWithKey(String key);
+        List<File> readFilesWithKey(String key);
     }
 
     private final ConfigValueProvider config;
@@ -82,7 +83,7 @@ public class PropertyTrackingConfig implements Config {
     @Deprecated
     public List<String> getEntrypoint() {
         //TODO support this?
-        return null;
+        return Collections.emptyList();
     }
 
     @Override
@@ -94,7 +95,7 @@ public class PropertyTrackingConfig implements Config {
     @Override
     public Collection<String> getExterns() {
         //TODO these are files, need to be hashed, or treated as inputs instead?
-        return null;
+        return Collections.emptySet();
     }
 
     @Override
@@ -120,7 +121,7 @@ public class PropertyTrackingConfig implements Config {
     @Override
     public Map<String, String> getDefines() {
         //TODO this needs to include all the contents, sorted
-        return null;
+        return new HashMap<>();
     }
 
     @Override
@@ -131,7 +132,14 @@ public class PropertyTrackingConfig implements Config {
     @Override
     public List<File> getExtraJsZips() {
         //TODO implement this, perhaps as scope=runtime dependency instead?
-        return null;
+        //TODO hash these
+        return config.readFilesWithKey("extraJsZips");
+    }
+    @Override
+    public List<File> getExtraClasspath() {
+        //TODO implement this, perhaps as scope=runtime dependency instead?
+        //TODO hash these
+        return config.readFilesWithKey("extraClasspath");
     }
 
     @Override

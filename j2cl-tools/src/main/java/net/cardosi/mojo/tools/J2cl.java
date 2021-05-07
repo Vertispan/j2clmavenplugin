@@ -46,6 +46,7 @@ public class J2cl {
             System.out.println(options);
             throw t;
         }
+
 //        if (problems.hasErrors() || problems.hasWarnings()) {
 //            problems.getErrors().forEach(System.out::println);
 //            problems.getWarnings().forEach(System.out::println);

@@ -24,13 +24,17 @@ public class Xpp3DomConfigValueProvider implements PropertyTrackingConfig.Config
     private final RepositorySystemSession repoSession;
     private final List<RemoteRepository> repositories;
     private final RepositorySystem repoSystem;
+    private final List<File> extraClasspath;
+    private final List<File> extraJsZips;
 
-    public Xpp3DomConfigValueProvider(Xpp3Dom config, ExpressionEvaluator expressionEvaluator, RepositorySystemSession repoSession, List<RemoteRepository> repositories, RepositorySystem repoSystem) {
+    public Xpp3DomConfigValueProvider(Xpp3Dom config, ExpressionEvaluator expressionEvaluator, RepositorySystemSession repoSession, List<RemoteRepository> repositories, RepositorySystem repoSystem, List<File> extraClasspath, List<File> extraJsZips) {
         this.config = config;
         this.expressionEvaluator = expressionEvaluator;
         this.repoSession = repoSession;
         this.repositories = repositories;
         this.repoSystem = repoSystem;
+        this.extraClasspath = extraClasspath;
+        this.extraJsZips = extraJsZips;
         System.out.println(config);
     }
 
@@ -65,6 +69,19 @@ public class Xpp3DomConfigValueProvider implements PropertyTrackingConfig.Config
         }
         System.out.println(key + " => " + f.getAbsolutePath());
         return f;
+    }
+
+    @Override
+    public List<File> readFilesWithKey(String key) {
+        //FIXME cheaty method to deal with some extra configs that don't make sense yet
+        switch (key) {
+            //TODO hash these
+            case "extraClasspath":
+                return extraClasspath;
+            case "extraJsZips":
+                return extraJsZips;
+        }
+        return null;
     }
 
     // this method built to use tail-call recursion by hand, then automatically updated to use iteration

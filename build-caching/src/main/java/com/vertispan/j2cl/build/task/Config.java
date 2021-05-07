@@ -37,4 +37,6 @@ public interface Config {
     List<File> getExtraJsZips();
 
     String getLanguageOut();
+
+    List<File> getExtraClasspath();
 }

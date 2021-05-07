@@ -24,6 +24,9 @@ public class IJsTask extends TaskFactory {
     public Task resolve(Project project, Config config) {
         Input js = input(project, OutputTypes.TRANSPILED_JS);
         return outputPath -> {
+            if (js.getFilesAndHashes().isEmpty()) {
+                // nothing to do
+            }
 
             // for now we're going to just copy the JS
             System.out.println("TODO " + getClass());

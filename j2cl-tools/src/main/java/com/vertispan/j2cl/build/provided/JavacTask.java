@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @AutoService(TaskFactory.class)
 public class JavacTask extends TaskFactory {
@@ -41,10 +42,14 @@ public class JavacTask extends TaskFactory {
                 .collect(Collectors.toList());
 
         File bootstrapClasspath = config.getBootstrapClasspath();
+        List<File> extraClasspath = config.getExtraClasspath();
         return outputPath -> {
-            List<File> classpathDirs = classpathHeaders.stream()
-                    .map(i -> i.getPath().toFile())
-                    .collect(Collectors.toList());
+            if (ownSources.getFilesAndHashes().isEmpty()) {
+                return;// no work to do
+            }
+
+            List<File> classpathDirs = Stream.concat(classpathHeaders.stream().map(Input::getPath).map(Path::toFile),
+                    extraClasspath.stream()).collect(Collectors.toList());
 
             Javac javac = new Javac(null, classpathDirs, outputPath.toFile(), bootstrapClasspath);
 

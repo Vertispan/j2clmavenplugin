@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @AutoService(TaskFactory.class)
 public class J2clTask extends TaskFactory {
@@ -43,9 +44,12 @@ public class J2clTask extends TaskFactory {
                 .collect(Collectors.toList());
 
         File bootstrapClasspath = config.getBootstrapClasspath();
+        List<File> extraClasspath = config.getExtraClasspath();
         return outputPath -> {
-            List<File> classpathDirs = classpathHeaders.stream()
-                    .map(i -> i.getPath().toFile())
+            if (ownSources.getFilesAndHashes().isEmpty()) {
+                return;// nothing to do
+            }
+            List<File> classpathDirs = Stream.concat(classpathHeaders.stream().map(i -> i.getPath().toFile()), extraClasspath.stream())
                     .collect(Collectors.toList());
 
             J2cl j2cl = new J2cl(classpathDirs, bootstrapClasspath, outputPath.toFile());

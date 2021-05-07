@@ -4,6 +4,8 @@ import com.google.auto.service.AutoService;
 import com.vertispan.j2cl.build.task.*;
 
 import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 
 @AutoService(TaskFactory.class)
@@ -31,10 +33,11 @@ public class AptTask extends TaskFactory {
         Input myBytecode = input(project, OutputTypes.BYTECODE).filter(JAVA_SOURCES);
 
         return outputPath -> {
-
             // the BytecodeTask already did the work for us, just copy sources to output
-            System.out.println("TODO " + getClass());
-
+            for (Path path : myBytecode.getFilesAndHashes().keySet()) {
+                Files.createDirectories(outputPath.resolve(path).getParent());
+                Files.copy(myBytecode.getPath().resolve(path), outputPath.resolve(path));
+            }
         };
     }
 }

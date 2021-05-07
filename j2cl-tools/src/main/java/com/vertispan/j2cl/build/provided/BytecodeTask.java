@@ -7,10 +7,12 @@ import net.cardosi.mojo.tools.Javac;
 
 import java.io.File;
 import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * This implementation and {@link AptTask} are wired together, if you replace
@@ -26,6 +28,7 @@ import java.util.stream.Collectors;
 public class BytecodeTask extends TaskFactory {
 
     public static final PathMatcher JAVA_SOURCES = FileSystems.getDefault().getPathMatcher("glob:**/*.java");
+    public static final PathMatcher JAVA_BYTECODE = FileSystems.getDefault().getPathMatcher("glob:**/*.class");
 
     @Override
     public String getOutputType() {
@@ -40,8 +43,14 @@ public class BytecodeTask extends TaskFactory {
     @Override
     public Task resolve(Project project, Config config) {
         if (!project.hasSourcesMapped()) {
-            // TODO instead copy the bytecode out of the jar so it can be used by downtream bytecode/apt tasks
-            return ignore -> {};
+            // instead copy the bytecode out of the jar so it can be used by downtream bytecode/apt tasks
+            Input existingUnpackedBytecode = input(project, OutputTypes.INPUT_SOURCES).filter(JAVA_BYTECODE);
+            return outputPath -> {
+                for (Path path : existingUnpackedBytecode.getFilesAndHashes().keySet()) {
+                    Files.createDirectories(outputPath.resolve(path).getParent());
+                    Files.copy(existingUnpackedBytecode.getPath().resolve(path), outputPath.resolve(path));
+                }
+            };
         }
 
         Input inputSources = input(project, OutputTypes.INPUT_SOURCES).filter(JAVA_SOURCES);
@@ -52,8 +61,14 @@ public class BytecodeTask extends TaskFactory {
                 .collect(Collectors.toList());
 
         File bootstrapClasspath = config.getBootstrapClasspath();
+        List<File> extraClasspath = config.getExtraClasspath();
         return outputPath -> {
-            List<File> classpathDirs = bytecodeClasspath.stream().map(Input::getPath).map(Path::toFile).collect(Collectors.toList());
+            if (inputSources.getFilesAndHashes().isEmpty()) {
+                return;// no work to do
+            }
+
+            List<File> classpathDirs = Stream.concat(bytecodeClasspath.stream().map(Input::getPath).map(Path::toFile),
+                    extraClasspath.stream()).collect(Collectors.toList());
 
             // TODO don't dump APT to the same dir?
             Javac javac = new Javac(outputPath.toFile(), classpathDirs, outputPath.toFile(), bootstrapClasspath);
@@ -64,10 +79,15 @@ public class BytecodeTask extends TaskFactory {
             List<SourceUtils.FileInfo> sources = inputSources.getFilesAndHashes()
                     .keySet()
                     .stream()
-                    .map(p -> SourceUtils.FileInfo.create(inputSources.getPath().toAbsolutePath().resolve(p).toString(), p.toString()))
+                    .map(p -> SourceUtils.FileInfo.create(dir.resolve(p).toString(), p.toString()))
                     .collect(Collectors.toList());
 
-            javac.compile(sources);
+            try {
+                javac.compile(sources);
+            } catch (Exception exception) {
+                exception.printStackTrace();
+                throw exception;
+            }
 
         };
     }

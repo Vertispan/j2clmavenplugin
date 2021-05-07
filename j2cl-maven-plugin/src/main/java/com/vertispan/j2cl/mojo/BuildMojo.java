@@ -1,6 +1,7 @@
 package com.vertispan.j2cl.mojo;
 
 import com.vertispan.j2cl.build.*;
+import net.cardosi.mojo.Versions;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Plugin;
@@ -18,6 +19,7 @@ import org.apache.maven.project.ProjectBuildingRequest;
 import org.codehaus.plexus.component.configurator.expression.ExpressionEvaluator;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.Executors;
@@ -203,9 +205,24 @@ public class BuildMojo extends AbstractBuildMojo {
         Plugin plugin = project.getPlugin(pluginDescriptor.getPlugin().getKey());
 
         // accumulate configs and defaults, provide a lambda we can read dot-separated values from
-        ExpressionEvaluator expressionEvaluator = new PluginParameterExpressionEvaluator( session, mojoExecution );
+        ExpressionEvaluator expressionEvaluator = new PluginParameterExpressionEvaluator(session, mojoExecution);
 
-        Xpp3DomConfigValueProvider config = new Xpp3DomConfigValueProvider(merge((Xpp3Dom) plugin.getConfiguration(), mojoExecution.getConfiguration()), expressionEvaluator, repoSession, repositories, repoSystem);
+        //TODO need to be very careful about allowing these to be configurable, possibly should tie them to the "plugin version" aspect of the hash
+        //     or stitch them into the module's dependencies, that probably makes more sense...
+        List<File> extraClasspath = Arrays.asList(
+                getFileWithMavenCoords(jreJar),
+                getFileWithMavenCoords(internalAnnotationsJar),
+                getFileWithMavenCoords(jsinteropAnnotationsJar),
+                getFileWithMavenCoords("com.vertispan.jsinterop:base:" + Versions.VERTISPAN_JSINTEROP_BASE_VERSION)//TODO stop hardcoding this when goog releases a "base" which actually works on both platforms
+        );
+
+        List<File> extraJsZips = Arrays.asList(
+                getFileWithMavenCoords(jreJsZip),
+                getFileWithMavenCoords(bootstrapJsZip)
+        );
+
+
+        Xpp3DomConfigValueProvider config = new Xpp3DomConfigValueProvider(merge((Xpp3Dom) plugin.getConfiguration(), mojoExecution.getConfiguration()), expressionEvaluator, repoSession, repositories, repoSystem, extraClasspath, extraJsZips);
 
         ProjectBuildingRequest request = new DefaultProjectBuildingRequest(mavenSession.getProjectBuildingRequest());
 

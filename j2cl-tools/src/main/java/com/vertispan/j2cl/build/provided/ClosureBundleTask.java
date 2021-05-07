@@ -37,17 +37,22 @@ public class ClosureBundleTask extends TaskFactory {
         Input js = input(project, OutputTypes.TRANSPILED_JS);
 
         return outputPath -> {
-            Closure closureCompiler = new Closure();
-
             assert Files.isDirectory(outputPath);
             File closureOutputDir = outputPath.toFile();
-
-            Path transpiledJsSources = js.getPath();
 
             // even though we're already making the file in our own hash dir, we also want to
             // name the file by a hash so it has a unique filename based on its contents
             String hash ="TODO_HASH";// js.hash();//TODO consider factoring in the rest of this task's hash
             String outputFile = closureOutputDir + "/" + project.getKey() + hash;
+
+            if (js.getFilesAndHashes().isEmpty()) {
+                //TODO we probably need to create an empty file
+                return;// nothing to do
+            }
+
+            Closure closureCompiler = new Closure();
+
+            Path transpiledJsSources = js.getPath();
 
             // if there are no js sources, write an empty file and exit
             try (DirectoryStream<Path> dirStream = Files.newDirectoryStream(transpiledJsSources)) {
