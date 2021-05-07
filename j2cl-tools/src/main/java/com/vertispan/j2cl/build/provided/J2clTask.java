@@ -57,13 +57,13 @@ public class J2clTask extends TaskFactory {
                     .keySet()
                     .stream()
                     .filter(JAVA_SOURCES::matches)
-                    .map(p -> SourceUtils.FileInfo.create(p.toString(), dir.toAbsolutePath().relativize(p).toString()))
+                    .map(p -> SourceUtils.FileInfo.create(dir.toAbsolutePath().resolve(p).toString(), p.toString()))
                     .collect(Collectors.toList());
             List<SourceUtils.FileInfo> nativeSources = ownSources.getFilesAndHashes()
                     .keySet()
                     .stream()
                     .filter(NATIVE_JS_SOURCES::matches)
-                    .map(p -> SourceUtils.FileInfo.create(p.toString(), dir.toAbsolutePath().relativize(p).toString()))
+                    .map(p -> SourceUtils.FileInfo.create(dir.toAbsolutePath().resolve(p).toString(), p.toString()))
                     .collect(Collectors.toList());
 
             // TODO when we make j2cl incremental we'll consume the provided sources and hashes (the "values" in the

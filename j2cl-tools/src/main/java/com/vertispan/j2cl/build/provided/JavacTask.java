@@ -54,7 +54,7 @@ public class JavacTask extends TaskFactory {
             List<SourceUtils.FileInfo> sources = ownSources.getFilesAndHashes()
                     .keySet()
                     .stream()
-                    .map(p -> SourceUtils.FileInfo.create(p.toString(), dir.toAbsolutePath().relativize(p).toString()))
+                    .map(p -> SourceUtils.FileInfo.create(dir.toAbsolutePath().resolve(p).toString(), p.toString()))
                     .collect(Collectors.toList());
 
             javac.compile(sources);

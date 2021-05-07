@@ -45,6 +45,11 @@ public class Project implements com.vertispan.j2cl.build.task.Project {
     }
 
     @Override
+    public String toString() {
+        return key;
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;

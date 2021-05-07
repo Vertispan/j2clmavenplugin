@@ -48,7 +48,8 @@ public class TaskScheduler {
         Set<Input> ready = inputs.stream()
                 .map(CollectedTaskInputs::getInputs)
                 .flatMap(Collection::stream)
-                .filter(i -> i.getOutputType().equals(OutputTypes.INPUT_SOURCES))
+                // "jar" is an internal type right now
+                .filter(i -> i.getOutputType().equals(OutputTypes.INPUT_SOURCES) || i.getOutputType().equals("jar"))
                 .collect(Collectors.toCollection(HashSet::new));
 
         // Tracks all inputs by their general project+task, so we can inform all at once when real data is available.
@@ -60,8 +61,9 @@ public class TaskScheduler {
                 .collect(Collectors.groupingBy(Function.identity()));
 
         Set<CollectedTaskInputs> remainingWork = Collections.synchronizedSet(new HashSet<>(inputs));
+        remainingWork.removeIf(item -> ready.contains(item.getAsInput()));
 
-        scheduleAvailableWork(ready, allInputs, remainingWork, listener);
+        scheduleAvailableWork(Collections.synchronizedSet(ready), allInputs, remainingWork, listener);
 
         return remainingWork::clear;
     }
@@ -74,7 +76,7 @@ public class TaskScheduler {
         // iterating a copy in case something is removed while we're in here - at the time we were called it was important
         copy.forEach(taskDetails -> {
             if (!ready.containsAll(taskDetails.getInputs())) {
-                // at least one dependency isn't ready, move on
+                // at least one dependency isn't ready, move on, this will be called again when that changes
                 return;
             }
 
@@ -84,7 +86,12 @@ public class TaskScheduler {
                 public void onReady(DiskCache.CacheResult cacheResult) {
                     // We can now begin this work off-thread, will be woke up when it finishes.
                     // It is too late to cancel at this time, so no need to check.
-                    executor.execute(() -> execute(taskDetails, cacheResult, listener));
+                    executor.execute(() -> {
+                        execute(taskDetails, cacheResult, listener);
+
+                        // look for more work now that we've finished this one
+                        scheduleMoreWork(cacheResult);
+                    });
                 }
 
                 @Override
@@ -107,6 +114,7 @@ public class TaskScheduler {
                         // do the work in an executor, so that we don't block the current thread (usually main or disk cache watcher)
                         executor.execute(() -> {
                             ((TaskFactory.FinalOutputTask) taskDetails.getTask()).finish();
+
                             // we have to schedule more work afterwards because this is what triggers "all done" at the end
                             scheduleMoreWork(cacheResult);
                         });
@@ -117,12 +125,15 @@ public class TaskScheduler {
                 }
 
                 private void scheduleMoreWork(DiskCache.CacheResult cacheResult) {
+                    // mark current item as ready
+                    ready.add(taskDetails.getAsInput());
+
                     // When something finishes, remove it from the various dependency lists and see if we can run the loop again with more work.
                     // Presently this could be called multiple times, so we check if already removed
                     if (remainingWork.remove(taskDetails)) {
 
-                        for (Input input : allInputs.get(new Input(taskDetails.getProject(), taskDetails.getTaskFactory().getOutputType()))) {
-                            //TODO this is very wrong, if an existing task is still working, it might now have the wrong inputs
+                        for (Input input : allInputs.computeIfAbsent(taskDetails.getAsInput(), ignore -> Collections.emptyList())) {
+                            // since we don't support running more than one thing at a time, this will not change data out from under a running task
                             input.setCurrentContents(cacheResult.output());
                         }
 
@@ -146,6 +157,7 @@ public class TaskScheduler {
             taskDetails.getTask().execute(result.outputDir());
             result.markSuccess();
         } catch (Exception exception) {
+            exception.printStackTrace();//TODO once we log, don't do this
             result.markFailure();
         }
     }

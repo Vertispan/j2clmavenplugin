@@ -2,9 +2,17 @@ package com.vertispan.j2cl.build.impl;
 
 import com.vertispan.j2cl.build.Input;
 import com.vertispan.j2cl.build.Project;
+import com.vertispan.j2cl.build.TaskOutput;
+import com.vertispan.j2cl.build.UnpackJarTaskFactory;
 import com.vertispan.j2cl.build.task.Config;
 import com.vertispan.j2cl.build.task.TaskFactory;
+import io.methvin.watcher.hashing.FileHasher;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -39,6 +47,36 @@ public class CollectedTaskInputs {
 
     public CollectedTaskInputs(Project project) {
         this.project = project;
+    }
+
+    public static CollectedTaskInputs jar(Project project) {
+        // since this is a jar we only expect the one item
+        assert project.getSourceRoots().size() == 1;
+        Path jarPath = Paths.get(project.getSourceRoots().get(0));
+
+        CollectedTaskInputs t = new CollectedTaskInputs(project);
+        t.setTaskFactory(new UnpackJarTaskFactory());
+        t.setTask(t.getTaskFactory().resolve(project, null));
+        // create a fake input and give it a hash so that this unpack only runs if the jar changes
+        Input jarInput = new Input(project, "jar");
+        try {
+            jarInput.setCurrentContents(new TaskOutput(
+                    jarPath.getParent(),
+                    Collections.singletonMap(
+                            jarPath.getFileName(),
+                            FileHasher.DEFAULT_FILE_HASHER.hash(jarPath)
+                    )
+            ));
+        } catch (IOException ioException) {
+            throw new UncheckedIOException("Error hashing jar", ioException);
+        }
+        t.setInputs(Collections.singletonList(jarInput));
+        t.setUsedConfigs(Collections.emptyMap());
+        return t;
+    }
+
+    public Input getAsInput() {
+        return new Input(project, taskFactory.getOutputType());
     }
 
     public List<Input> getInputs() {

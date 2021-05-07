@@ -38,7 +38,11 @@ public abstract class DiskCache {
         }
 
         public TaskOutput output() {
-            return knownOutputs.get(taskDir);
+            TaskOutput taskOutput = knownOutputs.get(taskDir);
+            if (taskOutput == null) {
+                throw new IllegalStateException("Output not yet ready for " + taskDir);
+            }
+            return taskOutput;
         }
 
         public void markSuccess() {
@@ -90,22 +94,22 @@ public abstract class DiskCache {
                 for (WatchEvent<?> event : key.pollEvents()) {
                     if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE) {
                         // task ended one way or the other
-                        Path path = (Path) event.context();
-                        Path taskDir = knownMarkers.get(path);
+                        Path taskDir = (Path) key.watchable();
+                        Path createdPath = taskDir.resolve((Path) event.context());
                         Set<PendingCacheResult> listeners = taskFutures.get(taskDir);
-                        if (path.equals(successMarker(taskDir))) {
+                        if (createdPath.equals(successMarker(taskDir))) {
                             try {
-                                knownOutputs.put(path, makeOutput(path));
+                                knownOutputs.put(taskDir, makeOutput(taskDir));
                                 listeners.forEach(PendingCacheResult::success);
                             } catch (UncheckedIOException ioException) {
                                 // failure to hash is pretty terrible, we're in trouble
                                 ioException.printStackTrace();
                                 listeners.forEach(l -> l.error(ioException));
                             }
-                        } else {
-                            assert path.equals(failureMarker(taskDir));
+                        } else if (createdPath.equals(failureMarker(taskDir))) {
+                            assert createdPath.equals(failureMarker(taskDir));
                             listeners.forEach(PendingCacheResult::failure);
-                        }
+                        } //else this is the log file
                     } else if (event.kind() == StandardWatchEventKinds.ENTRY_DELETE) {
                         // task was canceled, we should attempt to take over
                         Path taskDir = (Path) event.context();
@@ -136,30 +140,32 @@ public abstract class DiskCache {
      */
     public static Map<Path, FileHash> hashContents(Path path) {
         HashMap<Path, FileHash> fileHashes = new HashMap<>();
-        FileHasher fileHasher = FileHasher.DEFAULT_FILE_HASHER;
-        try {
-            Files.walkFileTree(
-                    path,
-                    new SimpleFileVisitor<Path>() {
-                        @Override
-                        public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
-                            return FileVisitResult.CONTINUE;
-                        }
-
-                        @Override
-                        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-                            FileHash hash = PathUtils.hash(fileHasher, file);
-                            if (hash == null) {
-                                //file could have been deleted or was otherwise unreadable
-                                //TODO how do we handle this? For now skipping as PathUtils does
-                            } else {
-                                fileHashes.put(path.relativize(file), hash);
+        if (Files.exists(path)) {
+            FileHasher fileHasher = FileHasher.DEFAULT_FILE_HASHER;
+            try {
+                Files.walkFileTree(
+                        path,
+                        new SimpleFileVisitor<Path>() {
+                            @Override
+                            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+                                return FileVisitResult.CONTINUE;
                             }
-                            return FileVisitResult.CONTINUE;
-                        }
-                    });
-        } catch (IOException ioException) {
-            throw new UncheckedIOException(ioException);
+
+                            @Override
+                            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                                FileHash hash = PathUtils.hash(fileHasher, file);
+                                if (hash == null) {
+                                    //file could have been deleted or was otherwise unreadable
+                                    //TODO how do we handle this? For now skipping as PathUtils does
+                                } else {
+                                    fileHashes.put(path.relativize(file), hash);
+                                }
+                                return FileVisitResult.CONTINUE;
+                            }
+                        });
+            } catch (IOException ioException) {
+                throw new UncheckedIOException(ioException);
+            }
         }
         return fileHashes;
     }
@@ -326,6 +332,7 @@ public abstract class DiskCache {
 
     public void markFinished(CacheResult successfulResult) {
         try {
+            this.knownOutputs.put(successfulResult.taskDir, makeOutput(successfulResult.taskDir));
             Files.createFile(successMarker(successfulResult.taskDir));
         } catch (IOException ioException) {
             //TODO need to basically stop everything if we can't write files to cache
@@ -336,6 +343,7 @@ public abstract class DiskCache {
     public void markFailed(CacheResult failedResult) {
         try {
             Files.createFile(failureMarker(failedResult.taskDir));
+            new RuntimeException().printStackTrace();
         } catch (IOException ioException) {
             //TODO need to basically stop everything if we can't write files to cache
             throw new UncheckedIOException(ioException);

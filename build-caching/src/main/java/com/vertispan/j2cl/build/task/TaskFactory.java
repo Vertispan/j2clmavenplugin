@@ -1,6 +1,7 @@
 package com.vertispan.j2cl.build.task;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.function.Function;
@@ -26,12 +27,15 @@ public abstract class TaskFactory {
 //        //TODO inject into Input instances instead
 //        TaskFactory.collectorForThread.set(collectorForThread);
 //    }
+    public final List<com.vertispan.j2cl.build.Input> inputs = new ArrayList<>();
 
     protected Input input(Dependency dependency, String outputType) {
         return input(dependency.getProject(), outputType);
     }
     protected Input input(Project dependencyProject, String outputType) {
-        return new com.vertispan.j2cl.build.Input((com.vertispan.j2cl.build.Project) dependencyProject, outputType);
+        com.vertispan.j2cl.build.Input i = new com.vertispan.j2cl.build.Input((com.vertispan.j2cl.build.Project) dependencyProject, outputType);
+        inputs.add(i);
+        return i;
     }
     protected Function<Project, Input> inputs(String outputType) {
         return p -> input(p, outputType);
@@ -39,7 +43,7 @@ public abstract class TaskFactory {
 
     protected List<Project> scope(Collection<? extends Dependency> dependencies, Dependency.Scope scope) {
         return dependencies.stream()
-                .filter(d -> d.getScope() == scope)
+                .filter(d -> ((com.vertispan.j2cl.build.Dependency) d).belongsToScope(scope))
                 .map(Dependency::getProject)
                 .collect(Collectors.toList());
     }

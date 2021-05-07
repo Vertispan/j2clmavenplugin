@@ -25,10 +25,15 @@ public class TaskRegistry {
     public TaskRegistry(Map<String, String> outputToNameMappings) {
         ServiceLoader<TaskFactory> loader = ServiceLoader.load(TaskFactory.class);
         for (TaskFactory task : loader) {
-            if (task.getTaskName().equals(outputToNameMappings.get(task.getOutputType()))) {
+            String mapping = outputToNameMappings.get(task.getOutputType());
+            if (mapping == null) {
+                mapping = "default";
+            }
+            if (task.getTaskName().equals(mapping)) {
                 outputTypeToTaskMappings.put(task.getOutputType(), task);
             }
         }
+//        System.out.println(outputTypeToTaskMappings);
     }
 
     public TaskFactory taskForOutputType(String outputType) {
@@ -36,10 +41,5 @@ public class TaskRegistry {
             //TODO create something specific for this? or hijack it when setting up the input instead?
         }
         return outputTypeToTaskMappings.get(outputType);
-    }
-
-
-    public Path resolvePath(Project project, String outputType) {
-        return null;
     }
 }

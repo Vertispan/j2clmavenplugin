@@ -51,11 +51,12 @@ public class BytecodeTask extends TaskFactory {
                 .map(inputs(OutputTypes.BYTECODE))
                 .collect(Collectors.toList());
 
+        File bootstrapClasspath = config.getBootstrapClasspath();
         return outputPath -> {
             List<File> classpathDirs = bytecodeClasspath.stream().map(Input::getPath).map(Path::toFile).collect(Collectors.toList());
 
             // TODO don't dump APT to the same dir?
-            Javac javac = new Javac(outputPath.toFile(), classpathDirs, outputPath.toFile(), config.getBootstrapClasspath());
+            Javac javac = new Javac(outputPath.toFile(), classpathDirs, outputPath.toFile(), bootstrapClasspath);
 
             // TODO convention for mapping to original file paths, provide FileInfo out of Inputs instead of Paths,
             //      automatically relativized?
@@ -63,7 +64,7 @@ public class BytecodeTask extends TaskFactory {
             List<SourceUtils.FileInfo> sources = inputSources.getFilesAndHashes()
                     .keySet()
                     .stream()
-                    .map(p -> SourceUtils.FileInfo.create(p.toString(), dir.toAbsolutePath().relativize(p).toString()))
+                    .map(p -> SourceUtils.FileInfo.create(inputSources.getPath().toAbsolutePath().resolve(p).toString(), p.toString()))
                     .collect(Collectors.toList());
 
             javac.compile(sources);

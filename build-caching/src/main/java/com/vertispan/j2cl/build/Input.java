@@ -9,6 +9,7 @@ import java.nio.file.PathMatcher;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 /**
@@ -21,33 +22,62 @@ import java.util.stream.Collectors;
  * interested in, and take the hash of the hashes to represent
  */
 public class Input implements com.vertispan.j2cl.build.task.Input {
-    private static final PathMatcher[] EMPTY_PATH_MATCHER_ARRAY = new PathMatcher[0];
     private final Project project;
     private final String outputType;
-    private final PathMatcher[] filters;
 
     private TaskOutput contents;
 
     public Input(Project project, String outputType) {
-        this(project, outputType, EMPTY_PATH_MATCHER_ARRAY);
-    }
-    public Input(Project project, String outputType, PathMatcher[] filters) {
         this.project = project;
         this.outputType = outputType;
-        this.filters = filters;
+    }
+
+    /**
+     * Filtered implementation, so that we don't have to track each instance floating around, just
+     * the top level ones.
+     */
+    private static class FilteredInput implements com.vertispan.j2cl.build.task.Input {
+        private final Input wrapped;
+        private final PathMatcher[] filters;
+        public FilteredInput(Input input, PathMatcher[] filters) {
+            this.wrapped = input;
+            this.filters = filters;
+        }
+
+        @Override
+        public com.vertispan.j2cl.build.task.Input filter(PathMatcher... filters) {
+            // we don't especially care if we get duplicates, this should be a short list, but
+            // it would be nice to filter obvious dups, and the naive code here needs a copy
+            // anyway.
+            HashSet<PathMatcher> allMatchers = new HashSet<>(Arrays.asList(this.filters));
+            allMatchers.addAll(Arrays.asList(filters));
+            return new FilteredInput(wrapped, allMatchers.toArray(filters));
+        }
+
+        @Override
+        public Path getPath() {
+            return wrapped.getPath();
+        }
+
+        @Override
+        public Map<Path, FileHash> getFilesAndHashes() {
+            return wrapped.contents.filesAndHashes().stream()
+                    .filter(entry -> Arrays.stream(filters).anyMatch(f -> f.matches(entry.getKey())))
+                    .collect(Collectors.toMap(
+                            Map.Entry::getKey,
+                            Map.Entry::getValue,
+                            (h1, h2) -> {throw new IllegalStateException("Can't have two files with the same path");},
+                            TreeMap::new
+                    ));
+        }
     }
 
     @Override
-    public Input filter(PathMatcher... filters) {
-        if (this.filters.length == 0) {
-            return new Input(project, outputType, filters);
+    public com.vertispan.j2cl.build.task.Input filter(PathMatcher... filters) {
+        if (filters.length == 0) {
+            return this;
         }
-        // we don't especially care if we get duplicates, this should be a short list, but
-        // it would be nice to filter obvious dups, and the naive code here needs a copy
-        // anyway.
-        HashSet<PathMatcher> allMatchers = new HashSet<>(Arrays.asList(this.filters));
-        allMatchers.addAll(Arrays.asList(filters));
-        return new Input(project, outputType, allMatchers.toArray(filters));
+        return new FilteredInput(this, filters);
     }
 
     /**
@@ -98,8 +128,21 @@ public class Input implements com.vertispan.j2cl.build.task.Input {
     @Override
     public Map<Path, FileHash> getFilesAndHashes() {
         return contents.filesAndHashes().stream()
-                .filter(entry -> Arrays.stream(filters).anyMatch(f -> f.matches(entry.getKey())))
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue,
+                        (h1, h2) -> {throw new IllegalStateException("Can't have two files with the same path");},
+                        TreeMap::new
+                ));
+    }
+
+    @Override
+    public String toString() {
+        return "Input{" +
+                "project=" + project +
+                ", outputType='" + outputType + '\'' +
+                ", contents=" + contents +
+                '}';
     }
 
     @Override

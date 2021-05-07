@@ -7,11 +7,10 @@ import io.methvin.watcher.hashing.FileHash;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.CountDownLatch;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class BuildService {
     private final TaskRegistry taskRegistry;
@@ -51,32 +50,82 @@ public class BuildService {
             return;
         }
         CollectedTaskInputs collectedInputs = new CollectedTaskInputs(project);
-        PropertyTrackingConfig propertyTrackingConfig = new PropertyTrackingConfig(config);
+        if (!taskName.equals(OutputTypes.INPUT_SOURCES)) {
+            PropertyTrackingConfig propertyTrackingConfig = new PropertyTrackingConfig(config);
 
-        // build the task lambda that we'll use here
-        TaskFactory taskFactory = taskRegistry.taskForOutputType(taskName);
-        collectedInputs.setTaskFactory(taskFactory);
-        TaskFactory.Task task = taskFactory.resolve(project, propertyTrackingConfig);
-        collectedInputs.setTask(task);
+            // build the task lambda that we'll use here
+            TaskFactory taskFactory = taskRegistry.taskForOutputType(taskName);
+            collectedInputs.setTaskFactory(taskFactory);
+            if (taskFactory == null) {
+                throw new NullPointerException("Missing task factory: " + taskName);
+            }
+            assert taskFactory.inputs.isEmpty();
+            TaskFactory.Task task = taskFactory.resolve(project, propertyTrackingConfig);
+            collectedInputs.setTask(task);
+            collectedInputs.setInputs(new ArrayList<>(taskFactory.inputs));
+            taskFactory.inputs.clear();
 
-        // prevent the config object from being used incorrectly, where we can't detect its changes
-        propertyTrackingConfig.close();
+            // prevent the config object from being used incorrectly, where we can't detect its changes
+            propertyTrackingConfig.close();
+            collectedInputs.setUsedConfigs(propertyTrackingConfig.getUsedConfigs());
+        } else {
+            collectedInputs.setInputs(Collections.emptyList());
+            collectedInputs.setUsedConfigs(Collections.emptyMap());
+            collectedInputs.setTaskFactory(new InputSourceTaskFactory());
+        }
 
-        collectedInputs.setUsedConfigs(propertyTrackingConfig.getUsedConfigs());
         collectedSoFar.put(newInput, collectedInputs);
 
         // prep any other tasks that are needed
         for (Input input : collectedInputs.getInputs()) {
+
+            // make sure we have sources, hashes
             if (input.getOutputType().equals(OutputTypes.INPUT_SOURCES)) {
-//                // stop here, we'll handle this on the fly and point it at the actual sources, current hashes
-//                if (input.getProject().hasSourcesMapped()) {
-//                    // mark this as something to watch, let them get hashed automatically
-//                } else {
-//                    // unpack sources to somewhere reusable and hash contents
-//                    diskCache.waitForTask(CollectedTaskInputs.jar(input.getProject().getSourceRoots())).;
-//                }
-                continue;
+                // stop here, we'll handle this on the fly and point it at the actual sources, current hashes
+                // for jars, we unzip them as below - but requestBuild will handle reactor projects
+                if (!input.getProject().hasSourcesMapped()) {
+                    // unpack sources to somewhere reusable and hash contents
+
+                    // TODO we could make this async instead of blocking, do them all at once
+                    CollectedTaskInputs unpackJar = CollectedTaskInputs.jar(input.getProject());
+                    BlockingBuildListener listener = new BlockingBuildListener();
+                    taskScheduler.submit(Collections.singletonList(unpackJar), listener);
+                    try {
+                        listener.blockUntilFinished();
+                        CountDownLatch latch = new CountDownLatch(1);
+                        diskCache.waitForTask(unpackJar, new DiskCache.Listener() {
+                            @Override
+                            public void onReady(DiskCache.CacheResult result) {
+
+                            }
+
+                            @Override
+                            public void onFailure(DiskCache.CacheResult result) {
+
+                            }
+
+                            @Override
+                            public void onError(Throwable throwable) {
+
+                            }
+
+                            @Override
+                            public void onSuccess(DiskCache.CacheResult result) {
+                                // we know the work is done already, just grab the result dir
+                                input.setCurrentContents(result.output());
+                                latch.countDown();
+                            }
+                        });
+                        latch.await();
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException("Interrupted exception when unpacking!", e);
+                    }
+                    continue;
+                } // else this is something to watch, let them get hashed automatically
+
             }
+
+
             collectTasksFromProject(input.getOutputType(), input.getProject(), config, collectedSoFar);
         }
     }
@@ -110,7 +159,7 @@ public class BuildService {
      * Marks that a file has been created, deleted, or modified in the given project.
      */
     public synchronized void triggerChanges(Project project, Map<Path, FileHash> createdFiles, Map<Path, FileHash> changedFiles, Set<Path> deletedFiles) {
-        Map<Path, FileHash> hashes = currentProjectSourceHash.get(project);
+        Map<Path, FileHash> hashes = currentProjectSourceHash.computeIfAbsent(project, ignore -> new HashMap<>());
         hashes.keySet().removeAll(deletedFiles);
         assert hashes.keySet().stream().noneMatch(createdFiles.keySet()::contains) : "File already exists, can't be added";
         hashes.putAll(createdFiles);
@@ -135,10 +184,16 @@ public class BuildService {
         }
 
         // TODO update inputs with the hash changes we've seen
-        inputs.keySet().stream()
+        Stream.concat(inputs.keySet().stream(), inputs.values().stream().flatMap(i -> i.getInputs().stream()))
                 .filter(i -> i.getProject().hasSourcesMapped())
+                .filter(i -> i.getOutputType().equals(OutputTypes.INPUT_SOURCES))
                 .forEach(i -> {
-
+                    Map<Path, FileHash> currentHashes = currentProjectSourceHash.get(i.getProject());
+                    if (currentHashes.isEmpty()) {
+                        i.setCurrentContents(new TaskOutput(null, currentHashes));
+                    } else {
+                        i.setCurrentContents(new TaskOutput(currentHashes.keySet().iterator().next().getRoot(), currentHashes));
+                    }
                 });
 
         // this could possibly be more fine grained, only submit the projects which could be affected by changes

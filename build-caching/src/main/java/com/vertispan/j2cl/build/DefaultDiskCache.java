@@ -44,7 +44,7 @@ public class DefaultDiskCache extends DiskCache {
             hash.update(entry.getValue().getBytes(StandardCharsets.UTF_8));
         }
 
-        return cacheDir.toPath().resolve(projectName).resolve(hash.getValueHexString());
+        return cacheDir.toPath().resolve(projectName).resolve(hash.getValueHexString() + "-" + inputs.getTaskFactory().getOutputType());
     }
 
     @Override

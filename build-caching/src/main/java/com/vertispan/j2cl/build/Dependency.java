@@ -13,6 +13,20 @@ public class Dependency implements com.vertispan.j2cl.build.task.Dependency {
 
     private Scope scope = com.vertispan.j2cl.build.task.Dependency.Scope.BOTH;
 
+    public boolean belongsToScope(Scope scope) {
+        //TODO it is weird to let BOTH be passed as a param, probably make that impossible and clean this up
+        switch (getScope()) {
+            case COMPILE:
+                return scope.isCompileScope();
+            case RUNTIME:
+                return scope.isRuntimeScope();
+            case BOTH:
+                return true;
+            default:
+                throw new IllegalStateException("Unknown scope " + getScope());
+        }
+    }
+
     @Override
     public Project getProject() {
         return project;

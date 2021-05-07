@@ -10,11 +10,11 @@ public interface Dependency {
         RUNTIME,
         BOTH;
 
-        private boolean isCompileScope() {
+        public boolean isCompileScope() {
             return this != RUNTIME;
         }
 
-        private boolean isRuntimeScope() {
+        public boolean isRuntimeScope() {
             return this != COMPILE;
         }
     }

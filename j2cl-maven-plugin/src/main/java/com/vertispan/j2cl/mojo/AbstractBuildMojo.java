@@ -41,8 +41,8 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
     @Component
     protected ProjectBuilder projectBuilder;
 
-    @Parameter(defaultValue = "com.vertispan.j2cl:javac-bootstrap-classpath:" + Versions.J2CL_VERSION, required = true)
-    protected String javacBootstrapClasspathJar;
+    @Parameter(defaultValue = "com.vertispan.j2cl:javac-bootstrap-classpath:" + Versions.J2CL_VERSION, required = true, alias = "javacBootstrapClasspathJar")
+    protected String bootstrapClasspath;
 
     @Parameter(defaultValue = "com.vertispan.j2cl:jre:" + Versions.J2CL_VERSION, required = true)
     protected String jreJar;
@@ -235,7 +235,8 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
         }
         project.setDependencies(dependencies);
 
-        if (mavenProject.getCompileSourceRoots().isEmpty() && mavenProject.getResources().isEmpty()) {
+        // we only check for sources, not resources, as resources are always populated even for non-reactor projects
+        if (mavenProject.getCompileSourceRoots().isEmpty()/* && mavenProject.getResources().isEmpty()*/) {
             project.setSourceRoots(Collections.singletonList(artifact.getFile().toString()));
         } else {
             project.setSourceRoots(

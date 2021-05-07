@@ -13,7 +13,7 @@ public interface Input {
      * Specifies that only part of this input is required. A path entry that matches any
      * of the provided filters will be included.
      */
-    com.vertispan.j2cl.build.Input filter(PathMatcher... filters);
+    Input filter(PathMatcher... filters);
 
     /**
      * Public API for tasks.

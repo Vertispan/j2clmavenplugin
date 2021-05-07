@@ -2,10 +2,12 @@ package com.vertispan.j2cl.mojo;
 
 import com.vertispan.j2cl.build.*;
 import org.apache.maven.artifact.Artifact;
+import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Plugin;
 import org.apache.maven.plugin.MojoExecution;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
+import org.apache.maven.plugin.PluginParameterExpressionEvaluator;
 import org.apache.maven.plugin.descriptor.PluginDescriptor;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -13,6 +15,8 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.DefaultProjectBuildingRequest;
 import org.apache.maven.project.ProjectBuildingException;
 import org.apache.maven.project.ProjectBuildingRequest;
+import org.codehaus.plexus.component.configurator.expression.ExpressionEvaluator;
+import org.codehaus.plexus.util.xml.Xpp3Dom;
 
 import java.io.IOException;
 import java.util.*;
@@ -176,9 +180,9 @@ public class BuildMojo extends AbstractBuildMojo {
     @Parameter(defaultValue = "false")
     protected boolean checkAssertions;
 
-//    @Deprecated
-//    @Parameter(defaultValue = "SORT_ONLY")
-//    protected String dependencyMode;
+    @Deprecated
+    @Parameter(defaultValue = "SORT_ONLY")
+    protected String dependencyMode;
 
     @Parameter(defaultValue = "false")
     protected boolean enableSourcemaps;
@@ -186,15 +190,22 @@ public class BuildMojo extends AbstractBuildMojo {
     @Parameter(readonly = true, defaultValue = "${mojoExecution}")
     protected MojoExecution mojoExecution;
 
+    @Parameter(readonly = true, defaultValue = "${session}")
+    protected MavenSession session;
+
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
+        System.out.println(mojoExecution.getMojoDescriptor().getMojoConfiguration());
+
         PluginDescriptor pluginDescriptor = (PluginDescriptor) getPluginContext().get("pluginDescriptor");
         String pluginVersion = pluginDescriptor.getVersion();
 
         Plugin plugin = project.getPlugin(pluginDescriptor.getPlugin().getKey());
 
         // accumulate configs and defaults, provide a lambda we can read dot-separated values from
-        Xpp3DomConfigValueProvider config = new Xpp3DomConfigValueProvider(mojoExecution.getConfiguration());
+        ExpressionEvaluator expressionEvaluator = new PluginParameterExpressionEvaluator( session, mojoExecution );
+
+        Xpp3DomConfigValueProvider config = new Xpp3DomConfigValueProvider(merge((Xpp3Dom) plugin.getConfiguration(), mojoExecution.getConfiguration()), expressionEvaluator, repoSession, repositories, repoSystem);
 
         ProjectBuildingRequest request = new DefaultProjectBuildingRequest(mavenSession.getProjectBuildingRequest());
 
@@ -239,5 +250,17 @@ public class BuildMojo extends AbstractBuildMojo {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+    }
+
+    private static Xpp3Dom merge(Xpp3Dom pluginConfiguration, Xpp3Dom configuration) {
+        if (pluginConfiguration == null) {
+            if (configuration == null) {
+                return new Xpp3Dom("configuration");
+            }
+            return new Xpp3Dom(configuration);
+        } else if (configuration == null) {
+            return new Xpp3Dom(pluginConfiguration);
+        }
+        return Xpp3Dom.mergeXpp3Dom(new Xpp3Dom(configuration), new Xpp3Dom(pluginConfiguration));
     }
 }

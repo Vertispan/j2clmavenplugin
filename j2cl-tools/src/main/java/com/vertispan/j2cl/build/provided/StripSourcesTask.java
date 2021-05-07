@@ -34,9 +34,9 @@ public class StripSourcesTask extends TaskFactory {
             preprocessor.preprocess(
                     Stream.concat(
                             inputSources.getFilesAndHashes().keySet().stream()
-                                    .map(p -> SourceUtils.FileInfo.create(p.toString(), inputSources.getPath().toAbsolutePath().relativize(p).toString())),
+                                    .map(p -> SourceUtils.FileInfo.create(inputSources.getPath().toAbsolutePath().resolve(p).toString(), p.toString())),
                             generatedSources.getFilesAndHashes().keySet().stream()
-                                    .map(p -> SourceUtils.FileInfo.create(p.toString(), generatedSources.getPath().toAbsolutePath().relativize(p).toString()))
+                                    .map(p -> SourceUtils.FileInfo.create(inputSources.getPath().toAbsolutePath().resolve(p).toString(), p.toString()))
 
                     ).collect(Collectors.toList()
                     )
