@@ -11,7 +11,8 @@ import java.util.*;
 
 public class PropertyTrackingConfig implements Config {
     public interface ConfigValueProvider {
-        String readValueWithKey(String key);
+        String readStringWithKey(String key);
+        File readFileWithKey(String key);
     }
 
     private final ConfigValueProvider config;
@@ -31,7 +32,7 @@ public class PropertyTrackingConfig implements Config {
     public String getString(String key) {
         checkClosed(key);
         //TODO default handling...
-        String value = config.readValueWithKey(key);
+        String value = config.readStringWithKey(key);
         usedKeys.put(key, value);
         return value;
     }
@@ -46,13 +47,11 @@ public class PropertyTrackingConfig implements Config {
     public File getFile(String key) {
         checkClosed(key);
 
-        String pathname = config.readValueWithKey(key);
-        if (pathname == null) {
+        File value = config.readFileWithKey(key);
+        if (value == null) {
             usedKeys.put(key, null);
             return null;
         }
-
-        File value = new File(pathname);
 
         if (value.exists() && value.isFile()) {
             Murmur3F hash = new Murmur3F();
@@ -71,7 +70,7 @@ public class PropertyTrackingConfig implements Config {
 
     @Override
     public File getBootstrapClasspath() {
-        return getFile(getString("bootstrapClasspath"));
+        return getFile("bootstrapClasspath");
     }
 
     @Override
@@ -110,7 +109,7 @@ public class PropertyTrackingConfig implements Config {
 
     @Override
     public boolean getSourcemapsEnabled() {
-        return Boolean.parseBoolean(getString("sourcemapsEnabled"));
+        return Boolean.parseBoolean(getString("enableSourcemaps"));
     }
 
     @Override
