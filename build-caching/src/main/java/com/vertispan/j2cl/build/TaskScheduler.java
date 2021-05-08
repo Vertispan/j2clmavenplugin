@@ -121,7 +121,6 @@ public class TaskScheduler {
                     } else {
                         scheduleMoreWork(cacheResult);
                     }
-
                 }
 
                 private void scheduleMoreWork(DiskCache.CacheResult cacheResult) {

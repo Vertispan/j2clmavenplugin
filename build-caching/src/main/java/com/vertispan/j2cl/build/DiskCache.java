@@ -309,6 +309,8 @@ public abstract class DiskCache {
             }
 
             if (successMarker.toFile().exists()) {
+                // make sure we know it was successful
+                knownOutputs.computeIfAbsent(taskDir, this::makeOutput);
                 // already finished, success, no need to actually wait
                 cancelable.success();
                 //TODO mark as "nevermind" further?
