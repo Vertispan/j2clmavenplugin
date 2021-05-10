@@ -39,6 +39,8 @@ public class J2cl {
         Problems problems = new Problems();
         try {
             J2clTranspiler.transpile(options, problems);
+        } catch (Problems.Exit e) {
+            // Program aborted due to errors recorded in problems, will be logged below
         } catch (Throwable t) {
             System.out.println(options);
             throw t;
