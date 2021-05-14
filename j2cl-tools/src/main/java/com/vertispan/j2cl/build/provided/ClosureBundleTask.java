@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
+import java.util.stream.Collectors;
 
 /**
  * Emits a single compilationLevel=BUNDLE for this project only, without any dependencies.
@@ -42,7 +43,7 @@ public class ClosureBundleTask extends TaskFactory {
 
             // even though we're already making the file in our own hash dir, we also want to
             // name the file by a hash so it has a unique filename based on its contents
-            String hash ="TODO_HASH";// js.hash();//TODO consider factoring in the rest of this task's hash
+            String hash = "TODO_HASH";// js.hash();//TODO consider factoring in the rest of this task's hash
             String outputFile = closureOutputDir + "/" + project.getKey() + hash;
 
             if (js.getFilesAndHashes().isEmpty()) {
@@ -63,6 +64,8 @@ public class ClosureBundleTask extends TaskFactory {
             }
 
             // copy the sources locally so that we can create usable sourcemaps
+            //TODO consider a soft link
+            //TODO also consider using the PersistentInputStore to let try to cheat and map paths
             File sources = new File(closureOutputDir, "sources");
             FileUtils.copyDirectory(transpiledJsSources.toFile(), sources);
 
@@ -71,6 +74,7 @@ public class ClosureBundleTask extends TaskFactory {
                     CompilationLevel.BUNDLE,
                     DependencyOptions.DependencyMode.SORT_ONLY,
                     CompilerOptions.LanguageMode.NO_TRANSPILE,
+                    js.getFilesAndHashes().keySet().stream().map(file -> sources.toPath().resolve(file)).map(Path::toString).collect(Collectors.toList()),
                     sources,
                     Collections.emptyList(),
                     Collections.emptyList(),

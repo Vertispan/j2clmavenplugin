@@ -1,5 +1,7 @@
 package com.vertispan.j2cl.build.task;
 
+import com.vertispan.j2cl.build.TaskOutput;
+
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -73,10 +75,12 @@ public abstract class TaskFactory {
      * control. As a result, config properties can be used here and are not
      * required to be made part of the cache key.
      *
-     * Subject to change: the output path will still be provided, no need to read that from config
+     * Parameters are subject to change - webappDir should be read from the config
+     * object, as this won't affect the task hash, and the output from when the
+     * task last ran will be available as a parameter.
      */
     public interface FinalOutputTask extends Task {
-        void finish();
+        void finish(Path taskOutput) throws Exception;
     }
 
     /**

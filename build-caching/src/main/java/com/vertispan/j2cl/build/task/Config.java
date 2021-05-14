@@ -1,6 +1,7 @@
 package com.vertispan.j2cl.build.task;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -39,4 +40,11 @@ public interface Config {
     String getLanguageOut();
 
     List<File> getExtraClasspath();
+
+    /**
+     * This is an output directory, and should not be used an an input for a task,
+     * but only for the final step of copying output to the result directory.
+     * @return
+     */
+    Path getWebappDirectory();
 }

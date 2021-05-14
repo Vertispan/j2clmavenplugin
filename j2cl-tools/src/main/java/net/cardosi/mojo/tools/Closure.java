@@ -22,6 +22,7 @@ public class Closure {
             CompilationLevel compilationLevel,
             DependencyOptions.DependencyMode dependencyMode,
             CompilerOptions.LanguageMode languageOut,
+            List<String> jsInputPaths,
             @Nullable File jsSourceDir,
             List<File> jsZips,
             List<String> entrypoints,
@@ -39,11 +40,9 @@ public class Closure {
         Compiler jsCompiler = new Compiler(System.err);
 //        jsCompiler.setPersistentInputStore(persistentInputStore);
 
-        if (jsSourceDir != null) {
-            //TODO stop allowing null, instead force caller to enumerate the files like
-            //     we do elsewhere
+        for (String jsInputPath : jsInputPaths) {
             jscompArgs.add("--js");
-            jscompArgs.add(jsSourceDir + "/**/*.js");
+            jscompArgs.add(jsInputPath);
         }
 
         jsZips.forEach(file -> {
@@ -118,7 +117,7 @@ public class Closure {
             jscompRunner = new InProcessJsCompRunner(jscompArgs.toArray(new String[0]), jsCompiler, exportTestFunctions, checkAssertions);
         }
         if (!jscompRunner.shouldRunCompiler()) {
-            jscompArgs.forEach(System.out::println);
+//            jscompArgs.forEach(System.out::println);
             return false;
         }
 
@@ -129,7 +128,7 @@ public class Closure {
             jscompRunner.run();
 
             if (jscompRunner.hasErrors() || jscompRunner.exitCode != 0) {
-                jscompArgs.forEach(System.out::println);
+//                jscompArgs.forEach(System.out::println);
                 return false;
             }
         } finally {

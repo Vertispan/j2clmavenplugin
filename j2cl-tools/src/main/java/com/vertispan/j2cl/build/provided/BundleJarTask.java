@@ -39,8 +39,8 @@ public class BundleJarTask extends TaskFactory {
             }
 
             @Override
-            public void finish() {
-
+            public void finish(Path taskOutput) {
+                Path webappDirectory = config.getWebappDirectory();
             }
         };
     }

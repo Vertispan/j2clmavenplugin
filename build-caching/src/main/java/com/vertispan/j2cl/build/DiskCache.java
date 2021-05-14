@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  * Manages the cached task inputs and outputs.
@@ -130,7 +131,7 @@ public abstract class DiskCache {
 
     private TaskOutput makeOutput(Path taskDir) {
         Path outputDir = outputDir(taskDir);
-        Map<Path, FileHash> fileHashes = hashContents(outputDir);
+        Map<Path, FileHash> fileHashes = hashContents(outputDir).entrySet().stream().collect(Collectors.toMap(entry -> outputDir.relativize(entry.getKey()), Map.Entry::getValue));
         return new TaskOutput(outputDir, fileHashes);
     }
 
@@ -158,7 +159,7 @@ public abstract class DiskCache {
                                     //file could have been deleted or was otherwise unreadable
                                     //TODO how do we handle this? For now skipping as PathUtils does
                                 } else {
-                                    fileHashes.put(path.relativize(file), hash);
+                                    fileHashes.put(file, hash);
                                 }
                                 return FileVisitResult.CONTINUE;
                             }

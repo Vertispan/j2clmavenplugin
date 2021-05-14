@@ -33,7 +33,12 @@ public class J2clTask extends TaskFactory {
     @Override
     public Task resolve(Project project, Config config) {
         // J2CL is only interested in .java and .native.js files in our own sources
-        Input ownSources = input(project, OutputTypes.STRIPPED_SOURCES).filter(JAVA_SOURCES, NATIVE_JS_SOURCES);
+        Input ownJavaSources = input(project, OutputTypes.STRIPPED_SOURCES).filter(JAVA_SOURCES, NATIVE_JS_SOURCES);
+        List<Input> ownNativeJsSources = Stream.of(
+                input(project, OutputTypes.INPUT_SOURCES).filter(NATIVE_JS_SOURCES),
+                input(project, OutputTypes.GENERATED_SOURCES).filter(NATIVE_JS_SOURCES)
+        )
+        .collect(Collectors.toList());
 
         // From our classpath, j2cl is only interested in our compile classpath's bytecode
         List<Input> classpathHeaders = scope(project.getDependencies(), com.vertispan.j2cl.build.task.Dependency.Scope.COMPILE)
@@ -46,7 +51,7 @@ public class J2clTask extends TaskFactory {
         File bootstrapClasspath = config.getBootstrapClasspath();
         List<File> extraClasspath = config.getExtraClasspath();
         return outputPath -> {
-            if (ownSources.getFilesAndHashes().isEmpty()) {
+            if (ownJavaSources.getFilesAndHashes().isEmpty()) {
                 return;// nothing to do
             }
             List<File> classpathDirs = Stream.concat(classpathHeaders.stream().map(i -> i.getPath().toFile()), extraClasspath.stream())
@@ -56,16 +61,17 @@ public class J2clTask extends TaskFactory {
 
             // TODO convention for mapping to original file paths, provide FileInfo out of Inputs instead of Paths,
             //      automatically relativized?
-            Path dir = ownSources.getPath();
-            List<SourceUtils.FileInfo> javaSources = ownSources.getFilesAndHashes()
+            Path dir = ownJavaSources.getPath();
+            List<SourceUtils.FileInfo> javaSources = ownJavaSources.getFilesAndHashes()
                     .keySet()
                     .stream()
                     .filter(JAVA_SOURCES::matches)
                     .map(p -> SourceUtils.FileInfo.create(dir.toAbsolutePath().resolve(p).toString(), p.toString()))
                     .collect(Collectors.toList());
-            List<SourceUtils.FileInfo> nativeSources = ownSources.getFilesAndHashes()
-                    .keySet()
-                    .stream()
+            List<SourceUtils.FileInfo> nativeSources = ownNativeJsSources.stream().flatMap(i ->
+                    i.getFilesAndHashes()
+                            .keySet()
+                            .stream())
                     .filter(NATIVE_JS_SOURCES::matches)
                     .map(p -> SourceUtils.FileInfo.create(dir.toAbsolutePath().resolve(p).toString(), p.toString()))
                     .collect(Collectors.toList());

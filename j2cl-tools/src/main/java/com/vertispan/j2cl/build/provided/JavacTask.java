@@ -55,7 +55,7 @@ public class JavacTask extends TaskFactory {
 
             // TODO convention for mapping to original file paths, provide FileInfo out of Inputs instead of Paths,
             //      automatically relativized?
-            Path dir = ownSources.getPath();
+            Path dir = ownSources.getPath();//cannot be null since there are sources, we didn't return early
             List<SourceUtils.FileInfo> sources = ownSources.getFilesAndHashes()
                     .keySet()
                     .stream()

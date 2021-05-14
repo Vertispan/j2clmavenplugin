@@ -7,6 +7,8 @@ import io.methvin.watcher.hashing.Murmur3F;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 
 public class PropertyTrackingConfig implements Config {
@@ -145,5 +147,11 @@ public class PropertyTrackingConfig implements Config {
     @Override
     public String getLanguageOut() {
         return getString("languageOut");
+    }
+
+    @Override
+    public Path getWebappDirectory() {
+        // Note that this deliberately circumvents the hash building
+        return Paths.get(config.readStringWithKey("webappDirectory"));
     }
 }

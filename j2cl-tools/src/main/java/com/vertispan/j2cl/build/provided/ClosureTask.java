@@ -6,20 +6,31 @@ import com.google.javascript.jscomp.CompilerOptions;
 import com.google.javascript.jscomp.DependencyOptions;
 import com.vertispan.j2cl.build.task.*;
 import net.cardosi.mojo.tools.Closure;
+import org.apache.commons.io.FileUtils;
 
 import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.*;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @AutoService(TaskFactory.class)
 public class ClosureTask extends TaskFactory {
+    public static final PathMatcher JS_SOURCES = FileSystems.getDefault().getPathMatcher("glob:**/*.js");
+    public static final PathMatcher NATIVE_JS_SOURCES = FileSystems.getDefault().getPathMatcher("glob:**/*.native.js");
+    public static final PathMatcher PLAIN_JS_SOURCES = new PathMatcher() {
+        @Override
+        public boolean matches(Path path) {
+            return JS_SOURCES.matches(path) && !NATIVE_JS_SOURCES.matches(path);
+        }
+
+        @Override
+        public String toString() {
+            return "Only non-native JS sources";
+        }
+    };
     @Override
     public String getOutputType() {
         return OutputTypes.OPTIMIZED_JS;
@@ -36,10 +47,18 @@ public class ClosureTask extends TaskFactory {
         // TODO filter to just JS and sourcemaps? probably not required unless we also get sources
         //      from the actual input source instead of copying it along each step
         List<Input> jsSources = Stream.concat(
-                Stream.of(input(project, OutputTypes.TRANSPILED_JS)),
+                Stream.of(
+                        input(project, OutputTypes.TRANSPILED_JS).filter(JS_SOURCES),
+                        input(project, OutputTypes.GENERATED_SOURCES).filter(PLAIN_JS_SOURCES),
+                        input(project, OutputTypes.INPUT_SOURCES).filter(PLAIN_JS_SOURCES)
+                ),
                 scope(project.getDependencies(), Dependency.Scope.RUNTIME)
                 .stream()
-                .map(inputs(OutputTypes.TRANSPILED_JS))
+                .flatMap(p -> Stream.of(
+                        input(p, OutputTypes.TRANSPILED_JS).filter(JS_SOURCES),
+                        input(p, OutputTypes.GENERATED_SOURCES).filter(PLAIN_JS_SOURCES),
+                        input(p, OutputTypes.INPUT_SOURCES).filter(PLAIN_JS_SOURCES)
+                ))
         ).collect(Collectors.toList());
 
 
@@ -70,23 +89,40 @@ public class ClosureTask extends TaskFactory {
                 // set up a source directory to build from, and to make sourcemaps work
                 // TODO move logic to the "post" phase to decide whether or not to copy the sourcemap dir
                 String jsOutputDir = new File(closureOutputDir + "/" + initialScriptFilename).getParent();
-                File sources = new File(jsOutputDir, sourcemapDirectory);
-//            if (compilationLevel == CompilationLevel.BUNDLE) {
-//                if (!config.getSourcemapsEnabled()) {
-//                    //TODO warn that sourcemaps are there anyway, we can't disable in bundle modes?
-//                }
-//                sources = new File(jsOutputDir, sourcemapDirectory);
-//            } else {
-//                if (config.getSourcemapsEnabled()) {
-//                    sources = new File(jsOutputDir, sourcemapDirectory);//write to the same places as in bundle mode
-//                } else {
-//                    sources = entry
-//                }
-//
-//            }
-
-                Files.createDirectories(Paths.get(closureOutputDir.getAbsolutePath(), initialScriptFilename).getParent());
-
+                File sources;
+                if (compilationLevel == CompilationLevel.BUNDLE) {
+                    if (!sourcemapsEnabled) {
+                        //TODO warn that sourcemaps are there anyway, we can't disable in bundle modes?
+                    }
+                    sources = new File(jsOutputDir, sourcemapDirectory);
+                } else {
+                    if (sourcemapsEnabled) {
+                        sources = new File(jsOutputDir, sourcemapDirectory);//write to the same place as in bundle mode
+                    } else {
+                        sources = null;
+                    }
+                }
+                List<String> jsPaths;
+                if (sources != null) {
+                    Files.createDirectories(Paths.get(closureOutputDir.getAbsolutePath(), initialScriptFilename).getParent());
+                    for (Input jsSource : jsSources) {
+                        if (jsSource.getPath() != null) {
+                            FileUtils.copyDirectory(jsSource.getPath().toFile(), sources);
+                        }
+                    }
+                    jsPaths = jsSources.stream().flatMap(
+                            input -> input.getFilesAndHashes().keySet().stream()
+                                    .map(file -> sources.toPath().resolve(file))
+                                    .map(Path::toString)
+                    ).collect(Collectors.toList());
+                } else {
+                    // skip the copy, reference them from their original location
+                    jsPaths = jsSources.stream().flatMap(
+                            input -> input.getFilesAndHashes().keySet().stream()
+                                    .map(file -> input.getPath().resolve(file))
+                                    .map(Path::toString)
+                    ).collect(Collectors.toList());
+                }
 
                 Map<String, String> defines = new LinkedHashMap<>(configDefines);
 
@@ -98,6 +134,7 @@ public class ClosureTask extends TaskFactory {
                         compilationLevel,
                         dependencyMode,
                         languageOut,
+                        jsPaths,
                         sources,
                         extraJsZips,
                         entrypoint,
@@ -118,8 +155,12 @@ public class ClosureTask extends TaskFactory {
             }
 
             @Override
-            public void finish() {
-
+            public void finish(Path taskOutput) throws IOException {
+                Path webappDirectory = config.getWebappDirectory();
+                if (!Files.exists(webappDirectory)) {
+                    Files.createDirectories(webappDirectory);
+                }
+                FileUtils.copyDirectory(taskOutput.toFile(), webappDirectory.toFile());
             }
         };
     }

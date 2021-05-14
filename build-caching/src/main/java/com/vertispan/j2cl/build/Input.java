@@ -70,6 +70,14 @@ public class Input implements com.vertispan.j2cl.build.task.Input {
                             TreeMap::new
                     ));
         }
+
+        @Override
+        public String toString() {
+            return "FilteredInput{" +
+                    "wrapped=" + wrapped +
+                    ", filters=" + Arrays.toString(filters) +
+                    '}';
+        }
     }
 
     @Override

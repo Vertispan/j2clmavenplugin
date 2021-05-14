@@ -13,6 +13,7 @@ import java.util.stream.Stream;
 @AutoService(TaskFactory.class)
 public class StripSourcesTask extends TaskFactory {
     public static final PathMatcher JAVA_SOURCES = FileSystems.getDefault().getPathMatcher("glob:**/*.java");
+    public static final PathMatcher NATIVE_JS_SOURCES = FileSystems.getDefault().getPathMatcher("glob:**/*.native.js");
 
     @Override
     public String getOutputType() {
@@ -26,8 +27,8 @@ public class StripSourcesTask extends TaskFactory {
 
     @Override
     public Task resolve(Project project, Config config) {
-        Input inputSources = input(project, OutputTypes.INPUT_SOURCES).filter(JAVA_SOURCES);
-        Input generatedSources = input(project, OutputTypes.GENERATED_SOURCES).filter(JAVA_SOURCES);
+        Input inputSources = input(project, OutputTypes.INPUT_SOURCES).filter(JAVA_SOURCES, NATIVE_JS_SOURCES);
+        Input generatedSources = input(project, OutputTypes.GENERATED_SOURCES).filter(JAVA_SOURCES, NATIVE_JS_SOURCES);
 
         return outputPath -> {
             if (inputSources.getFilesAndHashes().isEmpty()) {
@@ -36,13 +37,11 @@ public class StripSourcesTask extends TaskFactory {
             GwtIncompatiblePreprocessor preprocessor = new GwtIncompatiblePreprocessor(outputPath.toFile());
             preprocessor.preprocess(
                     Stream.concat(
-                            inputSources.getFilesAndHashes().keySet().stream()
-                                    .map(p -> SourceUtils.FileInfo.create(inputSources.getPath().toAbsolutePath().resolve(p).toString(), p.toString())),
+                            inputSources.getFilesAndHashes().keySet().stream(),
                             generatedSources.getFilesAndHashes().keySet().stream()
-                                    .map(p -> SourceUtils.FileInfo.create(inputSources.getPath().toAbsolutePath().resolve(p).toString(), p.toString()))
-
-                    ).collect(Collectors.toList()
                     )
+                            .map(p -> SourceUtils.FileInfo.create(inputSources.getPath().toAbsolutePath().resolve(p).toString(), p.toString()))
+                            .collect(Collectors.toList())
             );
         };
     }
