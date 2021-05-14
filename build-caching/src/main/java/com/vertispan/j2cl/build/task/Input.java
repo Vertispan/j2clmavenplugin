@@ -1,9 +1,11 @@
 package com.vertispan.j2cl.build.task;
 
+import com.vertispan.j2cl.build.DiskCache;
 import io.methvin.watcher.hashing.FileHash;
 
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
+import java.util.Collection;
 import java.util.Map;
 
 public interface Input {
@@ -18,15 +20,19 @@ public interface Input {
     /**
      * Public API for tasks.
      *
-     * Provides the whole directory - avoid this if you are using filters, as your task will not
-     * get called again for changed files.
+     * Gets the current files of this input and their hashes that match the filters.
      */
-    Path getPath();
+    Collection<? extends CachedPath> getFilesAndHashes();
 
     /**
      * Public API for tasks.
      *
-     * Gets the current files of this input and their hashes that match the filters.
+     * Gets the source directories that contain the files offered by this input. Use
+     * caution when calling this, as it might contain files that were already filtered
+     * out, so could result in inconsistent cache output.
+     *
+     * For files that come from a task, usually results in zero or one items, for source
+     * directories of mapped projects, may result in zero to many items.
      */
-    Map<Path, FileHash> getFilesAndHashes();
+    Collection<Path> getParentPaths();
 }

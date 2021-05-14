@@ -3,12 +3,12 @@ package com.vertispan.j2cl.build;
 import com.vertispan.j2cl.build.impl.CollectedTaskInputs;
 import com.vertispan.j2cl.build.task.OutputTypes;
 import com.vertispan.j2cl.build.task.TaskFactory;
-import io.methvin.watcher.hashing.FileHash;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -21,7 +21,7 @@ public class BuildService {
     private final Map<Input, CollectedTaskInputs> inputs = new HashMap<>();
 
     // hashes of each file in each project, updated under lock
-    private final Map<Project, Map<Path, FileHash>> currentProjectSourceHash = new HashMap<>();
+    private final Map<Project, Map<Path, DiskCache.CacheEntry>> currentProjectSourceHash = new HashMap<>();
 
     private BlockingBuildListener prevBuild;
 
@@ -137,14 +137,13 @@ public class BuildService {
         // for each project which has sources, hash them
         inputs.keySet().stream().map(Input::getProject).filter(Project::hasSourcesMapped)
                 .forEach(project -> {
-                    Map<Path, FileHash> hashes = project.getSourceRoots().stream()
+                    Map<Path, DiskCache.CacheEntry> hashes = project.getSourceRoots().stream()
                             .map(Paths::get)
                             .map(DiskCache::hashContents)
-                            .map(Map::entrySet)
-                            .flatMap(Set::stream)
+                            .flatMap(Collection::stream)
                             .collect(Collectors.toMap(
-                                    Map.Entry::getKey,
-                                    Map.Entry::getValue,
+                                    DiskCache.CacheEntry::getSourcePath,
+                                    Function.identity(),
                                     (a, b) -> {
                                         throw new IllegalStateException("Two paths in a project had the same file");
                                     }
@@ -158,8 +157,8 @@ public class BuildService {
     /**
      * Marks that a file has been created, deleted, or modified in the given project.
      */
-    public synchronized void triggerChanges(Project project, Map<Path, FileHash> createdFiles, Map<Path, FileHash> changedFiles, Set<Path> deletedFiles) {
-        Map<Path, FileHash> hashes = currentProjectSourceHash.computeIfAbsent(project, ignore -> new HashMap<>());
+    public synchronized void triggerChanges(Project project, Map<Path, DiskCache.CacheEntry> createdFiles, Map<Path, DiskCache.CacheEntry> changedFiles, Set<Path> deletedFiles) {
+        Map<Path, DiskCache.CacheEntry> hashes = currentProjectSourceHash.computeIfAbsent(project, ignore -> new HashMap<>());
         hashes.keySet().removeAll(deletedFiles);
         assert hashes.keySet().stream().noneMatch(createdFiles.keySet()::contains) : "File already exists, can't be added";
         hashes.putAll(createdFiles);
@@ -188,12 +187,8 @@ public class BuildService {
                 .filter(i -> i.getProject().hasSourcesMapped())
                 .filter(i -> i.getOutputType().equals(OutputTypes.INPUT_SOURCES))
                 .forEach(i -> {
-                    Map<Path, FileHash> currentHashes = currentProjectSourceHash.get(i.getProject());
-                    if (currentHashes.isEmpty()) {
-                        i.setCurrentContents(new TaskOutput(null, currentHashes));
-                    } else {
-                        i.setCurrentContents(new TaskOutput(currentHashes.keySet().iterator().next().getRoot(), currentHashes));
-                    }
+                    Map<Path, DiskCache.CacheEntry> currentHashes = currentProjectSourceHash.get(i.getProject());
+                    i.setCurrentContents(new TaskOutput(currentHashes.values()));
                 });
 
         // this could possibly be more fine grained, only submit the projects which could be affected by changes

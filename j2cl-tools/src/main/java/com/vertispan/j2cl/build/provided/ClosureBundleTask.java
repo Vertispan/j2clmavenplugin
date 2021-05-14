@@ -4,6 +4,7 @@ import com.google.auto.service.AutoService;
 import com.google.javascript.jscomp.CompilationLevel;
 import com.google.javascript.jscomp.CompilerOptions;
 import com.google.javascript.jscomp.DependencyOptions;
+import com.vertispan.j2cl.build.DiskCache;
 import com.vertispan.j2cl.build.task.*;
 import net.cardosi.mojo.tools.Closure;
 import org.apache.commons.io.FileUtils;
@@ -53,28 +54,26 @@ public class ClosureBundleTask extends TaskFactory {
 
             Closure closureCompiler = new Closure();
 
-            Path transpiledJsSources = js.getPath();
-
             // if there are no js sources, write an empty file and exit
-            try (DirectoryStream<Path> dirStream = Files.newDirectoryStream(transpiledJsSources)) {
-                if (!dirStream.iterator().hasNext()) {
-                    Files.createFile(Paths.get(outputFile));
-                    return;
-                }
+            if (js.getFilesAndHashes().isEmpty()) {
+                Files.createFile(Paths.get(outputFile));
+                return;
             }
 
             // copy the sources locally so that we can create usable sourcemaps
             //TODO consider a soft link
             //TODO also consider using the PersistentInputStore to let try to cheat and map paths
             File sources = new File(closureOutputDir, "sources");
-            FileUtils.copyDirectory(transpiledJsSources.toFile(), sources);
+            for (Path path : js.getParentPaths()) {
+                FileUtils.copyDirectory(path.toFile(), sources);
+            }
 
             // create the JS bundle, only ordering these files
             boolean success = closureCompiler.compile(
                     CompilationLevel.BUNDLE,
                     DependencyOptions.DependencyMode.SORT_ONLY,
                     CompilerOptions.LanguageMode.NO_TRANSPILE,
-                    js.getFilesAndHashes().keySet().stream().map(file -> sources.toPath().resolve(file)).map(Path::toString).collect(Collectors.toList()),
+                    js.getFilesAndHashes().stream().map(CachedPath::getAbsolutePath).map(Path::toString).collect(Collectors.toList()),
                     sources,
                     Collections.emptyList(),
                     Collections.emptyList(),

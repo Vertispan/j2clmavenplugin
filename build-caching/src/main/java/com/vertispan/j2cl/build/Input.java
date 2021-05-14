@@ -1,15 +1,13 @@
 package com.vertispan.j2cl.build;
 
+import com.vertispan.j2cl.build.task.CachedPath;
 import io.methvin.watcher.hashing.FileHash;
 import io.methvin.watcher.hashing.Murmur3F;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -55,20 +53,15 @@ public class Input implements com.vertispan.j2cl.build.task.Input {
         }
 
         @Override
-        public Path getPath() {
-            return wrapped.getPath();
+        public Collection<Path> getParentPaths() {
+            return getFilesAndHashes().stream().map(DiskCache.CacheEntry::getAbsoluteParent).collect(Collectors.toSet());
         }
 
         @Override
-        public Map<Path, FileHash> getFilesAndHashes() {
+        public Collection<DiskCache.CacheEntry> getFilesAndHashes() {
             return wrapped.contents.filesAndHashes().stream()
-                    .filter(entry -> Arrays.stream(filters).anyMatch(f -> f.matches(entry.getKey())))
-                    .collect(Collectors.toMap(
-                            Map.Entry::getKey,
-                            Map.Entry::getValue,
-                            (h1, h2) -> {throw new IllegalStateException("Can't have two files with the same path");},
-                            TreeMap::new
-                    ));
+                    .filter(entry -> Arrays.stream(filters).anyMatch(f -> f.matches(entry.getSourcePath())))
+                    .collect(Collectors.toList());
         }
 
         @Override
@@ -108,9 +101,9 @@ public class Input implements com.vertispan.j2cl.build.task.Input {
      * re-hash each file every time we ask.
      */
     public void updateHash(Murmur3F hash) {
-        for (Map.Entry<Path, FileHash> fileAndHash : getFilesAndHashes().entrySet()) {
-            hash.update(fileAndHash.getKey().toString().getBytes(StandardCharsets.UTF_8));
-            hash.update(fileAndHash.getValue().asBytes());
+        for (DiskCache.CacheEntry fileAndHash : getFilesAndHashes()) {
+            hash.update(fileAndHash.getSourcePath().toString().getBytes(StandardCharsets.UTF_8));
+            hash.update(fileAndHash.getHash().asBytes());
         }
     }
 
@@ -129,19 +122,13 @@ public class Input implements com.vertispan.j2cl.build.task.Input {
     }
 
     @Override
-    public Path getPath() {
-        return contents.getPath();
+    public Collection<Path> getParentPaths() {
+        return getFilesAndHashes().stream().map(DiskCache.CacheEntry::getAbsoluteParent).collect(Collectors.toSet());
     }
 
     @Override
-    public Map<Path, FileHash> getFilesAndHashes() {
-        return contents.filesAndHashes().stream()
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        Map.Entry::getValue,
-                        (h1, h2) -> {throw new IllegalStateException("Can't have two files with the same path");},
-                        TreeMap::new
-                ));
+    public Collection<DiskCache.CacheEntry> getFilesAndHashes() {
+        return contents.filesAndHashes();
     }
 
     @Override

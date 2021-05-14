@@ -9,6 +9,7 @@ import java.io.File;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
+import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -48,18 +49,16 @@ public class JavacTask extends TaskFactory {
                 return;// no work to do
             }
 
-            List<File> classpathDirs = Stream.concat(classpathHeaders.stream().map(Input::getPath).map(Path::toFile),
+            List<File> classpathDirs = Stream.concat(classpathHeaders.stream().map(Input::getParentPaths).flatMap(Collection::stream).map(Path::toFile),
                     extraClasspath.stream()).collect(Collectors.toList());
 
             Javac javac = new Javac(null, classpathDirs, outputPath.toFile(), bootstrapClasspath);
 
             // TODO convention for mapping to original file paths, provide FileInfo out of Inputs instead of Paths,
             //      automatically relativized?
-            Path dir = ownSources.getPath();//cannot be null since there are sources, we didn't return early
             List<SourceUtils.FileInfo> sources = ownSources.getFilesAndHashes()
-                    .keySet()
                     .stream()
-                    .map(p -> SourceUtils.FileInfo.create(dir.toAbsolutePath().resolve(p).toString(), p.toString()))
+                    .map(p -> SourceUtils.FileInfo.create(p.getAbsolutePath().toString(), p.getSourcePath().toString()))
                     .collect(Collectors.toList());
 
             javac.compile(sources);

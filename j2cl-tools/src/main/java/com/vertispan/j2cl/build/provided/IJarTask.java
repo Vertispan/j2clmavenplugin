@@ -1,6 +1,7 @@
 package com.vertispan.j2cl.build.provided;
 
 import com.google.auto.service.AutoService;
+import com.vertispan.j2cl.build.DiskCache;
 import com.vertispan.j2cl.build.task.*;
 
 import java.nio.file.Files;
@@ -29,9 +30,9 @@ public class IJarTask extends TaskFactory {
         return outputPath -> {
 
             // for now we're going to just copy the bytecode
-            for (Path path : myStrippedBytecode.getFilesAndHashes().keySet()) {
-                Files.createDirectories(outputPath.resolve(path).getParent());
-                Files.copy(myStrippedBytecode.getPath().resolve(path), outputPath.resolve(path));
+            for (CachedPath path : myStrippedBytecode.getFilesAndHashes()) {
+                Files.createDirectories(outputPath.resolve(path.getSourcePath()).getParent());
+                Files.copy(path.getAbsolutePath(), outputPath.resolve(path.getSourcePath()));
             }
         };
     }

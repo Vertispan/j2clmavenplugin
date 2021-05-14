@@ -1,6 +1,7 @@
 package com.vertispan.j2cl.build.provided;
 
 import com.google.auto.service.AutoService;
+import com.vertispan.j2cl.build.DiskCache;
 import com.vertispan.j2cl.build.task.*;
 
 import java.nio.file.FileSystems;
@@ -34,9 +35,9 @@ public class AptTask extends TaskFactory {
 
         return outputPath -> {
             // the BytecodeTask already did the work for us, just copy sources to output
-            for (Path path : myBytecode.getFilesAndHashes().keySet()) {
-                Files.createDirectories(outputPath.resolve(path).getParent());
-                Files.copy(myBytecode.getPath().resolve(path), outputPath.resolve(path));
+            for (CachedPath entry : myBytecode.getFilesAndHashes()) {
+                Files.createDirectories(outputPath.resolve(entry.getSourcePath()).getParent());
+                Files.copy(entry.getAbsolutePath(), outputPath.resolve(entry.getSourcePath()));
             }
         };
     }

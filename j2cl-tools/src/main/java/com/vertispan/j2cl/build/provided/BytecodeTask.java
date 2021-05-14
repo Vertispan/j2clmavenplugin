@@ -2,6 +2,7 @@ package com.vertispan.j2cl.build.provided;
 
 import com.google.auto.service.AutoService;
 import com.google.j2cl.common.SourceUtils;
+import com.vertispan.j2cl.build.DiskCache;
 import com.vertispan.j2cl.build.task.*;
 import net.cardosi.mojo.tools.Javac;
 
@@ -10,6 +11,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
+import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -46,9 +48,9 @@ public class BytecodeTask extends TaskFactory {
             // instead copy the bytecode out of the jar so it can be used by downtream bytecode/apt tasks
             Input existingUnpackedBytecode = input(project, OutputTypes.INPUT_SOURCES).filter(JAVA_BYTECODE);
             return outputPath -> {
-                for (Path path : existingUnpackedBytecode.getFilesAndHashes().keySet()) {
-                    Files.createDirectories(outputPath.resolve(path).getParent());
-                    Files.copy(existingUnpackedBytecode.getPath().resolve(path), outputPath.resolve(path));
+                for (CachedPath entry : existingUnpackedBytecode.getFilesAndHashes()) {
+                    Files.createDirectories(outputPath.resolve(entry.getSourcePath()).getParent());
+                    Files.copy(entry.getAbsolutePath(), outputPath.resolve(entry.getSourcePath()));
                 }
             };
         }
@@ -67,19 +69,19 @@ public class BytecodeTask extends TaskFactory {
                 return;// no work to do
             }
 
-            List<File> classpathDirs = Stream.concat(bytecodeClasspath.stream().map(Input::getPath).map(Path::toFile),
-                    extraClasspath.stream()).collect(Collectors.toList());
+            List<File> classpathDirs = Stream.concat(
+                    bytecodeClasspath.stream().map(Input::getParentPaths).flatMap(Collection::stream).map(Path::toFile),
+                    extraClasspath.stream()
+            ).collect(Collectors.toList());
 
             // TODO don't dump APT to the same dir?
             Javac javac = new Javac(outputPath.toFile(), classpathDirs, outputPath.toFile(), bootstrapClasspath);
 
             // TODO convention for mapping to original file paths, provide FileInfo out of Inputs instead of Paths,
             //      automatically relativized?
-            Path dir = inputSources.getPath();
             List<SourceUtils.FileInfo> sources = inputSources.getFilesAndHashes()
-                    .keySet()
                     .stream()
-                    .map(p -> SourceUtils.FileInfo.create(dir.resolve(p).toString(), p.toString()))
+                    .map(p -> SourceUtils.FileInfo.create(p.getAbsolutePath().toString(), p.getSourcePath().toString()))
                     .collect(Collectors.toList());
 
             try {

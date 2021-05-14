@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -41,7 +42,7 @@ public class WatchService {
                     public void onEvent(DirectoryChangeEvent event) throws IOException {
                         if (!event.isDirectory()) {
                             Path rootPath = event.rootPath();
-                            update(pathToProjects.get(rootPath), rootPath.relativize(event.path()), event.eventType(), event.hash());
+                            update(pathToProjects.get(rootPath), rootPath, rootPath.relativize(event.path()), event.eventType(), event.hash());
                         }
                     }
                 })
@@ -51,9 +52,10 @@ public class WatchService {
         for (Map.Entry<Path, Project> entry : pathToProjects.entrySet()) {
             Project project = entry.getValue();
             Path rootPath = entry.getKey();
-            Map<Path, FileHash> projectFiles = directoryWatcher.pathHashes().entrySet().stream()
+            Map<Path, DiskCache.CacheEntry> projectFiles = directoryWatcher.pathHashes().entrySet().stream()
                     .filter(e -> e.getKey().startsWith(rootPath))
-                    .collect(Collectors.toMap(e -> rootPath.relativize(e.getKey()), Map.Entry::getValue));
+                    .map(e -> new DiskCache.CacheEntry(rootPath.relativize(e.getKey()), rootPath, e.getValue()))
+                    .collect(Collectors.toMap(e -> e.getSourcePath(), Function.identity()));
             buildService.triggerChanges(project, projectFiles, Collections.emptyMap(), Collections.emptySet());
         }
 
@@ -61,13 +63,13 @@ public class WatchService {
         directoryWatcher.watchAsync(executorService);
     }
 
-    private void update(Project project, Path relativeFilePath, DirectoryChangeEvent.EventType eventType, FileHash hash) {
+    private void update(Project project, Path rootPath, Path relativeFilePath, DirectoryChangeEvent.EventType eventType, FileHash hash) {
         switch (eventType) {
             case CREATE:
-                buildService.triggerChanges(project, Collections.singletonMap(relativeFilePath, hash), Collections.emptyMap(), Collections.emptySet());
+                buildService.triggerChanges(project, Collections.singletonMap(relativeFilePath, new DiskCache.CacheEntry(relativeFilePath, rootPath, hash)), Collections.emptyMap(), Collections.emptySet());
                 break;
             case MODIFY:
-                buildService.triggerChanges(project, Collections.emptyMap(), Collections.singletonMap(relativeFilePath, hash), Collections.emptySet());
+                buildService.triggerChanges(project, Collections.emptyMap(), Collections.singletonMap(relativeFilePath, new DiskCache.CacheEntry(relativeFilePath, rootPath, hash)), Collections.emptySet());
                 break;
             case DELETE:
                 buildService.triggerChanges(project, Collections.emptyMap(), Collections.emptyMap(), Collections.singleton(relativeFilePath));

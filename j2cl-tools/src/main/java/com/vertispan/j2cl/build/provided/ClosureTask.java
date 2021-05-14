@@ -4,6 +4,7 @@ import com.google.auto.service.AutoService;
 import com.google.javascript.jscomp.CompilationLevel;
 import com.google.javascript.jscomp.CompilerOptions;
 import com.google.javascript.jscomp.DependencyOptions;
+import com.vertispan.j2cl.build.DiskCache;
 import com.vertispan.j2cl.build.task.*;
 import net.cardosi.mojo.tools.Closure;
 import org.apache.commons.io.FileUtils;
@@ -105,21 +106,24 @@ public class ClosureTask extends TaskFactory {
                 List<String> jsPaths;
                 if (sources != null) {
                     Files.createDirectories(Paths.get(closureOutputDir.getAbsolutePath(), initialScriptFilename).getParent());
+
+                    //TODO this is quite dirty, we should make this a configurable input to match
+                    //     which files are important
                     for (Input jsSource : jsSources) {
-                        if (jsSource.getPath() != null) {
-                            FileUtils.copyDirectory(jsSource.getPath().toFile(), sources);
+                        for (Path path : jsSource.getParentPaths()) {
+                            FileUtils.copyDirectory(path.toFile(), sources);
                         }
                     }
                     jsPaths = jsSources.stream().flatMap(
-                            input -> input.getFilesAndHashes().keySet().stream()
-                                    .map(file -> sources.toPath().resolve(file))
+                            input -> input.getFilesAndHashes().stream()
+                                    .map(CachedPath::getAbsolutePath)
                                     .map(Path::toString)
                     ).collect(Collectors.toList());
                 } else {
                     // skip the copy, reference them from their original location
                     jsPaths = jsSources.stream().flatMap(
-                            input -> input.getFilesAndHashes().keySet().stream()
-                                    .map(file -> input.getPath().resolve(file))
+                            input -> input.getFilesAndHashes().stream()
+                                    .map(CachedPath::getAbsolutePath)
                                     .map(Path::toString)
                     ).collect(Collectors.toList());
                 }

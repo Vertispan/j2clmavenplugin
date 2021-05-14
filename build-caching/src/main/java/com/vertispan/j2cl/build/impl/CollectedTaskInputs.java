@@ -1,9 +1,6 @@
 package com.vertispan.j2cl.build.impl;
 
-import com.vertispan.j2cl.build.Input;
-import com.vertispan.j2cl.build.Project;
-import com.vertispan.j2cl.build.TaskOutput;
-import com.vertispan.j2cl.build.UnpackJarTaskFactory;
+import com.vertispan.j2cl.build.*;
 import com.vertispan.j2cl.build.task.Config;
 import com.vertispan.j2cl.build.task.TaskFactory;
 import io.methvin.watcher.hashing.FileHasher;
@@ -61,11 +58,7 @@ public class CollectedTaskInputs {
         Input jarInput = new Input(project, "jar");
         try {
             jarInput.setCurrentContents(new TaskOutput(
-                    jarPath.getParent(),
-                    Collections.singletonMap(
-                            jarPath.getFileName(),
-                            FileHasher.DEFAULT_FILE_HASHER.hash(jarPath)
-                    )
+                    Collections.singleton(new DiskCache.CacheEntry(jarPath.getFileName(), jarPath.getParent(), FileHasher.DEFAULT_FILE_HASHER.hash(jarPath)))
             ));
         } catch (IOException ioException) {
             throw new UncheckedIOException("Error hashing jar", ioException);

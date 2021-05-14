@@ -1,6 +1,7 @@
 package com.vertispan.j2cl.build;
 
 import com.vertispan.j2cl.build.impl.CollectedTaskInputs;
+import com.vertispan.j2cl.build.task.CachedPath;
 import io.methvin.watcher.PathUtils;
 import io.methvin.watcher.hashing.FileHash;
 import io.methvin.watcher.hashing.FileHasher;
@@ -12,12 +13,8 @@ import java.io.UncheckedIOException;
 import java.nio.file.WatchService;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 /**
  * Manages the cached task inputs and outputs.
@@ -131,16 +128,75 @@ public abstract class DiskCache {
 
     private TaskOutput makeOutput(Path taskDir) {
         Path outputDir = outputDir(taskDir);
-        Map<Path, FileHash> fileHashes = hashContents(outputDir).entrySet().stream().collect(Collectors.toMap(entry -> outputDir.relativize(entry.getKey()), Map.Entry::getValue));
-        return new TaskOutput(outputDir, fileHashes);
+        return new TaskOutput(hashContents(outputDir));
+    }
+
+    public static class CacheEntry implements Comparable<CacheEntry>, CachedPath {
+        /** Relative path to the resuls dir or its original source dir */
+        private final Path sourcePath;
+        /** Absolute path to the results dir. Not to be serialized to disk. */
+        private final Path absoluteParent;
+
+        /** Hash of the file, so we can notice changes, or hash the tree.  */
+        private final FileHash hash;
+
+        public CacheEntry(Path sourcePath, Path absoluteParent, FileHash hash) {
+            this.sourcePath = sourcePath;
+            this.absoluteParent = absoluteParent;
+            this.hash = hash;
+        }
+
+        @Override
+        public Path getSourcePath() {
+            return sourcePath;
+        }
+
+        public Path getAbsoluteParent() {
+            return absoluteParent;
+        }
+
+        @Override
+        public Path getAbsolutePath() {
+            return absoluteParent.resolve(sourcePath);
+        }
+
+        @Override
+        public FileHash getHash() {
+            return hash;
+        }
+
+        @Override
+        public int compareTo(CacheEntry cacheEntry) {
+            return sourcePath.compareTo(cacheEntry.sourcePath);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            CacheEntry that = (CacheEntry) o;
+
+            if (!sourcePath.equals(that.sourcePath)) return false;
+            if (!absoluteParent.equals(that.absoluteParent)) return false;
+            return hash.equals(that.hash);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = sourcePath.hashCode();
+            result = 31 * result + absoluteParent.hashCode();
+            result = 31 * result + hash.hashCode();
+            return result;
+        }
     }
 
     /**
      * Helper like PathUtils.initWatcherState to produce the relative paths of any files
      * in a path, and their corresponding hashes.
      */
-    public static Map<Path, FileHash> hashContents(Path path) {
-        HashMap<Path, FileHash> fileHashes = new HashMap<>();
+    public static Collection<CacheEntry> hashContents(Path path) {
+        Set<CacheEntry> fileHashes = new HashSet<>();
         if (Files.exists(path)) {
             FileHasher fileHasher = FileHasher.DEFAULT_FILE_HASHER;
             try {
@@ -159,7 +215,7 @@ public abstract class DiskCache {
                                     //file could have been deleted or was otherwise unreadable
                                     //TODO how do we handle this? For now skipping as PathUtils does
                                 } else {
-                                    fileHashes.put(file, hash);
+                                    fileHashes.add(new CacheEntry(file, path, hash));
                                 }
                                 return FileVisitResult.CONTINUE;
                             }

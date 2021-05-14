@@ -37,10 +37,10 @@ public class StripSourcesTask extends TaskFactory {
             GwtIncompatiblePreprocessor preprocessor = new GwtIncompatiblePreprocessor(outputPath.toFile());
             preprocessor.preprocess(
                     Stream.concat(
-                            inputSources.getFilesAndHashes().keySet().stream(),
-                            generatedSources.getFilesAndHashes().keySet().stream()
+                            inputSources.getFilesAndHashes().stream(),
+                            generatedSources.getFilesAndHashes().stream()
                     )
-                            .map(p -> SourceUtils.FileInfo.create(inputSources.getPath().toAbsolutePath().resolve(p).toString(), p.toString()))
+                            .map(p -> SourceUtils.FileInfo.create(p.getAbsolutePath().toString(), p.getSourcePath().toString()))
                             .collect(Collectors.toList())
             );
         };

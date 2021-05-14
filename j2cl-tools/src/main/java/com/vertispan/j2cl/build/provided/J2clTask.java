@@ -54,26 +54,26 @@ public class J2clTask extends TaskFactory {
             if (ownJavaSources.getFilesAndHashes().isEmpty()) {
                 return;// nothing to do
             }
-            List<File> classpathDirs = Stream.concat(classpathHeaders.stream().map(i -> i.getPath().toFile()), extraClasspath.stream())
+            List<File> classpathDirs = Stream.concat(
+                    classpathHeaders.stream().flatMap(i -> i.getParentPaths().stream().map(Path::toFile)),
+                    extraClasspath.stream()
+            )
                     .collect(Collectors.toList());
 
             J2cl j2cl = new J2cl(classpathDirs, bootstrapClasspath, outputPath.toFile());
 
             // TODO convention for mapping to original file paths, provide FileInfo out of Inputs instead of Paths,
             //      automatically relativized?
-            Path dir = ownJavaSources.getPath();
             List<SourceUtils.FileInfo> javaSources = ownJavaSources.getFilesAndHashes()
-                    .keySet()
                     .stream()
-                    .filter(JAVA_SOURCES::matches)
-                    .map(p -> SourceUtils.FileInfo.create(dir.toAbsolutePath().resolve(p).toString(), p.toString()))
+                    .filter(e -> JAVA_SOURCES.matches(e.getSourcePath()))
+                    .map(p -> SourceUtils.FileInfo.create(p.getAbsolutePath().toString(), p.getSourcePath().toString()))
                     .collect(Collectors.toList());
             List<SourceUtils.FileInfo> nativeSources = ownNativeJsSources.stream().flatMap(i ->
                     i.getFilesAndHashes()
-                            .keySet()
                             .stream())
-                    .filter(NATIVE_JS_SOURCES::matches)
-                    .map(p -> SourceUtils.FileInfo.create(dir.toAbsolutePath().resolve(p).toString(), p.toString()))
+                    .filter(e -> NATIVE_JS_SOURCES.matches(e.getSourcePath()))
+                    .map(p -> SourceUtils.FileInfo.create(p.getAbsolutePath().toString(), p.getSourcePath().toString()))
                     .collect(Collectors.toList());
 
             // TODO when we make j2cl incremental we'll consume the provided sources and hashes (the "values" in the

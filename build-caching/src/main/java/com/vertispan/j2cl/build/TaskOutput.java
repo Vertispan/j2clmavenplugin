@@ -1,27 +1,15 @@
 package com.vertispan.j2cl.build;
 
-import io.methvin.watcher.hashing.FileHash;
-
-import java.nio.file.Path;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 
 public class TaskOutput {
-    private final Path path;
-    private final TreeMap<Path, FileHash> relativeFileHashes;
+    private final TreeSet<DiskCache.CacheEntry> relativeFileHashes;
 
-    public TaskOutput(Path path, Map<Path, FileHash> relativeFileHashes) {
-        this.path = path;
-        this.relativeFileHashes = new TreeMap<>(relativeFileHashes);
+    public TaskOutput(Collection<DiskCache.CacheEntry> relativeFileHashes) {
+        this.relativeFileHashes = new TreeSet<>(relativeFileHashes);
     }
 
-    public Collection<Map.Entry<Path, FileHash>> filesAndHashes() {
-        return Collections.unmodifiableCollection(relativeFileHashes.entrySet());
-    }
-
-    public Path getPath() {
-        return path;
+    public Collection<DiskCache.CacheEntry> filesAndHashes() {
+        return Collections.unmodifiableCollection(relativeFileHashes);
     }
 }
