@@ -50,7 +50,7 @@ public class J2clTask extends TaskFactory {
 
         File bootstrapClasspath = config.getBootstrapClasspath();
         List<File> extraClasspath = config.getExtraClasspath();
-        return outputPath -> {
+        return output -> {
             if (ownJavaSources.getFilesAndHashes().isEmpty()) {
                 return;// nothing to do
             }
@@ -60,7 +60,7 @@ public class J2clTask extends TaskFactory {
             )
                     .collect(Collectors.toList());
 
-            J2cl j2cl = new J2cl(classpathDirs, bootstrapClasspath, outputPath.toFile());
+            J2cl j2cl = new J2cl(classpathDirs, bootstrapClasspath, output.path().toFile());
 
             // TODO convention for mapping to original file paths, provide FileInfo out of Inputs instead of Paths,
             //      automatically relativized?

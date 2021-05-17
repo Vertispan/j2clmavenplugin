@@ -30,11 +30,11 @@ public class StripSourcesTask extends TaskFactory {
         Input inputSources = input(project, OutputTypes.INPUT_SOURCES).filter(JAVA_SOURCES, NATIVE_JS_SOURCES);
         Input generatedSources = input(project, OutputTypes.GENERATED_SOURCES).filter(JAVA_SOURCES, NATIVE_JS_SOURCES);
 
-        return outputPath -> {
+        return output -> {
             if (inputSources.getFilesAndHashes().isEmpty()) {
                 return;// nothing to do
             }
-            GwtIncompatiblePreprocessor preprocessor = new GwtIncompatiblePreprocessor(outputPath.toFile());
+            GwtIncompatiblePreprocessor preprocessor = new GwtIncompatiblePreprocessor(output.path().toFile());
             preprocessor.preprocess(
                     Stream.concat(
                             inputSources.getFilesAndHashes().stream(),

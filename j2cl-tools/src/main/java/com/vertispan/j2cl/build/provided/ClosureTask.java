@@ -4,14 +4,12 @@ import com.google.auto.service.AutoService;
 import com.google.javascript.jscomp.CompilationLevel;
 import com.google.javascript.jscomp.CompilerOptions;
 import com.google.javascript.jscomp.DependencyOptions;
-import com.vertispan.j2cl.build.DiskCache;
 import com.vertispan.j2cl.build.task.*;
 import net.cardosi.mojo.tools.Closure;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.*;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -80,10 +78,10 @@ public class ClosureTask extends TaskFactory {
         String sourcemapDirectory = "sources";
         return new FinalOutputTask() {
             @Override
-            public void execute(Path outputPath) throws Exception {
+            public void execute(TaskOutput output) throws Exception {
                 Closure closureCompiler = new Closure();
 
-                File closureOutputDir = outputPath.toFile();
+                File closureOutputDir = output.path().toFile();
 
                 CompilationLevel compilationLevel = CompilationLevel.fromString(compilationLevelConfig);
 
@@ -159,12 +157,12 @@ public class ClosureTask extends TaskFactory {
             }
 
             @Override
-            public void finish(Path taskOutput) throws IOException {
+            public void finish(TaskOutput taskOutput) throws IOException {
                 Path webappDirectory = config.getWebappDirectory();
                 if (!Files.exists(webappDirectory)) {
                     Files.createDirectories(webappDirectory);
                 }
-                FileUtils.copyDirectory(taskOutput.toFile(), webappDirectory.toFile());
+                FileUtils.copyDirectory(taskOutput.path().toFile(), webappDirectory.toFile());
             }
         };
     }

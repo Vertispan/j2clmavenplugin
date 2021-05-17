@@ -4,13 +4,12 @@ import com.google.auto.service.AutoService;
 import com.google.javascript.jscomp.CompilationLevel;
 import com.google.javascript.jscomp.CompilerOptions;
 import com.google.javascript.jscomp.DependencyOptions;
-import com.vertispan.j2cl.build.DiskCache;
 import com.vertispan.j2cl.build.task.*;
+import io.methvin.watcher.hashing.FileHasher;
 import net.cardosi.mojo.tools.Closure;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
-import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -38,14 +37,13 @@ public class ClosureBundleTask extends TaskFactory {
         //      from the actual input source instead of copying it along each step
         Input js = input(project, OutputTypes.TRANSPILED_JS);
 
-        return outputPath -> {
-            assert Files.isDirectory(outputPath);
-            File closureOutputDir = outputPath.toFile();
+        return output -> {
+            assert Files.isDirectory(output.path());
+            File closureOutputDir = output.path().toFile();
 
             // even though we're already making the file in our own hash dir, we also want to
             // name the file by a hash so it has a unique filename based on its contents
-            String hash = "TODO_HASH";// js.hash();//TODO consider factoring in the rest of this task's hash
-            String outputFile = closureOutputDir + "/" + project.getKey() + hash;
+            String outputFile = closureOutputDir + "/" + project.getKey() + ".js";
 
             if (js.getFilesAndHashes().isEmpty()) {
                 //TODO we probably need to create an empty file
@@ -55,8 +53,9 @@ public class ClosureBundleTask extends TaskFactory {
             Closure closureCompiler = new Closure();
 
             // if there are no js sources, write an empty file and exit
+            Path outputFilePath = Paths.get(outputFile);
             if (js.getFilesAndHashes().isEmpty()) {
-                Files.createFile(Paths.get(outputFile));
+                Files.createFile(outputFilePath);
                 return;
             }
 
@@ -90,6 +89,11 @@ public class ClosureBundleTask extends TaskFactory {
             if (!success) {
                 throw new IllegalStateException("Closure Compiler failed, check log for details");
             }
+
+            // hash the file itself, rename to include that hash
+            String fileHash = FileHasher.DEFAULT_FILE_HASHER.hash(outputFilePath).asString();
+            Files.move(outputFilePath, outputFilePath.resolveSibling(project.getKey() + "-" + fileHash + ".js"));
+            //TODO when back to keyboard rename sourcemap? is that a thing we need to do?
         };
     }
 }

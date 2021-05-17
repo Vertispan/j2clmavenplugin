@@ -1,8 +1,5 @@
 package com.vertispan.j2cl.build.task;
 
-import com.vertispan.j2cl.build.TaskOutput;
-
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -65,7 +62,7 @@ public abstract class TaskFactory {
      */
     @FunctionalInterface
     public interface Task {
-        void execute(Path outputPath) throws Exception;
+        void execute(TaskOutput output) throws Exception;
     }
 
     /**
@@ -80,7 +77,7 @@ public abstract class TaskFactory {
      * task last ran will be available as a parameter.
      */
     public interface FinalOutputTask extends Task {
-        void finish(Path taskOutput) throws Exception;
+        void finish(TaskOutput taskOutput) throws Exception;
     }
 
     /**

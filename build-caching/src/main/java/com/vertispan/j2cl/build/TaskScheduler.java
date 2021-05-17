@@ -3,6 +3,7 @@ package com.vertispan.j2cl.build;
 import com.vertispan.j2cl.build.impl.CollectedTaskInputs;
 import com.vertispan.j2cl.build.task.OutputTypes;
 import com.vertispan.j2cl.build.task.TaskFactory;
+import com.vertispan.j2cl.build.task.TaskOutput;
 
 import java.util.*;
 import java.util.concurrent.Executor;
@@ -164,7 +165,7 @@ public class TaskScheduler {
 
     private void executeFinalTask(CollectedTaskInputs taskDetails, DiskCache.CacheResult cacheResult) throws Exception {
         long start = System.currentTimeMillis();
-        ((TaskFactory.FinalOutputTask) taskDetails.getTask()).finish(cacheResult.outputDir());
+        ((TaskFactory.FinalOutputTask) taskDetails.getTask()).finish(new TaskOutput(cacheResult.outputDir()));
         System.out.println(taskDetails.getProject().getKey() + " final task " + taskDetails.getTaskFactory().getOutputType() + " finished in " + (System.currentTimeMillis() - start) + "ms");
     }
 
@@ -174,7 +175,8 @@ public class TaskScheduler {
         // TODO implement logs!
         try {
             long start = System.currentTimeMillis();
-            taskDetails.getTask().execute(result.outputDir());
+
+            taskDetails.getTask().execute(new TaskOutput(result.outputDir()));
             long elapsedMillis = System.currentTimeMillis() - start;
             if (elapsedMillis > 5) {
                 System.out.println(taskDetails.getProject().getKey() + " finished " + taskDetails.getTaskFactory().getOutputType() + " in " + elapsedMillis + "ms");

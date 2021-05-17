@@ -29,7 +29,7 @@ public class UnpackJarTaskFactory extends TaskFactory {
         // we don't have any proper inputs or configs
 
         // given the first (only) entry in the project's sources, unpack them
-        return outputPath -> {
+        return output -> {
             List<String> sourceRoots = ((com.vertispan.j2cl.build.Project) project).getSourceRoots();
             assert sourceRoots.size() == 1;
 
@@ -39,7 +39,7 @@ public class UnpackJarTaskFactory extends TaskFactory {
                     if (z.isDirectory()) {
                         continue;
                     }
-                    Path outPath = outputPath.resolve(z.getName());
+                    Path outPath = output.path().resolve(z.getName());
                     try (InputStream inputStream = zipInputFile.getInputStream(z)) {
                         Files.createDirectories(outPath.getParent());
                         Files.copy(inputStream, outPath);

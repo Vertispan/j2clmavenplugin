@@ -26,6 +26,6 @@ public class SkipAptTask extends TaskFactory {
 
     @Override
     public Task resolve(Project project, Config config) {
-        return outputPath -> {};
+        return ignore -> {};
     }
 }

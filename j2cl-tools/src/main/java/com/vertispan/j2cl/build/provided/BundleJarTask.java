@@ -1,11 +1,6 @@
 package com.vertispan.j2cl.build.provided;
 
-import com.vertispan.j2cl.build.task.OutputTypes;
-import com.vertispan.j2cl.build.task.Config;
-import com.vertispan.j2cl.build.task.Project;
-import com.vertispan.j2cl.build.task.Dependency;
-import com.vertispan.j2cl.build.task.Input;
-import com.vertispan.j2cl.build.task.TaskFactory;
+import com.vertispan.j2cl.build.task.*;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -34,12 +29,12 @@ public class BundleJarTask extends TaskFactory {
 
         return new FinalOutputTask() {
             @Override
-            public void execute(Path outputPath) throws Exception {
+            public void execute(TaskOutput output) throws Exception {
 
             }
 
             @Override
-            public void finish(Path taskOutput) {
+            public void finish(TaskOutput taskOutput) {
                 Path webappDirectory = config.getWebappDirectory();
             }
         };

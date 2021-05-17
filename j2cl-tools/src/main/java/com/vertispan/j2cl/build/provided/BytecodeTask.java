@@ -47,10 +47,10 @@ public class BytecodeTask extends TaskFactory {
         if (!project.hasSourcesMapped()) {
             // instead copy the bytecode out of the jar so it can be used by downtream bytecode/apt tasks
             Input existingUnpackedBytecode = input(project, OutputTypes.INPUT_SOURCES).filter(JAVA_BYTECODE);
-            return outputPath -> {
+            return output -> {
                 for (CachedPath entry : existingUnpackedBytecode.getFilesAndHashes()) {
-                    Files.createDirectories(outputPath.resolve(entry.getSourcePath()).getParent());
-                    Files.copy(entry.getAbsolutePath(), outputPath.resolve(entry.getSourcePath()));
+                    Files.createDirectories(output.path().resolve(entry.getSourcePath()).getParent());
+                    Files.copy(entry.getAbsolutePath(), output.path().resolve(entry.getSourcePath()));
                 }
             };
         }
@@ -64,7 +64,7 @@ public class BytecodeTask extends TaskFactory {
 
         File bootstrapClasspath = config.getBootstrapClasspath();
         List<File> extraClasspath = config.getExtraClasspath();
-        return outputPath -> {
+        return output -> {
             if (inputSources.getFilesAndHashes().isEmpty()) {
                 return;// no work to do
             }
@@ -75,7 +75,7 @@ public class BytecodeTask extends TaskFactory {
             ).collect(Collectors.toList());
 
             // TODO don't dump APT to the same dir?
-            Javac javac = new Javac(outputPath.toFile(), classpathDirs, outputPath.toFile(), bootstrapClasspath);
+            Javac javac = new Javac(output.path().toFile(), classpathDirs, output.path().toFile(), bootstrapClasspath);
 
             // TODO convention for mapping to original file paths, provide FileInfo out of Inputs instead of Paths,
             //      automatically relativized?

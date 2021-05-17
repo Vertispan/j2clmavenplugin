@@ -27,12 +27,12 @@ public class IJarTask extends TaskFactory {
     @Override
     public Task resolve(Project project, Config config) {
         Input myStrippedBytecode = input(project, OutputTypes.STRIPPED_BYTECODE);
-        return outputPath -> {
+        return output -> {
 
             // for now we're going to just copy the bytecode
             for (CachedPath path : myStrippedBytecode.getFilesAndHashes()) {
-                Files.createDirectories(outputPath.resolve(path.getSourcePath()).getParent());
-                Files.copy(path.getAbsolutePath(), outputPath.resolve(path.getSourcePath()));
+                Files.createDirectories(output.path().resolve(path.getSourcePath()).getParent());
+                Files.copy(path.getAbsolutePath(), output.path().resolve(path.getSourcePath()));
             }
         };
     }
