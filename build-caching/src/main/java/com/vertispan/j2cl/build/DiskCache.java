@@ -141,7 +141,11 @@ public abstract class DiskCache {
         private final FileHash hash;
 
         public CacheEntry(Path sourcePath, Path absoluteParent, FileHash hash) {
-            this.sourcePath = sourcePath;
+            if (sourcePath.isAbsolute()) {
+                this.sourcePath = absoluteParent.relativize(sourcePath);
+            } else {
+                this.sourcePath = sourcePath;
+            }
             this.absoluteParent = absoluteParent;
             this.hash = hash;
         }
