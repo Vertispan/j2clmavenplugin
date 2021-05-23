@@ -3,9 +3,7 @@ package com.vertispan.j2cl.mojo;
 import com.vertispan.j2cl.build.*;
 import net.cardosi.mojo.Versions;
 import org.apache.maven.artifact.Artifact;
-import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Plugin;
-import org.apache.maven.plugin.MojoExecution;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugin.PluginParameterExpressionEvaluator;
@@ -189,23 +187,15 @@ public class BuildMojo extends AbstractBuildMojo {
     @Parameter(defaultValue = "false")
     protected boolean enableSourcemaps;
 
-    @Parameter(readonly = true, defaultValue = "${mojoExecution}")
-    protected MojoExecution mojoExecution;
-
-    @Parameter(readonly = true, defaultValue = "${session}")
-    protected MavenSession session;
-
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        System.out.println(mojoExecution.getMojoDescriptor().getMojoConfiguration());
-
         PluginDescriptor pluginDescriptor = (PluginDescriptor) getPluginContext().get("pluginDescriptor");
         String pluginVersion = pluginDescriptor.getVersion();
 
         Plugin plugin = project.getPlugin(pluginDescriptor.getPlugin().getKey());
 
         // accumulate configs and defaults, provide a lambda we can read dot-separated values from
-        ExpressionEvaluator expressionEvaluator = new PluginParameterExpressionEvaluator(session, mojoExecution);
+        ExpressionEvaluator expressionEvaluator = new PluginParameterExpressionEvaluator(mavenSession, mojoExecution);
 
         //TODO need to be very careful about allowing these to be configurable, possibly should tie them to the "plugin version" aspect of the hash
         //     or stitch them into the module's dependencies, that probably makes more sense...
@@ -265,19 +255,8 @@ public class BuildMojo extends AbstractBuildMojo {
             buildService.requestBuild(listener);
             listener.blockUntilFinished();
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            throw new MojoExecutionException("Interrupted", e);
         }
     }
 
-    private static Xpp3Dom merge(Xpp3Dom pluginConfiguration, Xpp3Dom configuration) {
-        if (pluginConfiguration == null) {
-            if (configuration == null) {
-                return new Xpp3Dom("configuration");
-            }
-            return new Xpp3Dom(configuration);
-        } else if (configuration == null) {
-            return new Xpp3Dom(pluginConfiguration);
-        }
-        return Xpp3Dom.mergeXpp3Dom(new Xpp3Dom(configuration), new Xpp3Dom(pluginConfiguration));
-    }
 }

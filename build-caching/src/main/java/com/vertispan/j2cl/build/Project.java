@@ -10,7 +10,7 @@ import java.util.List;
 public class Project implements com.vertispan.j2cl.build.task.Project {
     private final String key;
 
-    private List<Dependency> dependencies;
+    private List<? extends com.vertispan.j2cl.build.task.Dependency> dependencies;
     private List<String> sourceRoots;
 
     public Project(String key) {
@@ -27,7 +27,7 @@ public class Project implements com.vertispan.j2cl.build.task.Project {
         return dependencies;
     }
 
-    public void setDependencies(List<Dependency> dependencies) {
+    public void setDependencies(List<? extends com.vertispan.j2cl.build.task.Dependency> dependencies) {
         this.dependencies = dependencies;
     }
 

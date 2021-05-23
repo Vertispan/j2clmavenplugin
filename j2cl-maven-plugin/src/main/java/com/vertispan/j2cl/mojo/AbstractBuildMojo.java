@@ -10,6 +10,7 @@ import org.apache.maven.artifact.ArtifactUtils;
 import org.apache.maven.artifact.resolver.filter.ScopeArtifactFilter;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.FileSet;
+import org.apache.maven.plugin.MojoExecution;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -17,6 +18,7 @@ import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.ProjectBuilder;
 import org.apache.maven.project.ProjectBuildingException;
 import org.apache.maven.project.ProjectBuildingRequest;
+import org.codehaus.plexus.util.xml.Xpp3Dom;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.artifact.DefaultArtifact;
@@ -89,6 +91,9 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
     @Parameter( defaultValue = "${project.remoteProjectRepositories}", readonly = true, required = true )
     protected List<RemoteRepository> repositories;
 
+    @Parameter(readonly = true, defaultValue = "${mojoExecution}")
+    protected MojoExecution mojoExecution;
+
     private static String key(Artifact artifact) {
         // this is roughly DefaultArtifact.toString, minus scope, since we don't care what the scope is for the purposes of building projects
         String key = artifact.getGroupId() + ":" + artifact.getArtifactId() + ":" + artifact.getBaseVersion();
@@ -96,6 +101,18 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
             key += ":" + artifact.getClassifier();
         }
         return key;
+    }
+
+    protected static Xpp3Dom merge(Xpp3Dom pluginConfiguration, Xpp3Dom configuration) {
+        if (pluginConfiguration == null) {
+            if (configuration == null) {
+                return new Xpp3Dom("configuration");
+            }
+            return new Xpp3Dom(configuration);
+        } else if (configuration == null) {
+            return new Xpp3Dom(pluginConfiguration);
+        }
+        return Xpp3Dom.mergeXpp3Dom(new Xpp3Dom(configuration), new Xpp3Dom(pluginConfiguration));
     }
 
     protected int getWorkerTheadCount() {
