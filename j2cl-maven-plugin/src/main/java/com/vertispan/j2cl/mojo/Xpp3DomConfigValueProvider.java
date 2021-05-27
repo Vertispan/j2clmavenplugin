@@ -12,8 +12,7 @@ import org.eclipse.aether.resolution.ArtifactRequest;
 import org.eclipse.aether.resolution.ArtifactResolutionException;
 
 import java.io.File;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * Wraps Maven's Xpp3Dom so dot-separated properties can be accessed.
@@ -24,8 +23,8 @@ public class Xpp3DomConfigValueProvider implements PropertyTrackingConfig.Config
     private final RepositorySystemSession repoSession;
     private final List<RemoteRepository> repositories;
     private final RepositorySystem repoSystem;
-    private final List<File> extraClasspath;
-    private final List<File> extraJsZips;
+    private final FileListConfigNode extraClasspath;
+    private final FileListConfigNode extraJsZips;
 
     public Xpp3DomConfigValueProvider(Xpp3Dom config, ExpressionEvaluator expressionEvaluator, RepositorySystemSession repoSession, List<RemoteRepository> repositories, RepositorySystem repoSystem, List<File> extraClasspath, List<File> extraJsZips) {
         this.config = config;
@@ -33,8 +32,8 @@ public class Xpp3DomConfigValueProvider implements PropertyTrackingConfig.Config
         this.repoSession = repoSession;
         this.repositories = repositories;
         this.repoSystem = repoSystem;
-        this.extraClasspath = extraClasspath;
-        this.extraJsZips = extraJsZips;
+        this.extraClasspath = new FileListConfigNode("extraClasspath", extraClasspath);
+        this.extraJsZips = new FileListConfigNode("extraJsZips", extraJsZips);
         System.out.println(config);
     }
 
@@ -46,49 +45,120 @@ public class Xpp3DomConfigValueProvider implements PropertyTrackingConfig.Config
         return repoSystem.resolveArtifact(repoSession, request).getArtifact().getFile();
     }
 
-    @Override
-    public String readStringWithKey(String key) {
-        String result = readValueWithKey(config, Objects.requireNonNull(key, "key"), "");
-        System.out.println(key + " => " + result);
-        return result;
-    }
+    class Xpp3DomConfigNode extends AbstractConfigNode {
+        private final Xpp3Dom node;
 
-    @Override
-    public File readFileWithKey(String key) {
-        String pathOrCoords = readValueWithKey(config, Objects.requireNonNull(key, "key"), "");
-        if (pathOrCoords == null) {
+        protected Xpp3DomConfigNode(String path, Xpp3Dom node) {
+            super(path);
+            this.node = Objects.requireNonNull(node);
+        }
+
+        @Override
+        public String readString() {
+            return getValue(node);
+        }
+
+        @Override
+        public File readFile() {
+            String pathOrCoords = readString();
+            if (pathOrCoords == null) {
+                return null;
+            }
+            File f;
+            // try to resolve as maven coords first
+            try {
+                f = getFileWithMavenCoords(pathOrCoords);
+            } catch (ArtifactResolutionException e) {
+                // handle as a file instead
+                f = new File(pathOrCoords);
+            }
+            System.out.println(getPath() + " => " + f.getAbsolutePath());
+            return f;
+        }
+
+        @Override
+        public String getName() {
+            return node.getName();
+        }
+
+        @Override
+        public List<ConfigNode> getChildren() {
+            List<ConfigNode> list = new ArrayList<>();
+            Xpp3Dom[] children = node.getChildren();
+            for (int i = 0; i < children.length; i++) {
+                Xpp3Dom xpp3Dom = children[i];
+                Xpp3DomConfigNode xpp3DomConfigNode = new Xpp3DomConfigNode(getPath() + "[" + i + "]" + xpp3Dom.getName(), xpp3Dom);
+                list.add(xpp3DomConfigNode);
+            }
+            return list;
+        }
+    }
+    class FileListConfigNode extends AbstractConfigNode {
+        private final List<File> list;
+
+        protected FileListConfigNode(String path, List<File> list) {
+            super(path);
+            this.list = list;
+        }
+
+        @Override
+        public String readString() {
             return null;
         }
-        File f;
-        // try to resolve as a coords first
-        try {
-            f = getFileWithMavenCoords(pathOrCoords);
-        } catch (ArtifactResolutionException e) {
-            // handle as a file instead
-            f = new File(key);
+
+        @Override
+        public File readFile() {
+            return null;
         }
-        System.out.println(key + " => " + f.getAbsolutePath());
-        return f;
+
+        @Override
+        public List<ConfigNode> getChildren() {
+            List<ConfigNode> nodes = new ArrayList<>();
+            for (int i = 0; i < list.size(); i++) {
+                nodes.add(new FileConfigNode(getPath() + "[" + i + "]file", list.get(i)));
+            }
+            return nodes;
+        }
+    }
+    class FileConfigNode extends AbstractConfigNode {
+        private final File file;
+        protected FileConfigNode(String path, File file) {
+            super(path);
+            this.file = file;
+        }
+
+        @Override
+        public String readString() {
+            return null;
+        }
+
+        @Override
+        public File readFile() {
+            return file;
+        }
+
+        @Override
+        public List<ConfigNode> getChildren() {
+            return Collections.emptyList();
+        }
     }
 
     @Override
-    public List<File> readFilesWithKey(String key) {
-        //FIXME cheaty method to deal with some extra configs that don't make sense yet
-        switch (key) {
-            //TODO hash these
-            case "extraClasspath":
-                return extraClasspath;
-            case "extraJsZips":
-                return extraJsZips;
+    public ConfigNode findNode(String path) {
+        if (path.equals("extraClasspath")) {
+            return extraClasspath;
+        } else if (path.equals("extraJsZips")) {
+            return extraJsZips;
         }
-        return null;
+        //uses the path to find the specific node desired
+        Xpp3Dom node = findNodeWithKey(config, path, "");
+        if (node == null) {
+            return null;
+        }
+        return new Xpp3DomConfigNode(path, node);
     }
 
-    // this method built to use tail-call recursion by hand, then automatically updated to use iteration
-
-
-    //original, update this first and generate
-    private String readValueWithKey(Xpp3Dom config, String prefix, String remaining) {
+    private Xpp3Dom findNodeWithKey(Xpp3Dom config, String prefix, String remaining) {
         assert prefix != null;
         assert remaining != null;
         assert getValue(config) == null;
@@ -98,9 +168,9 @@ public class Xpp3DomConfigValueProvider implements PropertyTrackingConfig.Config
             // found it, if we have remaining, we need to handle them
             if (remaining.isEmpty()) {
                 // if this is null, that must be expected by the caller
-                return getValue(child);
+                return child;
             } else {
-                return readValueWithKey(child, remaining, "");
+                return findNodeWithKey(child, remaining, "");
             }
         } else {
             // peel off the last item, and try again
@@ -108,7 +178,7 @@ public class Xpp3DomConfigValueProvider implements PropertyTrackingConfig.Config
             if (index == -1) {
                 return null;// failed to find it so far, must not be present
             }
-            return readValueWithKey(config, prefix.substring(0, index), prefix.substring(index + 1) + '.' + remaining);
+            return findNodeWithKey(config, prefix.substring(0, index), prefix.substring(index + 1) + '.' + remaining);
         }
     }
 

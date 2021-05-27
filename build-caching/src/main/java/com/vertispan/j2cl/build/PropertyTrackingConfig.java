@@ -2,7 +2,6 @@ package com.vertispan.j2cl.build;
 
 import com.vertispan.j2cl.build.task.Config;
 import io.methvin.watcher.hashing.FileHasher;
-import io.methvin.watcher.hashing.Murmur3F;
 
 import java.io.File;
 import java.io.IOException;
@@ -10,12 +9,35 @@ import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class PropertyTrackingConfig implements Config {
     public interface ConfigValueProvider {
-        String readStringWithKey(String key);
-        File readFileWithKey(String key);
-        List<File> readFilesWithKey(String key);
+        interface ConfigNode {
+            String getPath();
+            String getName();
+            String readString();
+            File readFile();
+            List<ConfigNode> getChildren();
+        }
+        abstract class AbstractConfigNode implements ConfigNode {
+            private final String path;
+
+            protected AbstractConfigNode(String path) {
+                this.path = path;
+            }
+
+            @Override
+            public String getPath() {
+                return path;
+            }
+
+            @Override
+            public String getName() {
+                return getPath().substring(getPath().lastIndexOf('.'));
+            }
+        }
+        ConfigNode findNode(String path);
     }
 
     private final ConfigValueProvider config;
@@ -31,13 +53,42 @@ public class PropertyTrackingConfig implements Config {
         closed = true;
     }
 
+    private String useStringConfig(ConfigValueProvider.ConfigNode node) {
+        String value = node.readString();
+        useKey(node.getPath(), value);
+        return value;
+    }
+    private File useFileConfig(ConfigValueProvider.ConfigNode node) {
+        File value = node.readFile();
+        if (value == null) {
+            useKey(node.getPath(), null);
+            return null;
+        }
+        String hash;
+        try {
+            // TODO this assumes that the file can't change - would hate to re-hash it each time...
+            // this is a base64 string, not our "expected" hex
+            hash = FileHasher.DEFAULT_FILE_HASHER.hash(value.toPath()).asString();
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to hash file contents " + value, e);
+        }
+        useKey(node.getPath(), hash);
+        return value;
+    }
+    private void useKey(String path, String value) {
+        usedKeys.put(path, value);
+    }
+
     @Override
     public String getString(String key) {
         checkClosed(key);
-        //TODO default handling...
-        String value = config.readStringWithKey(key);
-        usedKeys.put(key, value);
-        return value;
+
+        ConfigValueProvider.ConfigNode node = config.findNode(key);
+        if (node == null) {
+            useKey(key, null);
+            return null;
+        }
+        return useStringConfig(node);
     }
 
     private void checkClosed(String key) {
@@ -50,25 +101,12 @@ public class PropertyTrackingConfig implements Config {
     public File getFile(String key) {
         checkClosed(key);
 
-        File value = config.readFileWithKey(key);
-        if (value == null) {
-            usedKeys.put(key, null);
+        ConfigValueProvider.ConfigNode node = config.findNode(key);
+        if (node == null) {
+            useKey(key, null);
             return null;
         }
-
-        if (value.exists() && value.isFile()) {
-            Murmur3F hash = new Murmur3F();
-            try {
-                //TODO this assumes that the file can't change - would hate to re-hash it each time...
-                hash.update(FileHasher.DEFAULT_FILE_HASHER.hash(value.toPath()).asBytes());
-            } catch (IOException e) {
-                throw new UncheckedIOException("Failed to hash file contents " + value, e);
-            }
-            usedKeys.put(key, hash.getValueHexString());
-        } else {
-            usedKeys.put(key, value.getAbsolutePath());//TODO we're assuming output, out-of-band? should log this
-        }
-        return value;
+        return useFileConfig(node);
     }
 
     @Override
@@ -84,8 +122,11 @@ public class PropertyTrackingConfig implements Config {
     @Override
     @Deprecated
     public List<String> getEntrypoint() {
-        //TODO support this?
-        return Collections.emptyList();
+        ConfigValueProvider.ConfigNode entrypoint = config.findNode("entrypoint");
+        if (entrypoint == null) {
+            return Collections.emptyList();
+        }
+        return entrypoint.getChildren().stream().map(this::useStringConfig).collect(Collectors.toList());
     }
 
     @Override
@@ -122,8 +163,17 @@ public class PropertyTrackingConfig implements Config {
 
     @Override
     public Map<String, String> getDefines() {
-        //TODO this needs to include all the contents, sorted
-        return new HashMap<>();
+        ConfigValueProvider.ConfigNode defines = config.findNode("defines");
+        if (defines == null) {
+            return Collections.emptyMap();
+        }
+        return defines.getChildren().stream()
+                // order does not matter, let's make sure the task sees them in the correct order
+                .sorted(Comparator.comparing(ConfigValueProvider.ConfigNode::getName))
+                // create a map to return - since this is sorted it should be stable both in this tracker and for the consuming task
+                .collect(Collectors.toMap(ConfigValueProvider.ConfigNode::getName, this::useStringConfig, (s, s2) -> {
+                    throw new IllegalStateException("Two configs found with the same key: " + s + ", s2");
+                }, TreeMap::new));
     }
 
     @Override
@@ -133,15 +183,21 @@ public class PropertyTrackingConfig implements Config {
 
     @Override
     public List<File> getExtraJsZips() {
-        //TODO implement this, perhaps as scope=runtime dependency instead?
-        //TODO hash these
-        return config.readFilesWithKey("extraJsZips");
+        //TODO perhaps as scope=runtime dependency instead?
+        ConfigValueProvider.ConfigNode extraJsZips = config.findNode("extraJsZips");
+        if (extraJsZips == null) {
+            return Collections.emptyList();
+        }
+        return extraJsZips.getChildren().stream().map(this::useFileConfig).collect(Collectors.toList());
     }
     @Override
     public List<File> getExtraClasspath() {
-        //TODO implement this, perhaps as scope=runtime dependency instead?
-        //TODO hash these
-        return config.readFilesWithKey("extraClasspath");
+        //TODO perhaps as scope=runtime dependency instead?
+        ConfigValueProvider.ConfigNode extraClasspath = config.findNode("extraClasspath");
+        if (extraClasspath == null) {
+            return Collections.emptyList();
+        }
+        return extraClasspath.getChildren().stream().map(this::useFileConfig).collect(Collectors.toList());
     }
 
     @Override
@@ -152,6 +208,6 @@ public class PropertyTrackingConfig implements Config {
     @Override
     public Path getWebappDirectory() {
         // Note that this deliberately circumvents the hash building
-        return Paths.get(config.readStringWithKey("webappDirectory"));
+        return Paths.get(config.findNode("webappDirectory").readString());
     }
 }

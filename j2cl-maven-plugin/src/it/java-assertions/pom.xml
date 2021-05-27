@@ -68,6 +68,7 @@
                             <defines>
                                 <expect.assertions.armed>true</expect.assertions.armed>
                             </defines>
+                            <webappDirectory>${project.build.directory}/${project.build.finalName}-assertions-default</webappDirectory>
                         </configuration>
                     </execution>
                     <execution>
@@ -81,6 +82,7 @@
                             <defines>
                                 <expect.assertions.armed>true</expect.assertions.armed>
                             </defines>
+                            <webappDirectory>${project.build.directory}/${project.build.finalName}-assertions-true</webappDirectory>
                         </configuration>
                     </execution>
                     <execution>
@@ -94,6 +96,7 @@
                             <defines>
                                 <expect.assertions.armed>false</expect.assertions.armed>
                             </defines>
+                            <webappDirectory>${project.build.directory}/${project.build.finalName}-assertions-false</webappDirectory>
                         </configuration>
                     </execution>
                 </executions>
