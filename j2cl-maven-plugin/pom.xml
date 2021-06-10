@@ -190,6 +190,12 @@
           <cloneProjectsTo>${project.build.directory}/it-tests</cloneProjectsTo>
           <localRepositoryPath>${project.build.directory}/it-repo</localRepositoryPath>
           <settingsFile>src/it/settings.xml</settingsFile>
+          <goals>
+            <goal>package -e</goal>
+          </goals>
+          <environmentVariables>
+            <MAVEN_OPTS>-ea</MAVEN_OPTS>
+          </environmentVariables>
         </configuration>
       </plugin>
 
