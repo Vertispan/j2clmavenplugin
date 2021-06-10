@@ -135,7 +135,10 @@ public class BuildService {
      */
     public synchronized void initialHashes() {
         // for each project which has sources, hash them
-        inputs.keySet().stream().map(Input::getProject).filter(Project::hasSourcesMapped)
+        inputs.keySet().stream()
+                .map(Input::getProject)
+                .filter(Project::hasSourcesMapped)
+                .distinct()
                 .forEach(project -> {
                     Map<Path, DiskCache.CacheEntry> hashes = project.getSourceRoots().stream()
                             .map(Paths::get)
@@ -160,7 +163,7 @@ public class BuildService {
     public synchronized void triggerChanges(Project project, Map<Path, DiskCache.CacheEntry> createdFiles, Map<Path, DiskCache.CacheEntry> changedFiles, Set<Path> deletedFiles) {
         Map<Path, DiskCache.CacheEntry> hashes = currentProjectSourceHash.computeIfAbsent(project, ignore -> new HashMap<>());
         hashes.keySet().removeAll(deletedFiles);
-        assert hashes.keySet().stream().noneMatch(createdFiles.keySet()::contains) : "File already exists, can't be added";
+        assert hashes.keySet().stream().noneMatch(createdFiles.keySet()::contains) : "File already exists, can't be added " + createdFiles.keySet() + ", " + hashes.keySet();
         hashes.putAll(createdFiles);
         assert hashes.keySet().containsAll(changedFiles.keySet()) : "File doesn't exist, can't be modified";
         hashes.putAll(changedFiles);

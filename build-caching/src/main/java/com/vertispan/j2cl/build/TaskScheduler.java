@@ -164,9 +164,15 @@ public class TaskScheduler {
     }
 
     private void executeFinalTask(CollectedTaskInputs taskDetails, DiskCache.CacheResult cacheResult) throws Exception {
+        System.out.println("starting final task " + taskDetails.getProject().getKey() + " " + taskDetails.getTaskFactory().getOutputType());
         long start = System.currentTimeMillis();
-        ((TaskFactory.FinalOutputTask) taskDetails.getTask()).finish(new TaskOutput(cacheResult.outputDir()));
-        System.out.println(taskDetails.getProject().getKey() + " final task " + taskDetails.getTaskFactory().getOutputType() + " finished in " + (System.currentTimeMillis() - start) + "ms");
+        try {
+            ((TaskFactory.FinalOutputTask) taskDetails.getTask()).finish(new TaskOutput(cacheResult.outputDir()));
+            System.out.println(taskDetails.getProject().getKey() + " final task " + taskDetails.getTaskFactory().getOutputType() + " finished in " + (System.currentTimeMillis() - start) + "ms");
+        } catch (Throwable t) {
+            System.out.println(taskDetails.getProject().getKey() + " final task " + taskDetails.getTaskFactory().getOutputType() + " failed in " + (System.currentTimeMillis() - start) + "ms");
+            throw t;
+        }
     }
 
     private void executeTask(CollectedTaskInputs taskDetails, DiskCache.CacheResult result, BuildListener listener) {

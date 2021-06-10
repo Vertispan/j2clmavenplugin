@@ -59,7 +59,7 @@ public class Input implements com.vertispan.j2cl.build.task.Input {
 
         @Override
         public Collection<DiskCache.CacheEntry> getFilesAndHashes() {
-            return wrapped.contents.filesAndHashes().stream()
+            return wrapped.getFilesAndHashes().stream()
                     .filter(entry -> Arrays.stream(filters).anyMatch(f -> f.matches(entry.getSourcePath())))
                     .collect(Collectors.toList());
         }
@@ -128,6 +128,9 @@ public class Input implements com.vertispan.j2cl.build.task.Input {
 
     @Override
     public Collection<DiskCache.CacheEntry> getFilesAndHashes() {
+        if (contents == null) {
+            throw new NullPointerException("Contents not yet provided " + this);
+        }
         return contents.filesAndHashes();
     }
 
