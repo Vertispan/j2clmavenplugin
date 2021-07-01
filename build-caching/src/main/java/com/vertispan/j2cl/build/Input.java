@@ -30,6 +30,10 @@ public class Input implements com.vertispan.j2cl.build.task.Input {
         this.outputType = outputType;
     }
 
+    public boolean hasContents() {
+        return contents != null;
+    }
+
     /**
      * Filtered implementation, so that we don't have to track each instance floating around, just
      * the top level ones.

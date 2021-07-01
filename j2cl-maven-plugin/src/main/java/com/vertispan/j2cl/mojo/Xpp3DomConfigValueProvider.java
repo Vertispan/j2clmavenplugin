@@ -199,4 +199,8 @@ public class Xpp3DomConfigValueProvider implements PropertyTrackingConfig.Config
         return result;
     }
 
+    @Override
+    public String toString() {
+        return this.config.toString();
+    }
 }

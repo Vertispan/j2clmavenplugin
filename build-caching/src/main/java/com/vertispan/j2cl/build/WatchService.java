@@ -12,6 +12,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -21,11 +24,13 @@ import java.util.stream.Collectors;
  * to do it.
  */
 public class WatchService {
+    private final BuildQueue buildQueue;
     private final BuildService buildService;
     private final ScheduledExecutorService executorService;
     private DirectoryWatcher directoryWatcher;
 
     public WatchService(BuildService buildService, ScheduledExecutorService executorService) {
+        this.buildQueue = new BuildQueue(buildService);
         this.buildService = buildService;
         this.executorService = executorService;
     }
@@ -80,9 +85,118 @@ public class WatchService {
         }
 
         // wait a moment then start a build (this should be pluggable)
-        //TODO need to debounce this call so we only ever have one at a time pending
-        //TODO if requestBuild() is ever blocking (so that the lock is held), we can't enqueue to the same executor as task work is done on
-//        executorService.schedule(buildService::requestBuild, 100, TimeUnit.MILLISECONDS);
+        buildQueue.requestBuild();
+    }
+
+    enum BuildState { IDLE, BUILDING, CANCELING_FOR_NEW_BUILD }
+    class BuildQueue implements BuildListener {
+        private final BuildService buildService;
+
+        private final AtomicBoolean timerStarted = new AtomicBoolean(false);
+        private final AtomicReference<BuildState> buildState = new AtomicReference<>(BuildState.IDLE);
+
+        private final AtomicReference<Cancelable> previous = new AtomicReference<>(null);
+
+        BuildQueue(BuildService buildService) {
+            this.buildService = buildService;
+        }
+
+        public void requestBuild() {
+            if (timerStarted.compareAndSet(false, true)) {
+                executorService.schedule(this::timerElapsed, 100, TimeUnit.MILLISECONDS);
+            } // otherwise already started, will elapse soon
+        }
+
+        private void timerElapsed() {
+            // if success is false, timerElapsed already ran before we got to it!
+            boolean success = timerStarted.compareAndSet(true, false);
+            assert success;
+
+            // there can technically be a race here where a new timer starts even though we have already
+            // started a build with the specified change - we are okay with this, it is unlikely to occur
+            // and the cache will deal with it.
+
+            // atomically update the build state, then see what we should do
+            BuildState nextState = this.buildState.updateAndGet(current -> {
+                switch (current) {
+                    case IDLE:
+                        return BuildState.BUILDING;
+                    case BUILDING:
+                    case CANCELING_FOR_NEW_BUILD:
+                        return BuildState.CANCELING_FOR_NEW_BUILD;
+                }
+                throw new IllegalStateException("Unsupported build state " + current);
+            });
+            switch (nextState) {
+                case BUILDING:
+                    startBuild();
+                    break;
+                case CANCELING_FOR_NEW_BUILD:
+                    // trigger cancel - when it has stopped, we will run the new build
+                    cancelBuild();
+                    break;
+                default:
+                case IDLE:
+                    throw new IllegalStateException("Not possible to be in state " + nextState);
+            }
+        }
+
+        private void cancelBuild() {
+            previous.get().cancel();
+        }
+
+        private void startBuild() {
+            Cancelable old = null;
+            try {
+                old = previous.getAndSet(buildService.requestBuild(this));
+            } catch (InterruptedException e) {
+                // cancelation is always handled already, this cannot happen
+                throw new IllegalStateException("Already should have canceled and waited, this shouldn't be possible", e);
+            }
+            assert old == null : "Must have been null, otherwise there could be another build running";
+        }
+
+        @Override
+        public void onSuccess() {
+            finishBuild();
+        }
+
+        @Override
+        public void onFailure() {
+            finishBuild();
+        }
+
+        private void finishBuild() {
+            Cancelable old = previous.getAndSet(null);
+            assert old != null : "Must not have been null";
+            BuildState nextState = this.buildState.updateAndGet(current -> {
+                switch (current) {
+                    case BUILDING:
+                        return BuildState.IDLE;
+                    case CANCELING_FOR_NEW_BUILD:
+                        return BuildState.BUILDING;
+                    case IDLE:
+                    default:
+                        throw new IllegalStateException("Can't be in state " + current + " after finishing a build");
+                }
+            });
+            switch (nextState) {
+                case IDLE:
+                    // do nothing, wait for another update
+                    return;
+                case BUILDING:
+                    startBuild();
+
+                case CANCELING_FOR_NEW_BUILD:
+                default:
+                    throw new IllegalStateException("Not possible to be in state" + nextState);
+            }
+        }
+
+        @Override
+        public void onError(Throwable throwable) {
+            //TODO should shut down, this isn't recoverable
+        }
     }
 
     public void close() throws IOException {

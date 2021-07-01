@@ -81,9 +81,11 @@ public class TaskScheduler {
                 //TODO avoid getting into a situation where this gets hit so much
                 return;
             }
-            if (!ready.containsAll(taskDetails.getInputs())) {
-                // at least one dependency isn't ready, move on, this will be called again when that changes
-                return;
+            synchronized (ready) {
+                if (!ready.containsAll(taskDetails.getInputs())) {
+                    // at least one dependency isn't ready, move on, this will be called again when that changes
+                    return;
+                }
             }
 
             // check to see if this task is finished (or failed), or can be built by us now
@@ -119,6 +121,7 @@ public class TaskScheduler {
                     if (taskDetails.getTask() instanceof TaskFactory.FinalOutputTask) {
                         // Do the work in an executor, so that we don't block the current thread (usually main or disk cache watcher)
                         // First though, we'll inline scheduleMoreWork so that we don't attempt to do this task a second time
+                        // NOTE: we are not calling setCurrentContents on this, since no task may depend on this
                         ready.add(taskDetails.getAsInput());
                         executor.execute(() -> {
                             try {
@@ -140,17 +143,24 @@ public class TaskScheduler {
                 }
 
                 private void scheduleMoreWork(DiskCache.CacheResult cacheResult) {
+                    boolean scheduleMore = false;
                     // mark current item as ready
-                    ready.add(taskDetails.getAsInput());
+                    synchronized (ready) {
+                        ready.add(taskDetails.getAsInput());
 
-                    // When something finishes, remove it from the various dependency lists and see if we can run the loop again with more work.
-                    // Presently this could be called multiple times, so we check if already removed
-                    if (remainingWork.remove(taskDetails)) {
-                        for (Input input : allInputs.computeIfAbsent(taskDetails.getAsInput(), ignore -> Collections.emptyList())) {
-                            // since we don't support running more than one thing at a time, this will not change data out from under a running task
-                            input.setCurrentContents(cacheResult.output());
+                        // When something finishes, remove it from the various dependency lists and see if we can run the loop again with more work.
+                        // Presently this could be called multiple times, so we check if already removed
+                        if (remainingWork.remove(taskDetails)) {
+                            for (Input input : allInputs.computeIfAbsent(taskDetails.getAsInput(), ignore -> Collections.emptyList())) {
+                                // since we don't support running more than one thing at a time, this will not change data out from under a running task
+                                input.setCurrentContents(cacheResult.output());
+                                //TODO This maybe can race with the check on line 84, and we break since the input isn't ready yet
+                            }
+
+                            scheduleMore = true;
                         }
-
+                    }
+                    if (scheduleMore) {
                         scheduleAvailableWork(ready, allInputs, remainingWork, listener);
                     }
                 }

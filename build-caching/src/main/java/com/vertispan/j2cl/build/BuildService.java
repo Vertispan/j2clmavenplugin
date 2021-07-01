@@ -148,7 +148,7 @@ public class BuildService {
                                     DiskCache.CacheEntry::getSourcePath,
                                     Function.identity(),
                                     (a, b) -> {
-                                        throw new IllegalStateException("Two paths in a project had the same file");
+                                        throw new IllegalStateException("Two paths in a project had the same file " + a + ", " + b);
                                     }
                             ));
                     triggerChanges(project, hashes, Collections.emptyMap(), Collections.emptySet());

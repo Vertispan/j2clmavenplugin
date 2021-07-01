@@ -66,7 +66,7 @@ public abstract class DiskCache {
     private Map<Input, TaskOutput> lastSuccessfulOutputs = new ConcurrentHashMap<>();
 
     private final Map<Path, Path> knownMarkers = new ConcurrentHashMap<>();
-    private final Map<Path, Set<PendingCacheResult>> taskFutures = new HashMap<>();
+    private final Map<Path, Set<PendingCacheResult>> taskFutures = new ConcurrentHashMap<>();
 
     public DiskCache(File cacheDir) throws IOException {
         this.cacheDir = cacheDir;
@@ -192,6 +192,15 @@ public abstract class DiskCache {
             result = 31 * result + absoluteParent.hashCode();
             result = 31 * result + hash.hashCode();
             return result;
+        }
+
+        @Override
+        public String toString() {
+            return "CacheEntry{" +
+                    "sourcePath=" + sourcePath +
+                    ", absoluteParent=" + absoluteParent +
+                    ", hash=" + hash +
+                    '}';
         }
     }
 
@@ -324,6 +333,7 @@ public abstract class DiskCache {
      *                 may not be canceled
      */
     public void waitForTask(CollectedTaskInputs taskDetails, Listener listener) {
+        assert taskDetails.getInputs().stream().allMatch(Input::hasContents);
         final Path taskDir = taskDir(taskDetails);
         PendingCacheResult cancelable = new PendingCacheResult(taskDir, listener);
         taskFutures.computeIfAbsent(taskDir, ignore -> Collections.newSetFromMap(new ConcurrentHashMap<>())).add(cancelable);
