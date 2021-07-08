@@ -39,9 +39,8 @@ public class WatchMojo extends AbstractBuildMojo {
     @Parameter(defaultValue = "${reactorProjects}", required = true, readonly = true)
     protected List<MavenProject> reactorProjects;
 
-
     @Parameter(defaultValue = "${j2cl.webappDirectory}")
-    protected String webappDirectory;
+    protected String webappDirectory;// technically required, but we have logic to test this in execute()
 
     @Parameter(defaultValue = "${project.build.directory}/${project.build.finalName}", readonly = true)
     protected String defaultWebappDirectory;
@@ -118,8 +117,8 @@ public class WatchMojo extends AbstractBuildMojo {
                 getLog().info("Using " + defaultWebappDirectory + " as webappDirectory since goal is running in a non-reactor build and none was set");
                 webappDirectory = defaultWebappDirectory;
             } else {
-                getLog().error("No webappDirectory parameter was set - this should be defined in the parent pom so that any j2cl module knows where to put its output");
-                throw new MojoFailureException("No webappDirectory parameter was set - this should be defined in the parent pom so that any j2cl module knows where to put its output");
+                getLog().error("No webappDirectory parameter was set. This should be defined in the parent pom (or passed as a property with name 'j2cl.webappDirectory') so that any j2cl module knows where to put its output");
+                throw new MojoFailureException("No webappDirectory parameter was set - this should be defined so that any j2cl module knows where to put its output");
             }
         }
 
@@ -179,16 +178,34 @@ public class WatchMojo extends AbstractBuildMojo {
                     List<PluginExecution> executions = plugin.getExecutions();
                     for (PluginExecution execution : executions) {
                         // merge the configs
+                        // config precedence, higher wins:
+                        // * explicit config in the execution/goal we found (do not need to interpolate properties here)
+                        Xpp3Dom executionConfig = (Xpp3Dom) execution.getConfiguration();
+                        // * normally the defaults of the goal we found would be about here, but we skip this
+                        // * actual defaults that can't be overridden further below, should have been read from defaults
+                        String initialScriptFilename = reactorProject.getArtifactId() + "/" + reactorProject.getArtifactId() + ".js";
+                        // * explicit config for the watch goal currently running (with initialScriptFilename written here)
+                        Xpp3Dom watchGoalConfig = new Xpp3Dom(mojoExecution.getConfiguration());
+                        if (watchGoalConfig.getChild("initialScriptFilename") != null) {
+                            watchGoalConfig.getChild("initialScriptFilename").setValue(initialScriptFilename);
+                        } else {
+                            Xpp3Dom child = new Xpp3Dom("initialScriptFilename");
+                            child.setValue(initialScriptFilename);
+                            watchGoalConfig.addChild(child);
+                        }
+                        // * default value for the watch goal currently running
+                        plugin.getConfiguration();//necessary?
 
                         //both of these are wrong, we are using j2cl:watch as the template in the first, not j2cl:build/test, and the second has no defaults...
 //                        Xpp3Dom configuration = merge(mojoExecution.getConfiguration(), merge(pluginConfiguration, (Xpp3Dom) execution.getConfiguration()));
-                        Xpp3Dom configuration = merge(pluginConfiguration, (Xpp3Dom) execution.getConfiguration());
+                        Xpp3Dom configuration = merge(watchGoalConfig, executionConfig);
                         // wire up the given goals based on the provided configuration
                         for (String goal : execution.getGoals()) {
                             if (goal.equals("test") && shouldCompileTest()) {
                                 System.out.println("Test watch temporarily disabled");
                             } else if (goal.equals("build") && shouldCompileBuild()) {
                                 System.out.println("Found build " + execution);
+
                                 Xpp3DomConfigValueProvider config = new Xpp3DomConfigValueProvider(configuration, expressionEvaluator, repoSession, repositories, repoSystem, extraClasspath, extraJsZips);
                                 Project p = buildProject(project, project.getArtifact(), true, projectBuilder, request, pluginVersion, builtProjects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, getDependencyReplacements());
 
