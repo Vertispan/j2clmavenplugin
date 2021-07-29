@@ -64,6 +64,9 @@ public class WatchService {
             buildService.triggerChanges(project, projectFiles, Collections.emptyMap(), Collections.emptySet());
         }
 
+        // start the first build
+        buildQueue.requestBuild();
+
         // start watching to observe changes
         directoryWatcher.watchAsync(executorService);
     }

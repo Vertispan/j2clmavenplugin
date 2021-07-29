@@ -207,7 +207,7 @@ public class WatchMojo extends AbstractBuildMojo {
                                 System.out.println("Found build " + execution);
 
                                 Xpp3DomConfigValueProvider config = new Xpp3DomConfigValueProvider(configuration, expressionEvaluator, repoSession, repositories, repoSystem, extraClasspath, extraJsZips);
-                                Project p = buildProject(project, project.getArtifact(), true, projectBuilder, request, pluginVersion, builtProjects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, getDependencyReplacements());
+                                Project p = buildProject(reactorProject, reactorProject.getArtifact(), true, projectBuilder, request, pluginVersion, builtProjects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, getDependencyReplacements());
 
                                 System.out.println(config);
                                 String compilationLevel = config.findNode("compilationLevel").readString();
