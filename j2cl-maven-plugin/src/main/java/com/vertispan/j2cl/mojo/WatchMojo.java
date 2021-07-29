@@ -186,7 +186,7 @@ public class WatchMojo extends AbstractBuildMojo {
                         // * normally the defaults of the goal we found would be about here, but we skip this
                         // * actual defaults that can't be overridden further below, should have been read from defaults
                         String initialScriptFilename = reactorProject.getArtifactId() + "/" + reactorProject.getArtifactId() + ".js";
-                        // * explicit config for the watch goal currently running (with initialScriptFilename written here)
+                        // * explicit config for the watch goal currently running (with initialScriptFilename, webappDirectory written here)
                         Xpp3Dom watchGoalConfig = new Xpp3Dom(mojoExecution.getConfiguration());
                         if (watchGoalConfig.getChild("initialScriptFilename") != null) {
                             watchGoalConfig.getChild("initialScriptFilename").setValue(initialScriptFilename);
@@ -195,8 +195,12 @@ public class WatchMojo extends AbstractBuildMojo {
                             child.setValue(initialScriptFilename);
                             watchGoalConfig.addChild(child);
                         }
+                        if (watchGoalConfig.getChild("webappDirectory") == null) {
+                            Xpp3Dom child = new Xpp3Dom("webappDirectory");
+                            child.setValue(webappDirectory);
+                            watchGoalConfig.addChild(child);
+                        }
                         // * default value for the watch goal currently running
-                        plugin.getConfiguration();//necessary?
 
                         //both of these are wrong, we are using j2cl:watch as the template in the first, not j2cl:build/test, and the second has no defaults...
 //                        Xpp3Dom configuration = merge(mojoExecution.getConfiguration(), merge(pluginConfiguration, (Xpp3Dom) execution.getConfiguration()));
