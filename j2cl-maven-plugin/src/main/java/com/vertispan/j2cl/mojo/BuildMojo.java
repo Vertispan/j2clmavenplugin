@@ -255,6 +255,10 @@ public class BuildMojo extends AbstractBuildMojo {
         try {
             buildService.requestBuild(listener);
             listener.blockUntilFinished();
+            boolean success = listener.isSuccess();
+            if (!success) {
+                throw new MojoFailureException("Build failed, check log for failures");
+            }
         } catch (InterruptedException e) {
             throw new MojoExecutionException("Interrupted", e);
         }

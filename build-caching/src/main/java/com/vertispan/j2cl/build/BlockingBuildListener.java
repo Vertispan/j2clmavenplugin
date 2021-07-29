@@ -6,14 +6,17 @@ import java.util.concurrent.CountDownLatch;
 public class BlockingBuildListener implements BuildListener {
     private final CountDownLatch latch = new CountDownLatch(1);
     private Throwable throwable;
+    private boolean success;
 
     @Override
     public void onSuccess() {
+        success = true;
         latch.countDown();
     }
 
     @Override
     public void onFailure() {
+        success = false;
         latch.countDown();
     }
 
@@ -28,5 +31,12 @@ public class BlockingBuildListener implements BuildListener {
         if (throwable != null) {
             throw new CompletionException(throwable);
         }
+    }
+
+    public boolean isSuccess() {
+        if (latch.getCount() != 0) {
+            throw new IllegalStateException("Can't call until finished");
+        }
+        return success;
     }
 }
