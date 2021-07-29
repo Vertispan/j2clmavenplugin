@@ -103,6 +103,10 @@ public class WatchMojo extends AbstractBuildMojo {
     @Parameter(defaultValue = "false")
     protected boolean enableSourcemaps;
 
+    @Deprecated
+    @Parameter(defaultValue = "SORT_ONLY")
+    protected String dependencyMode;
+
     @Parameter
     protected Map<String, String> taskMappings = new HashMap<>();
 
