@@ -199,6 +199,8 @@ public class WatchService {
         @Override
         public void onError(Throwable throwable) {
             //TODO should shut down, this isn't recoverable
+            throwable.printStackTrace();
+            System.exit(1);
         }
     }
 
