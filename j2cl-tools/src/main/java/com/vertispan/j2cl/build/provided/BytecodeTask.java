@@ -85,7 +85,9 @@ public class BytecodeTask extends TaskFactory {
                     .collect(Collectors.toList());
 
             try {
-                javac.compile(sources);
+                if (!javac.compile(sources)) {
+                    throw new RuntimeException("Failed to complete bytecode task, check log");
+                }
             } catch (Exception exception) {
                 exception.printStackTrace();
                 throw exception;
