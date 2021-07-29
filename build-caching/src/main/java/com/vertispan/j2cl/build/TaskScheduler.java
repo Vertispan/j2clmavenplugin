@@ -7,6 +7,7 @@ import com.vertispan.j2cl.build.task.TaskOutput;
 
 import java.util.*;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -64,15 +65,44 @@ public class TaskScheduler {
         Set<CollectedTaskInputs> remainingWork = Collections.synchronizedSet(new HashSet<>(inputs));
         remainingWork.removeIf(item -> ready.contains(item.getAsInput()));
 
-        scheduleAvailableWork(Collections.synchronizedSet(ready), allInputs, remainingWork, listener);
+        scheduleAvailableWork(Collections.synchronizedSet(ready), allInputs, remainingWork, new BuildListener() {
+            AtomicBoolean firstNotificationSent = new AtomicBoolean(false);
+            @Override
+            public void onSuccess() {
+                if (firstNotificationSent.compareAndSet(false, true)) {
+                    listener.onSuccess();
+                }
+            }
+
+            @Override
+            public void onFailure() {
+                if (firstNotificationSent.compareAndSet(false, true)) {
+                    listener.onFailure();
+                }
+
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                if (firstNotificationSent.compareAndSet(false, true)) {
+                    listener.onError(throwable);
+                }
+            }
+        });
 
         return remainingWork::clear;
     }
 
     private void scheduleAvailableWork(Set<Input> ready, Map<Input, List<Input>> allInputs, Set<CollectedTaskInputs> remainingWork, BuildListener listener) {
+        if (remainingWork.isEmpty()) {
+            // no work left, mark entire set of tasks as finished
+            listener.onSuccess();
+            return;
+        }
         // Filter based on work which has no dependencies in this batch.
         // (synchronized copy to avoid CME)
         List<CollectedTaskInputs> copy = Arrays.asList(remainingWork.toArray(new CollectedTaskInputs[0]));
+
 
         // iterating a copy in case something is removed while we're in here - at the time we were called it was important
         copy.forEach(taskDetails -> {
@@ -166,11 +196,6 @@ public class TaskScheduler {
                 }
             });
         });
-
-        if (remainingWork.isEmpty()) {
-            // no work left, mark entire set of tasks as finished
-            listener.onSuccess();
-        }
     }
 
     private void executeFinalTask(CollectedTaskInputs taskDetails, DiskCache.CacheResult cacheResult) throws Exception {
