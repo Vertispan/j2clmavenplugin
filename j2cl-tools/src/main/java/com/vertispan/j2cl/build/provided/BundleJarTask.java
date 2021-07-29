@@ -33,10 +33,10 @@ public class BundleJarTask extends TaskFactory {
     public Task resolve(Project project, Config config) {
         List<Input> jsSources = Stream
                 .concat(
-                        Stream.of(input(project, OutputTypes.BUNDLED_JS)),
                         scope(project.getDependencies(), Dependency.Scope.RUNTIME)
                                 .stream()
-                                .map(inputs(OutputTypes.BUNDLED_JS))
+                                .map(inputs(OutputTypes.BUNDLED_JS)),
+                        Stream.of(input(project, OutputTypes.BUNDLED_JS))
                 )
                 .map(i -> i.filter(FileSystems.getDefault().getPathMatcher("glob:*.bundle.js")))
                 .collect(Collectors.toList());
