@@ -123,7 +123,10 @@ public class ClosureTask extends TaskFactory {
                             input -> input.getFilesAndHashes().stream()
                                     .map(CachedPath::getAbsolutePath)
                                     .map(Path::toString)
-                    ).collect(Collectors.toList());
+                    )
+                            //TODO this distinct() call should not be needed, but we apparently have at least one dependency getting duplicated
+                            .distinct()
+                            .collect(Collectors.toList());
                 }
 
                 Map<String, String> defines = new LinkedHashMap<>(configDefines);
