@@ -46,7 +46,7 @@ public class BytecodeTask extends TaskFactory {
     public Task resolve(Project project, Config config) {
         if (!project.hasSourcesMapped()) {
             // instead copy the bytecode out of the jar so it can be used by downtream bytecode/apt tasks
-            Input existingUnpackedBytecode = input(project, OutputTypes.INPUT_SOURCES).filter(JAVA_BYTECODE);
+            Input existingUnpackedBytecode = input(project, OutputTypes.INPUT_SOURCES);//.filter(JAVA_BYTECODE);
             return output -> {
                 for (CachedPath entry : existingUnpackedBytecode.getFilesAndHashes()) {
                     Files.createDirectories(output.path().resolve(entry.getSourcePath()).getParent());
