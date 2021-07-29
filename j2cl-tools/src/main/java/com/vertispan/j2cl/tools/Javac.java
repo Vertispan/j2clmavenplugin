@@ -1,4 +1,4 @@
-package net.cardosi.mojo.tools;
+package com.vertispan.j2cl.tools;
 
 import com.google.j2cl.common.SourceUtils.FileInfo;
 

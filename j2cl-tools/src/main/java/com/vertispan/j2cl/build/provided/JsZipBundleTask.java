@@ -7,7 +7,7 @@ import com.google.javascript.jscomp.DependencyOptions;
 import com.vertispan.j2cl.build.task.Config;
 import com.vertispan.j2cl.build.task.Project;
 import com.vertispan.j2cl.build.task.TaskFactory;
-import net.cardosi.mojo.tools.Closure;
+import com.vertispan.j2cl.tools.Closure;
 
 import java.io.File;
 import java.util.Collections;

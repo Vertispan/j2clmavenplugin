@@ -5,10 +5,8 @@ import com.google.javascript.jscomp.CompilationLevel;
 import com.google.javascript.jscomp.CompilerOptions;
 import com.google.javascript.jscomp.DependencyOptions;
 import com.vertispan.j2cl.build.task.*;
-import io.methvin.watcher.hashing.FileHash;
-import io.methvin.watcher.hashing.FileHasher;
 import io.methvin.watcher.hashing.Murmur3F;
-import net.cardosi.mojo.tools.Closure;
+import com.vertispan.j2cl.tools.Closure;
 import org.apache.commons.io.FileUtils;
 
 import java.io.BufferedInputStream;

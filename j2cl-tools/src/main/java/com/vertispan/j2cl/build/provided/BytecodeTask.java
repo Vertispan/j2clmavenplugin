@@ -2,9 +2,8 @@ package com.vertispan.j2cl.build.provided;
 
 import com.google.auto.service.AutoService;
 import com.google.j2cl.common.SourceUtils;
-import com.vertispan.j2cl.build.DiskCache;
 import com.vertispan.j2cl.build.task.*;
-import net.cardosi.mojo.tools.Javac;
+import com.vertispan.j2cl.tools.Javac;
 
 import java.io.File;
 import java.nio.file.FileSystems;

@@ -1,8 +1,7 @@
-package net.cardosi.mojo.tools;
+package com.vertispan.j2cl.tools;
 
 import com.google.javascript.jscomp.*;
 import com.google.javascript.jscomp.Compiler;
-import com.google.javascript.jscomp.parsing.Config;
 
 import javax.annotation.Nullable;
 import java.io.File;
@@ -128,7 +127,7 @@ public class Closure {
             jscompRunner.run();
 
             if (jscompRunner.hasErrors() || jscompRunner.exitCode != 0) {
-//                jscompArgs.forEach(System.out::println);
+                jscompArgs.forEach(System.out::println);
                 return false;
             }
         } finally {

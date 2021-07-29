@@ -1,7 +1,5 @@
 package com.vertispan.j2cl.build;
 
-import com.vertispan.j2cl.build.task.CachedPath;
-import io.methvin.watcher.hashing.FileHash;
 import io.methvin.watcher.hashing.Murmur3F;
 
 import java.nio.charset.StandardCharsets;

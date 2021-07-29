@@ -1,7 +1,6 @@
 package com.vertispan.j2cl.build.impl;
 
 import com.vertispan.j2cl.build.*;
-import com.vertispan.j2cl.build.task.Config;
 import com.vertispan.j2cl.build.task.TaskFactory;
 import io.methvin.watcher.hashing.FileHasher;
 

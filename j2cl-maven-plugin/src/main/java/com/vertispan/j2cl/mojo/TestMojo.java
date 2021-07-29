@@ -5,7 +5,6 @@ import com.google.common.io.CharStreams;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import com.vertispan.j2cl.build.*;
-import net.cardosi.mojo.Versions;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.model.FileSet;
 import org.apache.maven.model.Plugin;
@@ -49,7 +48,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Mojo(name = "test", requiresDependencyResolution = ResolutionScope.TEST)
 public class TestMojo extends AbstractBuildMojo {

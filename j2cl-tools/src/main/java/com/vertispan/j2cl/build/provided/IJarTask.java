@@ -1,11 +1,9 @@
 package com.vertispan.j2cl.build.provided;
 
 import com.google.auto.service.AutoService;
-import com.vertispan.j2cl.build.DiskCache;
 import com.vertispan.j2cl.build.task.*;
 
 import java.nio.file.Files;
-import java.nio.file.Path;
 
 /**
  * TODO implement using the ijar tool or the equivelent

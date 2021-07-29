@@ -1,4 +1,4 @@
-package net.cardosi.mojo;
+package com.vertispan.j2cl.mojo;
 
 public final class Versions {
     public static final String J2CL_VERSION = "${j2cl.version}";

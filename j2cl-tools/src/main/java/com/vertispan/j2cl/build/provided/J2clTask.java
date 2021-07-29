@@ -3,7 +3,7 @@ package com.vertispan.j2cl.build.provided;
 import com.google.auto.service.AutoService;
 import com.google.j2cl.common.SourceUtils;
 import com.vertispan.j2cl.build.task.*;
-import net.cardosi.mojo.tools.J2cl;
+import com.vertispan.j2cl.tools.J2cl;
 
 import java.io.File;
 import java.nio.file.FileSystems;

@@ -3,7 +3,7 @@ package com.vertispan.j2cl.build.provided;
 import com.google.auto.service.AutoService;
 import com.google.j2cl.common.SourceUtils;
 import com.vertispan.j2cl.build.task.*;
-import net.cardosi.mojo.tools.GwtIncompatiblePreprocessor;
+import com.vertispan.j2cl.tools.GwtIncompatiblePreprocessor;
 
 import java.nio.file.FileSystems;
 import java.nio.file.PathMatcher;

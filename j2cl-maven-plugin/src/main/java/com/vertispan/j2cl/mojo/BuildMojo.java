@@ -1,7 +1,6 @@
 package com.vertispan.j2cl.mojo;
 
 import com.vertispan.j2cl.build.*;
-import net.cardosi.mojo.Versions;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.model.Plugin;
 import org.apache.maven.plugin.MojoExecutionException;

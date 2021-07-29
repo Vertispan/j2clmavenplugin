@@ -3,7 +3,6 @@ package com.vertispan.j2cl.mojo;
 import com.vertispan.j2cl.build.Dependency;
 import com.vertispan.j2cl.build.Project;
 import com.vertispan.j2cl.build.task.OutputTypes;
-import net.cardosi.mojo.Versions;
 import org.apache.maven.RepositoryUtils;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.ArtifactUtils;

@@ -1,4 +1,4 @@
-package net.cardosi.mojo.tools;
+package com.vertispan.j2cl.tools;
 
 import com.google.j2cl.common.SourceUtils;
 import com.google.javascript.jscomp.*;
@@ -8,7 +8,6 @@ import com.google.javascript.jscomp.parsing.Config;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.OpenOption;
 import java.nio.file.StandardOpenOption;
 import java.util.Collections;
 import java.util.List;
