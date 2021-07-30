@@ -1,0 +1,213 @@
+package com.vertispan.j2cl.build;
+
+import com.vertispan.j2cl.build.task.Config;
+import io.methvin.watcher.hashing.FileHasher;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
+import java.util.stream.Collectors;
+
+public class PropertyTrackingConfig implements Config {
+    public interface ConfigValueProvider {
+        interface ConfigNode {
+            String getPath();
+            String getName();
+            String readString();
+            File readFile();
+            List<ConfigNode> getChildren();
+        }
+        abstract class AbstractConfigNode implements ConfigNode {
+            private final String path;
+
+            protected AbstractConfigNode(String path) {
+                this.path = path;
+            }
+
+            @Override
+            public String getPath() {
+                return path;
+            }
+
+            @Override
+            public String getName() {
+                return getPath().substring(getPath().lastIndexOf('.'));
+            }
+        }
+        ConfigNode findNode(String path);
+    }
+
+    private final ConfigValueProvider config;
+    private final Map<String, String> usedKeys = new TreeMap<>();
+
+    private boolean closed = false;
+
+    public PropertyTrackingConfig(ConfigValueProvider config) {
+        this.config = config;
+    }
+
+    public void close() {
+        closed = true;
+    }
+
+    private String useStringConfig(ConfigValueProvider.ConfigNode node) {
+        String value = node.readString();
+        useKey(node.getPath(), value);
+        return value;
+    }
+    private File useFileConfig(ConfigValueProvider.ConfigNode node) {
+        File value = node.readFile();
+        if (value == null) {
+            useKey(node.getPath(), null);
+            return null;
+        }
+        String hash;
+        try {
+            // TODO this assumes that the file can't change - would hate to re-hash it each time...
+            // this is a base64 string, not our "expected" hex
+            hash = FileHasher.DEFAULT_FILE_HASHER.hash(value.toPath()).asString();
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to hash file contents " + value, e);
+        }
+        useKey(node.getPath(), hash);
+        return value;
+    }
+    private void useKey(String path, String value) {
+        usedKeys.put(path, value);
+    }
+
+    @Override
+    public String getString(String key) {
+        checkClosed(key);
+
+        ConfigValueProvider.ConfigNode node = config.findNode(key);
+        if (node == null) {
+            useKey(key, null);
+            return null;
+        }
+        return useStringConfig(node);
+    }
+
+    private void checkClosed(String key) {
+        if (closed) {
+            throw new IllegalStateException("Can't use config object after it is closed, please retain the config value during setup " + key);
+        }
+    }
+
+    @Override
+    public File getFile(String key) {
+        checkClosed(key);
+
+        ConfigValueProvider.ConfigNode node = config.findNode(key);
+        if (node == null) {
+            useKey(key, null);
+            return null;
+        }
+        return useFileConfig(node);
+    }
+
+    @Override
+    public File getBootstrapClasspath() {
+        return getFile("bootstrapClasspath");
+    }
+
+    @Override
+    public String getCompilationLevel() {
+        return getString("compilationLevel");
+    }
+
+    @Override
+    @Deprecated
+    public List<String> getEntrypoint() {
+        ConfigValueProvider.ConfigNode entrypoint = config.findNode("entrypoint");
+        if (entrypoint == null) {
+            return Collections.emptyList();
+        }
+        return entrypoint.getChildren().stream().map(this::useStringConfig).collect(Collectors.toList());
+    }
+
+    @Override
+    @Deprecated
+    public String getDependencyMode() {
+        return getString("dependencyMode");
+    }
+
+    @Override
+    public Collection<String> getExterns() {
+        //TODO these are files, need to be hashed, or treated as inputs instead?
+        return Collections.emptySet();
+    }
+
+    @Override
+    public boolean getCheckAssertions() {
+        return Boolean.parseBoolean(getString("checkAssertions"));
+    }
+
+    @Override
+    public boolean getRewritePolyfills() {
+        return Boolean.parseBoolean(getString("rewritePolyfills"));
+    }
+
+    @Override
+    public boolean getSourcemapsEnabled() {
+        return Boolean.parseBoolean(getString("enableSourcemaps"));
+    }
+
+    @Override
+    public String getInitialScriptFilename() {
+        return getString("initialScriptFilename");
+    }
+
+    @Override
+    public Map<String, String> getDefines() {
+        ConfigValueProvider.ConfigNode defines = config.findNode("defines");
+        if (defines == null) {
+            return Collections.emptyMap();
+        }
+        return defines.getChildren().stream()
+                // order does not matter, let's make sure the task sees them in the correct order
+                .sorted(Comparator.comparing(ConfigValueProvider.ConfigNode::getName))
+                // create a map to return - since this is sorted it should be stable both in this tracker and for the consuming task
+                .collect(Collectors.toMap(ConfigValueProvider.ConfigNode::getName, this::useStringConfig, (s, s2) -> {
+                    throw new IllegalStateException("Two configs found with the same key: " + s + ", s2");
+                }, TreeMap::new));
+    }
+
+    @Override
+    public Map<String, String> getUsedConfigs() {
+        return Collections.unmodifiableMap(usedKeys);
+    }
+
+    @Override
+    public List<File> getExtraJsZips() {
+        //TODO perhaps as scope=runtime dependency instead?
+        ConfigValueProvider.ConfigNode extraJsZips = config.findNode("extraJsZips");
+        if (extraJsZips == null) {
+            return Collections.emptyList();
+        }
+        return extraJsZips.getChildren().stream().map(this::useFileConfig).collect(Collectors.toList());
+    }
+    @Override
+    public List<File> getExtraClasspath() {
+        //TODO perhaps as scope=runtime dependency instead?
+        ConfigValueProvider.ConfigNode extraClasspath = config.findNode("extraClasspath");
+        if (extraClasspath == null) {
+            return Collections.emptyList();
+        }
+        return extraClasspath.getChildren().stream().map(this::useFileConfig).collect(Collectors.toList());
+    }
+
+    @Override
+    public String getLanguageOut() {
+        return getString("languageOut");
+    }
+
+    @Override
+    public Path getWebappDirectory() {
+        // Note that this deliberately circumvents the hash building
+        return Paths.get(config.findNode("webappDirectory").readString());
+    }
+}

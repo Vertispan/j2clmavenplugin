@@ -1,0 +1,50 @@
+digraph tasks {
+  // nodes are tasks
+  // edges are dependencies
+
+  input_sources
+
+  preprocessor
+  javac_apt
+  ijar_stripped // this lets us skip trivial changes in dependencies, at the cost of a small increase in compile time
+  javac_stripped
+
+  j2cl
+  ijs // in modes like bundle, this lets us skip trivial changes in dependencies
+  closure_bundle
+
+  closure
+
+  preprocessor -> input_sources [ label="input sources" ]
+  javac_apt -> input_sources [ label="input sources" ]
+  preprocessor -> javac_apt [ label="generated sources" ]
+  javac_stripped -> preprocessor [ label="stripped java" ]
+
+  ijar_stripped -> javac_stripped [ label="dependency stripped bytecode" ]
+
+  javac_stripped -> ijar_stripped [ label="dependency stripped bytecode headers" ]
+
+  j2cl -> preprocessor [ label="stripped java" ]
+  j2cl -> ijar_stripped [ label="dependency stripped bytecode headers" ]
+
+  ijs -> j2cl [ label="js headers" ]
+  closure_bundle -> j2cl [ label="transpiled js" ]
+  closure_bundle -> ijs [ label="dependency js headers" ]
+
+  closure -> j2cl [ label="transpiled js" ]
+}
+
+//digraph outputs {
+//
+//    java
+//    generated_java
+//    stripped_java
+//
+//    class
+//    stripped_class
+//
+//    cljs
+//
+//    js
+//
+//}
