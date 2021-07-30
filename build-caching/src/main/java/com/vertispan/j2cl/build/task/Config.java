@@ -41,10 +41,13 @@ public interface Config {
 
     List<File> getExtraClasspath();
 
+    String getEnv();
+
     /**
      * This is an output directory, and should not be used an an input for a task,
      * but only for the final step of copying output to the result directory.
      * @return
      */
     Path getWebappDirectory();
+
 }

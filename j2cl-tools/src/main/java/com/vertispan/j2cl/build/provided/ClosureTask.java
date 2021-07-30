@@ -74,6 +74,7 @@ public class ClosureTask extends TaskFactory {
         boolean rewritePolyfills = config.getRewritePolyfills();
         boolean sourcemapsEnabled = config.getSourcemapsEnabled();
         List<File> extraJsZips = config.getExtraJsZips();
+        String env = config.getEnv();
 
         String sourcemapDirectory = "sources";
         return new FinalOutputTask() {
@@ -150,6 +151,7 @@ public class ClosureTask extends TaskFactory {
                         checkAssertions,
                         rewritePolyfills,
                         sourcemapsEnabled,
+                        env,
                         closureOutputDir + "/" + initialScriptFilename
                 );
 

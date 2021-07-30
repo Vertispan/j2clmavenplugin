@@ -32,6 +32,7 @@ public class Closure {
             boolean checkAssertions,
             boolean rewritePolyfills,
             boolean enabledSourcemaps,
+            String env,
             String jsOutputFile
     ) {
         List<String> jscompArgs = new ArrayList<>();
@@ -108,6 +109,9 @@ public class Closure {
 
         jscompArgs.add("--js_output_file");
         jscompArgs.add(jsOutputFile);
+
+        jscompArgs.add("--env");
+        jscompArgs.add(env);
 
         //TODO bundles
 

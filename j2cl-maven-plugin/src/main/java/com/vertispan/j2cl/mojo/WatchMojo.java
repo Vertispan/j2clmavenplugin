@@ -98,6 +98,15 @@ public class WatchMojo extends AbstractBuildMojo {
     @Parameter(defaultValue = "false")
     protected boolean rewritePolyfills;
 
+    /**
+     * Closure flag: "Determines the set of builtin externs to load. Options: BROWSER, CUSTOM. Defaults to BROWSER."
+     *
+     * Presently we default to BROWSER, but are considering changing this to CUSTOM if we include externs files in
+     * the generate jsinterop artifacts, so that each set of bindings is self-contained.
+     */
+    @Parameter(defaultValue = "BROWSER")
+    protected String env;
+
     @Parameter(defaultValue = "false")
     protected boolean enableSourcemaps;
 

@@ -201,6 +201,11 @@ public class PropertyTrackingConfig implements Config {
     }
 
     @Override
+    public String getEnv() {
+        return getString("env");
+    }
+
+    @Override
     public String getLanguageOut() {
         return getString("languageOut");
     }

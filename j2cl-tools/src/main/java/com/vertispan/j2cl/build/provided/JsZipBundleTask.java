@@ -51,6 +51,7 @@ public class JsZipBundleTask extends TaskFactory {
                     true,
                     false,
                     false,
+                    "CUSTOM", // doesn't matter, bundle won't check this
                     output.path().resolve("j2cl-base.js").toString()
             );
 

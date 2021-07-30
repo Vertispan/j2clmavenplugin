@@ -90,6 +90,7 @@ public class ClosureBundleTask extends TaskFactory {
                     true,//default to true, will have no effect anyway
                     false,
                     false,
+                    "CUSTOM", // doesn't matter, bundle won't check this
                     outputFile
             );
 

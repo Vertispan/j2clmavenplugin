@@ -172,6 +172,15 @@ public class BuildMojo extends AbstractBuildMojo {
     protected boolean rewritePolyfills;
 
     /**
+     * Closure flag: "Determines the set of builtin externs to load. Options: BROWSER, CUSTOM. Defaults to BROWSER."
+     *
+     * Presently we default to BROWSER, but are considering changing this to CUSTOM if we include externs files in
+     * the generate jsinterop artifacts, so that each set of bindings is self-contained.
+     */
+    @Parameter(defaultValue = "BROWSER")
+    protected String env;
+
+    /**
      * Whether or not to leave Java assert checks in the compiled code. In j2cl:build, defaults to true. Has no
      * effect when the compilation level isn't set to ADVANCED_OPTIMIZATIONS, assertions will always remain
      * enabled.
