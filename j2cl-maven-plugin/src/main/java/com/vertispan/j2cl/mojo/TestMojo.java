@@ -370,7 +370,7 @@ public class TestMojo extends AbstractBuildMojo {
 
                 try {
                     String url = "http://localhost:" + port + "/" + startupHtmlFile.toString();
-                    System.out.println("fetching " + url);
+                    getLog().info("fetching " + url);
                     driver.get(url);
 
                     // Loop and poll if tests are done

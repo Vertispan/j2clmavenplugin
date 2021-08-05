@@ -187,7 +187,7 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
 
         if (getLog().isDebugEnabled()) {
             String prefix = IntStream.range(0, depth).mapToObj(i -> "  ").collect(Collectors.joining(""));
-            getLog().debug(prefix + "*" + key);
+            getLog().debug(prefix + "* " + key);
         }
 
         List<Dependency> dependencies = new ArrayList<>();
@@ -213,10 +213,10 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
                 Artifact old = mavenDependency;
                 mavenDependency = replacement.get().getReplacementArtifact(mavenDependency);
                 if (mavenDependency == null) {
-                    System.out.println("Removing dependency " + old + ", no replacement");
+                    getLog().info("Removing dependency " + old + ", no replacement");
                     continue;
                 }
-                System.out.println("Removing dependency " + old + ", replacing with " + mavenDependency);
+                getLog().info("Removing dependency " + old + ", replacing with " + mavenDependency);
                 appendDependencies = true;
             }
 

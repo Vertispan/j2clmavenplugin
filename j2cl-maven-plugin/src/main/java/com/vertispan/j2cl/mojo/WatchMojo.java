@@ -217,14 +217,13 @@ public class WatchMojo extends AbstractBuildMojo {
                         // wire up the given goals based on the provided configuration
                         for (String goal : execution.getGoals()) {
                             if (goal.equals("test") && shouldCompileTest()) {
-                                System.out.println("Test watch temporarily disabled");
+                                getLog().warn("Test watch temporarily disabled");
                             } else if (goal.equals("build") && shouldCompileBuild()) {
-                                System.out.println("Found build " + execution);
+                                getLog().debug("j2cl:watch found a build execution: " + execution);
 
                                 Xpp3DomConfigValueProvider config = new Xpp3DomConfigValueProvider(configuration, expressionEvaluator, repoSession, repositories, repoSystem, extraClasspath, extraJsZips, getLog());
                                 Project p = buildProject(reactorProject, reactorProject.getArtifact(), true, projectBuilder, request, pluginVersion, builtProjects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, getDependencyReplacements());
 
-                                System.out.println(config);
                                 String compilationLevel = config.findNode("compilationLevel").readString();
                                 String outputTask = getOutputTask(compilationLevel);
 

@@ -42,7 +42,7 @@ public class ClosureTask extends TaskFactory {
 
     @Override
     public String getVersion() {
-        return "0";
+        return "1";
     }
 
     @Override
@@ -122,7 +122,10 @@ public class ClosureTask extends TaskFactory {
                             input -> input.getFilesAndHashes().stream()
                                     .map(CachedPath::getAbsolutePath)
                                     .map(Path::toString)
-                    ).collect(Collectors.toList());
+                    )
+                            //TODO this distinct() call should not be needed, but we apparently have at least one dependency getting duplicated
+                            .distinct()
+                            .collect(Collectors.toList());
                 } else {
                     // skip the copy, reference them from their original location
                     jsPaths = jsSources.stream().flatMap(
