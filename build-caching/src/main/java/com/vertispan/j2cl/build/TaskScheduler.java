@@ -223,20 +223,24 @@ public class TaskScheduler {
                 System.out.println(taskDetails.getProject().getKey() + " finished " + taskDetails.getTaskFactory().getOutputType() + " in " + elapsedMillis + "ms");
             }
             result.markSuccess();
+
         } catch (Exception exception) {
             exception.printStackTrace();//TODO once we log, don't do this
             result.markFailure();
+            listener.onFailure();
+            throw new RuntimeException(exception);// don't safely return, we don't want to continue
         }
 
-        if (taskDetails.getTask() instanceof TaskFactory.FinalOutputTask) {
-            try {
-                // if this fails, we'll report failure to the listener
-                executeFinalTask(taskDetails, result);
-            } catch (Exception exception) {
-                // TODO can't proceed, shut everything down
-                listener.onError(exception);
-                throw new RuntimeException(exception);
+            // if this is a final task, execute it
+            if (taskDetails.getTask() instanceof TaskFactory.FinalOutputTask) {
+                try {
+                    // if this fails, we'll report failure to the listener
+                    executeFinalTask(taskDetails, result);
+                } catch (Exception exception) {
+                    // TODO can't proceed, shut everything down
+                    listener.onError(exception);
+                    throw new RuntimeException(exception);
+                }
             }
-        }
     }
 }
