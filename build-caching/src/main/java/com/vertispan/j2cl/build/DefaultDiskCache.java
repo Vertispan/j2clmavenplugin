@@ -41,7 +41,11 @@ public class DefaultDiskCache extends DiskCache {
 
         for (Map.Entry<String, String> entry : inputs.getUsedConfigs().entrySet()) {
             hash.update(entry.getKey().getBytes(StandardCharsets.UTF_8));
-            hash.update(entry.getValue().getBytes(StandardCharsets.UTF_8));
+            if (entry.getValue() == null) {
+                hash.update(0);
+            } else {
+                hash.update(entry.getValue().getBytes(StandardCharsets.UTF_8));
+            }
         }
 
         return cacheDir.toPath().resolve(projectName.replaceAll("[^\\-_a-zA-Z0-9.]", "-")).resolve(hash.getValueHexString() + "-" + inputs.getTaskFactory().getOutputType());

@@ -1,6 +1,7 @@
 package com.vertispan.j2cl.mojo;
 
 import com.vertispan.j2cl.build.PropertyTrackingConfig;
+import org.apache.maven.plugin.logging.Log;
 import org.codehaus.plexus.component.configurator.expression.ExpressionEvaluationException;
 import org.codehaus.plexus.component.configurator.expression.ExpressionEvaluator;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
@@ -25,8 +26,9 @@ public class Xpp3DomConfigValueProvider implements PropertyTrackingConfig.Config
     private final RepositorySystem repoSystem;
     private final FileListConfigNode extraClasspath;
     private final FileListConfigNode extraJsZips;
+    private final Log log;
 
-    public Xpp3DomConfigValueProvider(Xpp3Dom config, ExpressionEvaluator expressionEvaluator, RepositorySystemSession repoSession, List<RemoteRepository> repositories, RepositorySystem repoSystem, List<File> extraClasspath, List<File> extraJsZips) {
+    public Xpp3DomConfigValueProvider(Xpp3Dom config, ExpressionEvaluator expressionEvaluator, RepositorySystemSession repoSession, List<RemoteRepository> repositories, RepositorySystem repoSystem, List<File> extraClasspath, List<File> extraJsZips, Log log) {
         this.config = config;
         this.expressionEvaluator = expressionEvaluator;
         this.repoSession = repoSession;
@@ -34,7 +36,11 @@ public class Xpp3DomConfigValueProvider implements PropertyTrackingConfig.Config
         this.repoSystem = repoSystem;
         this.extraClasspath = new FileListConfigNode("extraClasspath", extraClasspath);
         this.extraJsZips = new FileListConfigNode("extraJsZips", extraJsZips);
-        System.out.println(config);
+        this.log = log;
+
+        if (log.isDebugEnabled()) {
+            log.debug(config.toString());
+        }
     }
 
     private File getFileWithMavenCoords(String coords) throws ArtifactResolutionException {
@@ -55,7 +61,9 @@ public class Xpp3DomConfigValueProvider implements PropertyTrackingConfig.Config
 
         @Override
         public String readString() {
-            return getValue(node);
+            String value = getValue(node);
+            log.debug(getPath() + " => " + value);
+            return value;
         }
 
         @Override
@@ -72,7 +80,7 @@ public class Xpp3DomConfigValueProvider implements PropertyTrackingConfig.Config
                 // handle as a file instead
                 f = new File(pathOrCoords);
             }
-            System.out.println(getPath() + " => " + f.getAbsolutePath());
+            log.debug(getPath() + " => " + f.getAbsolutePath());
             return f;
         }
 
