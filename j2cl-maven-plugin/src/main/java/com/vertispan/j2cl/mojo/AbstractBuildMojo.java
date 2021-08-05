@@ -28,6 +28,7 @@ import org.eclipse.aether.resolution.ArtifactResolutionException;
 import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 public abstract class AbstractBuildMojo extends AbstractCacheMojo {
@@ -177,9 +178,17 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
      * @return
      */
     protected Project buildProject(MavenProject mavenProject, Artifact artifact, boolean lookupReactorProjects, ProjectBuilder projectBuilder, ProjectBuildingRequest request, String pluginVersion, LinkedHashMap<String, Project> builtProjects, String classpathScope, List<DependencyReplacement> dependencyReplacements) throws ProjectBuildingException {
+        return buildProject(mavenProject, artifact, lookupReactorProjects, projectBuilder, request, pluginVersion, builtProjects, classpathScope, dependencyReplacements, 0);
+    }
+    private Project buildProject(MavenProject mavenProject, Artifact artifact, boolean lookupReactorProjects, ProjectBuilder projectBuilder, ProjectBuildingRequest request, String pluginVersion, LinkedHashMap<String, Project> builtProjects, String classpathScope, List<DependencyReplacement> dependencyReplacements, int depth) throws ProjectBuildingException {
 
         String key = AbstractBuildMojo.key(artifact);
         Project project = new Project(key);
+
+        if (getLog().isDebugEnabled()) {
+            String prefix = IntStream.range(0, depth).mapToObj(i -> "  ").collect(Collectors.joining(""));
+            getLog().debug(prefix + "*" + key);
+        }
 
         List<Dependency> dependencies = new ArrayList<>();
 
@@ -219,7 +228,7 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
             } else {
                 MavenProject p = lookupReactorProjects ? getReferencedProject(mavenProject, mavenDependency) : null;
                 if (p != null) {
-                    child = buildProject(p, mavenDependency, lookupReactorProjects, projectBuilder, request, pluginVersion, builtProjects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, dependencyReplacements);
+                    child = buildProject(p, mavenDependency, lookupReactorProjects, projectBuilder, request, pluginVersion, builtProjects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, dependencyReplacements, depth++);
                 } else {
                     // non-reactor project (or we don't want it to be from reactor), build a project for it
                     request.setProject(null);
@@ -235,7 +244,7 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
                         throw new ProjectBuildingException(p.getId(), "Failed to resolve this project's artifact file", e);
                     }
 
-                    child = buildProject(p, mavenDependency, lookupReactorProjects, projectBuilder, request, pluginVersion, builtProjects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, dependencyReplacements);
+                    child = buildProject(p, mavenDependency, lookupReactorProjects, projectBuilder, request, pluginVersion, builtProjects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, dependencyReplacements, depth++);
                 }
 
                 if (appendDependencies) {
