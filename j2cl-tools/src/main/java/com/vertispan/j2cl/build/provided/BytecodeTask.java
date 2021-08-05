@@ -42,6 +42,11 @@ public class BytecodeTask extends TaskFactory {
     }
 
     @Override
+    public String getVersion() {
+        return "0";
+    }
+
+    @Override
     public Task resolve(Project project, Config config) {
         if (!project.hasSourcesMapped()) {
             // instead copy the bytecode out of the jar so it can be used by downtream bytecode/apt tasks

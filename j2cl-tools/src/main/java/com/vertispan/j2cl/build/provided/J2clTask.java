@@ -31,6 +31,11 @@ public class J2clTask extends TaskFactory {
     }
 
     @Override
+    public String getVersion() {
+        return "0";
+    }
+
+    @Override
     public Task resolve(Project project, Config config) {
         // J2CL is only interested in .java and .native.js files in our own sources
         Input ownJavaSources = input(project, OutputTypes.STRIPPED_SOURCES).filter(JAVA_SOURCES, NATIVE_JS_SOURCES);

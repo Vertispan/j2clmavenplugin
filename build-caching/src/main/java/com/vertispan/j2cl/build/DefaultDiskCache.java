@@ -33,7 +33,7 @@ public class DefaultDiskCache extends DiskCache {
 
         hash.update(inputs.getTaskFactory().getClass().toString().getBytes(StandardCharsets.UTF_8));
         hash.update(inputs.getTaskFactory().getTaskName().getBytes(StandardCharsets.UTF_8));
-        //TODO incorporate a version number into the task factory so we can differentiate between updates
+        hash.update(inputs.getTaskFactory().getVersion().getBytes(StandardCharsets.UTF_8));
 
         for (Input input : inputs.getInputs()) {
             input.updateHash(hash);

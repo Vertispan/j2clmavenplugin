@@ -37,6 +37,11 @@ public class ClosureBundleTask extends TaskFactory {
     }
 
     @Override
+    public String getVersion() {
+        return "0";
+    }
+
+    @Override
     public Task resolve(Project project, Config config) {
         // TODO filter to just JS and sourcemaps? probably not required unless we also get sources
         //      from the actual input source instead of copying it along each step

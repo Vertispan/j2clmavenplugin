@@ -1,9 +1,12 @@
 package com.vertispan.j2cl.mojo;
 
 import org.apache.maven.plugin.AbstractMojo;
+import org.apache.maven.plugin.descriptor.PluginDescriptor;
 import org.apache.maven.plugins.annotations.Parameter;
 
 import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public abstract class AbstractCacheMojo extends AbstractMojo {
     /**
@@ -11,5 +14,12 @@ public abstract class AbstractCacheMojo extends AbstractMojo {
      * and faster builds between projects, it can make sense to set this globally to a shared directory.
      */
     @Parameter(defaultValue = "${project.build.directory}/gwt3BuildCache", required = true, property = "gwt3.cache.dir")
-    protected File gwt3BuildCacheDir;
+    private File gwt3BuildCacheDir;
+
+    protected Path getCacheDir() {
+        PluginDescriptor pluginDescriptor = (PluginDescriptor) getPluginContext().get("pluginDescriptor");
+        String pluginVersion = pluginDescriptor.getVersion();
+
+        return Paths.get(gwt3BuildCacheDir.getAbsolutePath(), pluginVersion);
+    }
 }

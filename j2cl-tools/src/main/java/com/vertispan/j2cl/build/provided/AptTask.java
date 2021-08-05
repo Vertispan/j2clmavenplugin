@@ -23,6 +23,11 @@ public class AptTask extends TaskFactory {
     }
 
     @Override
+    public String getVersion() {
+        return "0";
+    }
+
+    @Override
     public Task resolve(Project project, Config config) {
         if (!project.hasSourcesMapped()) {
             // we explicitly don't copy the generated sources, they already exist in the proj sources

@@ -162,7 +162,7 @@ public class WatchMojo extends AbstractBuildMojo {
         // other config options come from the plugin or goal config itself
         final DiskCache diskCache;
         try {
-            diskCache = new DefaultDiskCache(gwt3BuildCacheDir);
+            diskCache = new DefaultDiskCache(getCacheDir().toFile());
         } catch (IOException ioException) {
             throw new MojoExecutionException("Failed to create cache", ioException);
         }

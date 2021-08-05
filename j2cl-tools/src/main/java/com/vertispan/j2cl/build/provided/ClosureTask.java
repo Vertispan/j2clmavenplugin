@@ -41,6 +41,11 @@ public class ClosureTask extends TaskFactory {
     }
 
     @Override
+    public String getVersion() {
+        return "0";
+    }
+
+    @Override
     public Task resolve(Project project, Config config) {
         // collect current project JS sources and runtime deps JS sources
         // TODO filter to just JS and sourcemaps? probably not required unless we also get sources

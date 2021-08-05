@@ -25,6 +25,11 @@ public class SkipAptTask extends TaskFactory {
     }
 
     @Override
+    public String getVersion() {
+        return "0";
+    }
+
+    @Override
     public Task resolve(Project project, Config config) {
         return ignore -> {};
     }

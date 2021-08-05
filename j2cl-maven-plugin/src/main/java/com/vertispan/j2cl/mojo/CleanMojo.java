@@ -51,10 +51,7 @@ public class CleanMojo extends AbstractCacheMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        PluginDescriptor pluginDescriptor = (PluginDescriptor) getPluginContext().get("pluginDescriptor");
-        String pluginVersion = pluginDescriptor.getVersion();
-
-        Path currentPluginCacheDir = Paths.get(gwt3BuildCacheDir.getAbsolutePath(), pluginVersion);
+        Path currentPluginCacheDir = getCacheDir();
 
         if (Files.notExists(currentPluginCacheDir)) {
             getLog().info("Directory doesn't exist, nothing to clean: " + currentPluginCacheDir);
@@ -72,7 +69,7 @@ public class CleanMojo extends AbstractCacheMojo {
             } else if (artifact.equals("*")) {
                 // delete all cache entries, regardless of source
                 getLog().info("Deleting entire j2cl-maven-plugin build cache");
-                recursivelyDeleteDir(gwt3BuildCacheDir.toPath());
+                recursivelyDeleteDir(currentPluginCacheDir);
             } else {
                 // identify the cache entry we were ask to remove and delete all items found which might
                 // match that

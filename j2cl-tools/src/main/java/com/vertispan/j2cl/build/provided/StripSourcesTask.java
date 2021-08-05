@@ -26,6 +26,11 @@ public class StripSourcesTask extends TaskFactory {
     }
 
     @Override
+    public String getVersion() {
+        return "0";
+    }
+
+    @Override
     public Task resolve(Project project, Config config) {
         Input inputSources = input(project, OutputTypes.INPUT_SOURCES).filter(JAVA_SOURCES, NATIVE_JS_SOURCES);
         Input generatedSources = input(project, OutputTypes.GENERATED_SOURCES).filter(JAVA_SOURCES, NATIVE_JS_SOURCES);

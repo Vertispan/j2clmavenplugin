@@ -242,7 +242,7 @@ public class TestMojo extends AbstractBuildMojo {
         // construct other required elements to get the work done
         final DiskCache diskCache;
         try {
-            diskCache = new DefaultDiskCache(gwt3BuildCacheDir);
+            diskCache = new DefaultDiskCache(getCacheDir().toFile());
         } catch (IOException ioException) {
             throw new MojoExecutionException("Failed to create cache", ioException);
         }

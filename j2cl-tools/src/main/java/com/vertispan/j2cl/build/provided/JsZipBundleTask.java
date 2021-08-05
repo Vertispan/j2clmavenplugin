@@ -30,6 +30,11 @@ public class JsZipBundleTask extends TaskFactory {
     }
 
     @Override
+    public String getVersion() {
+        return "0";
+    }
+
+    @Override
     public Task resolve(Project project, Config config) {
         // we actually ignore project here, and just read from config
         List<File> extraJsZips = config.getExtraJsZips();

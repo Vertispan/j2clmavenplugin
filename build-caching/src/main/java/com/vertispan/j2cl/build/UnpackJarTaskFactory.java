@@ -24,6 +24,11 @@ public class UnpackJarTaskFactory extends TaskFactory {
     }
 
     @Override
+    public String getVersion() {
+        return "0";
+    }
+
+    @Override
     public Task resolve(Project project, Config config) {
         // we don't have any proper inputs or configs
 

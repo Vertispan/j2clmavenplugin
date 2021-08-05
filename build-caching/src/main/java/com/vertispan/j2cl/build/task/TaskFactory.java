@@ -16,16 +16,8 @@ import java.util.stream.Collectors;
  * This is part of the public API, new implementations can be provided, even for output types
  * that aren't known by the plugin.
  *
- * @todo add a version property so we can tell when it changes
  */
 public abstract class TaskFactory {
-//    private static ThreadLocal<CollectedTaskInputs> collectorForThread = new ThreadLocal<>();
-
-//    @Deprecated//TODO not this
-//    public static void setCollectorForThread(CollectedTaskInputs collectorForThread) {
-//        //TODO inject into Input instances instead
-//        TaskFactory.collectorForThread.set(collectorForThread);
-//    }
     public final List<com.vertispan.j2cl.build.Input> inputs = new ArrayList<>();
 
     protected Input input(Dependency dependency, String outputType) {
@@ -56,6 +48,13 @@ public abstract class TaskFactory {
      * The name to look for in configuration to specify an implementation
      */
     public abstract String getTaskName();
+
+    /**
+     * Some string identifier for the current version of this task. Ideally when the task's contents change in some way
+     * that would affect output, this should change as well.
+     */
+    public abstract String getVersion();
+
 
     /**
      * Complete the work, based on the inputs requested and the configs accessed.

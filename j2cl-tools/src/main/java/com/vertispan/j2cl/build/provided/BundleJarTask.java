@@ -29,6 +29,11 @@ public class BundleJarTask extends TaskFactory {
     }
 
     @Override
+    public String getVersion() {
+        return "0";
+    }
+
+    @Override
     public Task resolve(Project project, Config config) {
         List<Input> jsSources = Stream
                 .concat(

@@ -23,6 +23,11 @@ public class IJarTask extends TaskFactory {
     }
 
     @Override
+    public String getVersion() {
+        return "0";
+    }
+
+    @Override
     public Task resolve(Project project, Config config) {
         Input myStrippedBytecode = input(project, OutputTypes.STRIPPED_BYTECODE);
         return output -> {

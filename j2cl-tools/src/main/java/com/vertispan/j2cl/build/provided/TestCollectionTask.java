@@ -26,6 +26,11 @@ public class TestCollectionTask extends TaskFactory {
     }
 
     @Override
+    public String getVersion() {
+        return "0";
+    }
+
+    @Override
     public Task resolve(Project project, Config config) {
         // gather possible inputs so we can get the test summary file
         // we assume here that the user will correctly depend on the junit apt, might revise this later
