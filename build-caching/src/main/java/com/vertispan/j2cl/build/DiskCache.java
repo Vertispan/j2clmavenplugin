@@ -6,6 +6,7 @@ import io.methvin.watcher.PathUtils;
 import io.methvin.watcher.hashing.FileHash;
 import io.methvin.watcher.hashing.FileHasher;
 import io.methvin.watchservice.MacOSXListeningWatchService;
+import io.methvin.watchservice.WatchablePath;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,6 +21,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * Manages the cached task inputs and outputs.
  */
 public abstract class DiskCache {
+    private static final boolean IS_MAC = System.getProperty("os.name").toLowerCase().contains("mac");
+
     public class CacheResult {
         private final Path taskDir;
 
@@ -75,8 +78,7 @@ public abstract class DiskCache {
             throw new IllegalArgumentException("Can't use " + cacheDir + ", failed to create it, or already exists and isn't a directory");
         }
 
-        boolean isMac = System.getProperty("os.name").toLowerCase().contains("mac");
-        if (isMac) {
+        if (IS_MAC) {
             service = new MacOSXListeningWatchService();
         } else {
             service = cacheDir.toPath().getFileSystem().newWatchService();
@@ -366,7 +368,7 @@ public abstract class DiskCache {
             knownMarkers.put(failureMarker, taskDir);
 
             // register to watch if a marker is made so we can get a call back, then check for existing markers
-            WatchKey key = taskDir.register(this.service, StandardWatchEventKinds.ENTRY_CREATE);
+            WatchKey key = registerWatchCreate(taskDir);
 
             // check once more if we can take over the task dir, if we raced with the registration
             //TODO one more check here that we even want to make this and start the work
@@ -401,6 +403,19 @@ public abstract class DiskCache {
         }
 
         // we're waiting for real now, give up on this thread
+    }
+
+    /**
+     * Helper to deal with correctly watching paths using the mac-specific watch impl
+     */
+    private WatchKey registerWatchCreate(Path taskDir) throws IOException {
+        final Watchable watchable;
+        if (IS_MAC) {
+            watchable = new WatchablePath(taskDir);
+        } else {
+            watchable = taskDir;
+        }
+        return watchable.register(this.service, StandardWatchEventKinds.ENTRY_CREATE);
     }
 
     public void markFinished(CacheResult successfulResult) {
