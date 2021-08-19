@@ -73,7 +73,6 @@ public class ClosureBundleTask extends TaskFactory {
 
             // copy the sources locally so that we can create usable sourcemaps
             //TODO consider a soft link
-            //TODO also consider using the PersistentInputStore to let try to cheat and map paths
             File sources = new File(closureOutputDir, "sources");
             for (Path path : js.stream().map(Input::getParentPaths).flatMap(Collection::stream).collect(Collectors.toList())) {
                 FileUtils.copyDirectory(path.toFile(), sources);
@@ -84,7 +83,7 @@ public class ClosureBundleTask extends TaskFactory {
                     CompilationLevel.BUNDLE,
                     DependencyOptions.DependencyMode.SORT_ONLY,
                     CompilerOptions.LanguageMode.NO_TRANSPILE,
-                    js.stream().map(Input::getFilesAndHashes).flatMap(Collection::stream).map(CachedPath::getSourcePath).map(p -> sources.toPath().resolve(p)).map(Path::toString).collect(Collectors.toList()),
+                    js,
                     sources,
                     Collections.emptyList(),
                     Collections.emptyList(),

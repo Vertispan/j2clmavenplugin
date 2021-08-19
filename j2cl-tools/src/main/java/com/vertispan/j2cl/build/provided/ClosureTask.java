@@ -107,7 +107,6 @@ public class ClosureTask extends TaskFactory {
                         sources = null;
                     }
                 }
-                List<String> jsPaths;
                 if (sources != null) {
                     Files.createDirectories(Paths.get(closureOutputDir.getAbsolutePath(), initialScriptFilename).getParent());
 
@@ -118,24 +117,6 @@ public class ClosureTask extends TaskFactory {
                             FileUtils.copyDirectory(path.toFile(), sources);
                         }
                     }
-                    jsPaths = jsSources.stream().flatMap(
-                            input -> input.getFilesAndHashes().stream()
-                                    .map(CachedPath::getAbsolutePath)
-                                    .map(Path::toString)
-                    )
-                            //TODO this distinct() call should not be needed, but we apparently have at least one dependency getting duplicated
-                            .distinct()
-                            .collect(Collectors.toList());
-                } else {
-                    // skip the copy, reference them from their original location
-                    jsPaths = jsSources.stream().flatMap(
-                            input -> input.getFilesAndHashes().stream()
-                                    .map(CachedPath::getAbsolutePath)
-                                    .map(Path::toString)
-                    )
-                            //TODO this distinct() call should not be needed, but we apparently have at least one dependency getting duplicated
-                            .distinct()
-                            .collect(Collectors.toList());
                 }
 
                 Map<String, String> defines = new LinkedHashMap<>(configDefines);
@@ -148,7 +129,7 @@ public class ClosureTask extends TaskFactory {
                         compilationLevel,
                         dependencyMode,
                         languageOut,
-                        jsPaths,
+                        jsSources,
                         sources,
                         extraJsZips,
                         entrypoint,

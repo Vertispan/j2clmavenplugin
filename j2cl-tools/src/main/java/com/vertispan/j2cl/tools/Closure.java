@@ -2,9 +2,12 @@ package com.vertispan.j2cl.tools;
 
 import com.google.javascript.jscomp.*;
 import com.google.javascript.jscomp.Compiler;
+import com.vertispan.j2cl.build.task.CachedPath;
+import com.vertispan.j2cl.build.task.Input;
 
 import javax.annotation.Nullable;
 import java.io.File;
+import java.nio.file.Path;
 import java.util.*;
 
 public class Closure {
@@ -21,7 +24,7 @@ public class Closure {
             CompilationLevel compilationLevel,
             DependencyOptions.DependencyMode dependencyMode,
             CompilerOptions.LanguageMode languageOut,
-            List<String> jsInputPaths,
+            List<Input> jsInputs,
             @Nullable File jsSourceDir,
             List<File> jsZips,
             List<String> entrypoints,
@@ -40,10 +43,28 @@ public class Closure {
         Compiler jsCompiler = new Compiler(System.err);
 //        jsCompiler.setPersistentInputStore(persistentInputStore);
 
-        for (String jsInputPath : jsInputPaths) {
-            jscompArgs.add("--js");
-            jscompArgs.add(jsInputPath);
-        }
+        // list the parent directories of each input so that module resolution works as expected
+        jsInputs.stream()
+                .map(Input::getParentPaths)
+                .flatMap(Collection::stream)
+                .map(Path::toString)
+                .forEach(parentPath -> {
+                    jscompArgs.add("--js_module_root");
+                    jscompArgs.add(parentPath);
+                });
+
+        // for each input, list each js file that was given to us
+        jsInputs.stream()
+                .map(Input::getFilesAndHashes)
+                .flatMap(Collection::stream)
+                .map(CachedPath::getAbsolutePath)
+                .map(Path::toString)
+                //TODO this distinct() call should not be needed, but we apparently have at least one dependency getting duplicated
+                .distinct()
+                .forEach(jsInputPath -> {
+                    jscompArgs.add("--js");
+                    jscompArgs.add(jsInputPath);
+                });
 
         jsZips.forEach(file -> {
             jscompArgs.add("--jszip");
