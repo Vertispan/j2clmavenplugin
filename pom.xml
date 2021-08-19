@@ -36,7 +36,7 @@
     <commons.io.version>2.5</commons.io.version>
 
     <!-- Test -->
-    <junit.version>4.12</junit.version>
+    <junit.version>4.13.1</junit.version>
 
     <!-- Dependency management -->
     <maven.shared.utils.version>3.1.0</maven.shared.utils.version>
