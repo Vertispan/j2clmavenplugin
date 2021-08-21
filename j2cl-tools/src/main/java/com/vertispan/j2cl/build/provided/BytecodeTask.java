@@ -12,6 +12,7 @@ import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -43,7 +44,7 @@ public class BytecodeTask extends TaskFactory {
 
     @Override
     public String getVersion() {
-        return "0";
+        return "1";
     }
 
     @Override
@@ -59,6 +60,10 @@ public class BytecodeTask extends TaskFactory {
             };
         }
 
+        // TODO just use one input for both of these
+        // track the dirs (with all file changes) so that APT can see things it wants
+        Input inputDirs = input(project, OutputTypes.INPUT_SOURCES);
+        // track just java files (so we can just compile them)
         Input inputSources = input(project, OutputTypes.INPUT_SOURCES).filter(JAVA_SOURCES);
 
         List<Input> bytecodeClasspath = scope(project.getDependencies(), com.vertispan.j2cl.build.task.Dependency.Scope.COMPILE)
@@ -73,10 +78,13 @@ public class BytecodeTask extends TaskFactory {
                 return;// no work to do
             }
 
-            List<File> classpathDirs = Stream.concat(
+            List<File> classpathDirs = Stream.of(
                     bytecodeClasspath.stream().map(Input::getParentPaths).flatMap(Collection::stream).map(Path::toFile),
-                    extraClasspath.stream()
-            ).collect(Collectors.toList());
+                    extraClasspath.stream(),
+                    inputDirs.getParentPaths().stream().map(Path::toFile)
+            )
+                    .flatMap(Function.identity())
+                    .collect(Collectors.toList());
 
             // TODO don't dump APT to the same dir?
             Javac javac = new Javac(output.path().toFile(), classpathDirs, output.path().toFile(), bootstrapClasspath);
