@@ -1,5 +1,6 @@
 package com.vertispan.j2cl.tools;
 
+import com.google.j2cl.common.OutputUtils;
 import com.google.j2cl.common.SourceUtils;
 import com.google.j2cl.common.Problems;
 import com.google.j2cl.transpiler.backend.Backend;
@@ -17,8 +18,10 @@ import java.util.stream.Stream;
 public class J2cl {
 
     private final J2clTranspilerOptions.Builder optionsBuilder;
+    private final File jsOutDir;
 
     public J2cl(List<File> strippedClasspath, @Nonnull File bootstrap, File jsOutDir) {
+        this.jsOutDir = jsOutDir;
         optionsBuilder = J2clTranspilerOptions.newBuilder()
                 .setFrontend(Frontend.JDT)
                 .setBackend(Backend.CLOSURE)
@@ -26,24 +29,28 @@ public class J2cl {
                         .map(File::getAbsolutePath)
                         .collect(Collectors.toList())
                 )
-                .setOutput(jsOutDir.toPath())
                 .setEmitReadableLibraryInfo(false)
                 .setEmitReadableSourceMap(false)
                 .setGenerateKytheIndexingMetadata(false);
     }
 
     public boolean transpile(List<SourceUtils.FileInfo> sourcesToCompile, List<SourceUtils.FileInfo> nativeSources) {
-        J2clTranspilerOptions options = optionsBuilder
-                .setSources(sourcesToCompile)
-                .setNativeSources(nativeSources)
-                .build();
         Problems problems = new Problems();
-        try {
+        J2clTranspilerOptions options = null;
+        try (OutputUtils.Output output = OutputUtils.initOutput(jsOutDir.toPath(), problems)) {
+            options = optionsBuilder
+                    .setOutput(output)
+                    .setSources(sourcesToCompile)
+                    .setNativeSources(nativeSources)
+                    .build();
+
             J2clTranspiler.transpile(options, problems);
         } catch (Problems.Exit e) {
             // Program aborted due to errors recorded in problems, will be logged below
         } catch (Throwable t) {
-            System.out.println(options);
+            if (options != null) {
+                System.out.println(options);
+            }
             throw t;
         }
 

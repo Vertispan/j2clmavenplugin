@@ -83,10 +83,9 @@ public class J2clTask extends TaskFactory {
 
             // TODO when we make j2cl incremental we'll consume the provided sources and hashes (the "values" in the
             //      maps above), and diff them against the previous compile
-            j2cl.transpile(
-                    javaSources,
-                    nativeSources
-            );
+            if (!j2cl.transpile(javaSources, nativeSources)) {
+                throw new IllegalStateException("Error while running J2CL");
+            }
         };
     }
 }
