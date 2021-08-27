@@ -16,11 +16,11 @@ jobs:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - v1-dependencies-{{ checksum "pom.xml" }}
+            - v2-dependencies-{{ checksum "pom.xml" }}
             # fallback to using the latest cache if no exact match is found
-            - v1-dependencies-
+            - v2-dependencies-
 
-      - run: mvn org.apache.maven.plugins:maven-dependency-plugin:3.2.0:go-offline
+      - run: mvn org.apache.maven.plugins:maven-dependency-plugin:3.2.0:go-offline -U
 
       - save_cache:
           paths:
