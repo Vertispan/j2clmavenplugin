@@ -44,7 +44,7 @@ public class BytecodeTask extends TaskFactory {
 
     @Override
     public String getVersion() {
-        return "1";
+        return "0";
     }
 
     @Override
