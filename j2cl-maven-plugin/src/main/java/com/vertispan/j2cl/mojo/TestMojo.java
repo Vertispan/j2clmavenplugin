@@ -43,6 +43,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -319,6 +320,11 @@ public class TestMojo extends AbstractBuildMojo {
                     l.blockUntilFinished();
                 } catch (InterruptedException e) {
                     throw new MojoExecutionException("Interrupted", e);
+                } catch (CompletionException e) {
+                    throw new MojoExecutionException("Error while building", e.getCause());
+                }
+                if (!l.isSuccess()) {
+                    throw new MojoFailureException("Error building test, see log for details");
                 }
 
                 getLog().info("Test started: " + testClass);

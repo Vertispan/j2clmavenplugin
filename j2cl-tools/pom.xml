@@ -7,7 +7,7 @@
     <parent>
         <groupId>com.vertispan.j2cl</groupId>
         <artifactId>j2cl-tools</artifactId>
-        <version>0.18-SNAPSHOT</version>
+        <version>0.19-SNAPSHOT</version>
     </parent>
     <artifactId>j2cl-build</artifactId>
 
@@ -73,7 +73,7 @@
         <dependency>
             <groupId>com.google.auto.service</groupId>
             <artifactId>auto-service</artifactId>
-            <version>1.0-rc7</version>
+            <version>1.0</version>
             <scope>provided</scope>
         </dependency>
 
