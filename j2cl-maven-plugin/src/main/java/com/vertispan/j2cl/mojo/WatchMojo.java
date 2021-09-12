@@ -34,9 +34,6 @@ import java.util.stream.Collectors;
 @Mojo(name = "watch", requiresDependencyResolution = ResolutionScope.TEST, aggregator = true)
 public class WatchMojo extends AbstractBuildMojo {
 
-    @Parameter(defaultValue = "${reactorProjects}", required = true, readonly = true)
-    protected List<MavenProject> reactorProjects;
-
     @Parameter(defaultValue = "${j2cl.webappDirectory}")
     protected String webappDirectory;// technically required, but we have logic to test this in execute()
 

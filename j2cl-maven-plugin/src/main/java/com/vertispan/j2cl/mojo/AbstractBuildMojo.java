@@ -37,6 +37,9 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
     @Parameter( defaultValue = "${session}", readonly = true)
     protected MavenSession mavenSession;
 
+    @Parameter(defaultValue = "${reactorProjects}", required = true, readonly = true)
+    protected List<MavenProject> reactorProjects;
+
     @Parameter(defaultValue = "${project}", readonly = true, required = true)
     protected MavenProject project;
 
@@ -261,9 +264,10 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
         project.setDependencies(dependencies);
 
         // we only check for sources, not resources, as resources are always populated even for non-reactor projects
-        if (mavenProject.getCompileSourceRoots().isEmpty()/* && mavenProject.getResources().isEmpty()*/) {
-            project.setSourceRoots(Collections.singletonList(artifact.getFile().toString()));
-        } else {
+        boolean hasSourcesMapped = reactorProjects.contains(mavenProject);
+
+        if (hasSourcesMapped) {
+            //TODO support local checkouts of artifacts to map sources to
             project.setSourceRoots(
                     Stream.concat(
                             mavenProject.getCompileSourceRoots().stream(),
@@ -272,6 +276,8 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
                             .filter(path -> new File(path).exists())
                             .collect(Collectors.toList())
             );
+        } else {
+            project.setSourceRoots(Collections.singletonList(artifact.getFile().toString()));
         }
 
         builtProjects.put(key, project);
