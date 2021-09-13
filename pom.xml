@@ -31,7 +31,7 @@
     <j2cl.version>0.10-SNAPSHOT</j2cl.version>
     <closure.compiler.unshaded.version>0.3-SNAPSHOT</closure.compiler.unshaded.version>
     <commons.codec.version>1.11</commons.codec.version>
-    <commons.io.version>2.5</commons.io.version>
+    <commons.io.version>2.7</commons.io.version>
 
     <!-- Test -->
     <junit.version>4.13.1</junit.version>
