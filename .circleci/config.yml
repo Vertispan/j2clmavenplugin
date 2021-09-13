@@ -30,7 +30,7 @@ jobs:
       - run:
           name: Build and push to Artifactory
           command: |
-            mvn deploy -s .circleci/settings.xml -Dartifactory.username=$ARTIFACTORY_USER -Dartifactory.password=$ARTIFACTORY_APIKEY
+            mvn deploy -s .circleci/settings.xml -Dinvoker.streamLogsOnFailures=true -Dartifactory.username=$ARTIFACTORY_USER -Dartifactory.password=$ARTIFACTORY_APIKEY
 
 workflows:
   version: 2
