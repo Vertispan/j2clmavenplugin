@@ -8,6 +8,7 @@ import com.vertispan.j2cl.build.task.TaskOutput;
 import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -22,6 +23,13 @@ import java.util.stream.Collectors;
 public class TaskScheduler {
     private final Executor executor;
     private final DiskCache diskCache;
+
+    // This is technically incorrect, but covers the current use cases, and should fail loudly if this assumption
+    // ends up being violated, so we know what to fix. This should be null upon submit(), set to the path of the
+    // CacheResult when a final-task begins, and nulled out again when the final-task ends. If a final-task attempts
+    // to start and this isn't null, we assert it is already set to this value (and skip the work), and assert it is
+    // null when submitting any work.
+    private final AtomicReference<String> finalTaskMarker = new AtomicReference<>();
 
     /**
      * Creates a scheduler to perform work as needed. Before any task is attempted, the
@@ -45,6 +53,7 @@ public class TaskScheduler {
      * Params need to specify dependencies so we can track them internally, and when submitted
      */
     public Cancelable submit(Collection<CollectedTaskInputs> inputs, BuildListener listener) {
+        verifyFinalTaskMarkerNull();
         // Build an initial set of work that doesn't need doing, we'll add to this as we go
         // We aren't concerned about missing filtered instances here
         Set<Input> ready = inputs.stream()
@@ -70,6 +79,7 @@ public class TaskScheduler {
             @Override
             public void onSuccess() {
                 if (firstNotificationSent.compareAndSet(false, true)) {
+                    verifyFinalTaskMarkerNull();
                     listener.onSuccess();
                 }
             }
@@ -77,20 +87,28 @@ public class TaskScheduler {
             @Override
             public void onFailure() {
                 if (firstNotificationSent.compareAndSet(false, true)) {
+                    verifyFinalTaskMarkerNull();
                     listener.onFailure();
                 }
-
             }
 
             @Override
             public void onError(Throwable throwable) {
                 if (firstNotificationSent.compareAndSet(false, true)) {
+                    verifyFinalTaskMarkerNull();
                     listener.onError(throwable);
                 }
             }
         });
 
         return remainingWork::clear;
+    }
+
+    private void verifyFinalTaskMarkerNull() {
+        String marker = finalTaskMarker.get();
+        if (marker != null) {
+            throw new IllegalStateException("Expected final task marker to be null - builds running concurrently? " + marker);
+        }
     }
 
     private void scheduleAvailableWork(Set<Input> ready, Map<Input, List<Input>> allInputs, Set<CollectedTaskInputs> remainingWork, BuildListener listener) {
@@ -199,6 +217,11 @@ public class TaskScheduler {
     }
 
     private void executeFinalTask(CollectedTaskInputs taskDetails, DiskCache.CacheResult cacheResult) throws Exception {
+        if (!finalTaskMarker.compareAndSet(null, cacheResult.outputDir().toString())) {
+            // failed to set it to null, some other thread already has the lock
+            System.out.println("skipping final task, some other thread has the lock");
+            return;
+        }
         System.out.println("starting final task " + taskDetails.getProject().getKey() + " " + taskDetails.getTaskFactory().getOutputType());
         long start = System.currentTimeMillis();
         try {
@@ -207,6 +230,11 @@ public class TaskScheduler {
         } catch (Throwable t) {
             System.out.println(taskDetails.getProject().getKey() + " final task " + taskDetails.getTaskFactory().getOutputType() + " failed in " + (System.currentTimeMillis() - start) + "ms");
             throw t;
+        } finally {
+            String previous = finalTaskMarker.getAndSet(null);
+            if (!previous.equals(cacheResult.outputDir().toString())) {
+                throw new IllegalStateException("final task marker should have been " + cacheResult.outputDir() + ", instead was " + previous);
+            }
         }
     }
 
@@ -231,16 +259,16 @@ public class TaskScheduler {
             throw new RuntimeException(exception);// don't safely return, we don't want to continue
         }
 
-            // if this is a final task, execute it
-            if (taskDetails.getTask() instanceof TaskFactory.FinalOutputTask) {
-                try {
-                    // if this fails, we'll report failure to the listener
-                    executeFinalTask(taskDetails, result);
-                } catch (Exception exception) {
-                    // TODO can't proceed, shut everything down
-                    listener.onError(exception);
-                    throw new RuntimeException(exception);
-                }
+        // if this is a final task, execute it
+        if (taskDetails.getTask() instanceof TaskFactory.FinalOutputTask) {
+            try {
+                // if this fails, we'll report failure to the listener
+                executeFinalTask(taskDetails, result);
+            } catch (Exception exception) {
+                // TODO can't proceed, shut everything down
+                listener.onError(exception);
+                throw new RuntimeException(exception);
             }
+        }
     }
 }
