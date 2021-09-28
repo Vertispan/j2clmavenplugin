@@ -9,7 +9,7 @@ import java.nio.file.PathMatcher;
 
 @AutoService(TaskFactory.class)
 public class AptTask extends TaskFactory {
-    public static final PathMatcher BYTECODE = FileSystems.getDefault().getPathMatcher("glob:**/*.class");
+    public static final PathMatcher BYTECODE = withSuffix(".class");
     public static final PathMatcher NOT_BYTECODE = p -> !BYTECODE.matches(p);
 
     @Override
