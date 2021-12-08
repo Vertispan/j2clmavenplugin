@@ -11,6 +11,9 @@ built from here:
 
 ------------------------
 
+# Usage
+A fully working sample project can be found at https://github.com/treblereel/j2cl-tests
+
 # Goals
 
 The plugin has four goals
