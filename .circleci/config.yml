@@ -31,7 +31,9 @@ jobs:
           name: Build and push to Artifactory
           command: |
             mvn deploy -s .circleci/settings.xml -Dinvoker.streamLogsOnFailures=true -Dartifactory.username=$ARTIFACTORY_USER -Dartifactory.password=$ARTIFACTORY_APIKEY
-
+      - store_artifacts:
+          path: j2cl-maven-plugin/target/it-logs
+          destination: it-logs
 workflows:
   version: 2
   ci_build:
