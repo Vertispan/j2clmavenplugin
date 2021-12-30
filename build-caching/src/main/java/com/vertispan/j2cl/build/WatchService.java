@@ -40,15 +40,11 @@ public class WatchService {
         sourcePathsToWatch.forEach((project, paths) -> {
             paths.forEach(path -> pathToProjects.put(path, project));
         });
-        List<Path> pathToWatch = sourcePathsToWatch.values().stream().flatMap(List::stream).collect(Collectors.toList());
-        pathToWatch.forEach(System.out::println);
         directoryWatcher = DirectoryWatcher.builder()
-                .paths(pathToWatch)
+                .paths(sourcePathsToWatch.values().stream().flatMap(List::stream).collect(Collectors.toList()))
                 .listener(new DirectoryChangeListener() {
                     @Override
                     public void onEvent(DirectoryChangeEvent event) throws IOException {
-//                        System.out.println(event.rootPath());
-                        System.out.println(event.path());
                         if (!event.isDirectory()) {
                             Path rootPath = event.rootPath();
                             update(pathToProjects.get(rootPath), rootPath, rootPath.relativize(event.path()), event.eventType(), event.hash());
@@ -76,7 +72,6 @@ public class WatchService {
     }
 
     private void update(Project project, Path rootPath, Path relativeFilePath, DirectoryChangeEvent.EventType eventType, FileHash hash) {
-        System.out.println(project);
         switch (eventType) {
             case CREATE:
                 buildService.triggerChanges(project, Collections.singletonMap(relativeFilePath, new DiskCache.CacheEntry(relativeFilePath, rootPath, hash)), Collections.emptyMap(), Collections.emptySet());
@@ -154,7 +149,6 @@ public class WatchService {
         }
 
         private void startBuild() {
-            System.out.println("startBuild()");
             Cancelable old = null;
             try {
                 old = previous.getAndSet(buildService.requestBuild(this));
