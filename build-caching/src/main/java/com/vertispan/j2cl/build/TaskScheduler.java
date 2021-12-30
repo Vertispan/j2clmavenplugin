@@ -75,13 +75,14 @@ public class TaskScheduler {
         remainingWork.removeIf(item -> ready.contains(item.getAsInput()));
 
         scheduleAvailableWork(Collections.synchronizedSet(ready), allInputs, remainingWork, new BuildListener() {
-            AtomicBoolean firstNotificationSent = new AtomicBoolean(false);
+            private final AtomicBoolean firstNotificationSent = new AtomicBoolean(false);
             @Override
             public void onSuccess() {
                 if (firstNotificationSent.compareAndSet(false, true)) {
                     verifyFinalTaskMarkerNull();
                     listener.onSuccess();
-                }
+                    System.out.println("success sent");
+                } else System.out.println("success, but already sent, won't send again");
             }
 
             @Override
@@ -89,7 +90,7 @@ public class TaskScheduler {
                 if (firstNotificationSent.compareAndSet(false, true)) {
                     verifyFinalTaskMarkerNull();
                     listener.onFailure();
-                }
+                }else System.out.println("failure, but already sent, won't send again");
             }
 
             @Override
@@ -97,7 +98,7 @@ public class TaskScheduler {
                 if (firstNotificationSent.compareAndSet(false, true)) {
                     verifyFinalTaskMarkerNull();
                     listener.onError(throwable);
-                }
+                }else System.out.println("error, but already sent, won't send again");
             }
         });
 
@@ -112,6 +113,7 @@ public class TaskScheduler {
     }
 
     private void scheduleAvailableWork(Set<Input> ready, Map<Input, List<Input>> allInputs, Set<CollectedTaskInputs> remainingWork, BuildListener listener) {
+        System.out.println(remainingWork);
         if (remainingWork.isEmpty()) {
             // no work left, mark entire set of tasks as finished
             listener.onSuccess();
@@ -138,15 +140,53 @@ public class TaskScheduler {
 
             // check to see if this task is finished (or failed), or can be built by us now
             diskCache.waitForTask(taskDetails, new DiskCache.Listener() {
+                private void executeTask(CollectedTaskInputs taskDetails, DiskCache.CacheResult result, BuildListener listener) {
+                    // all inputs are populated, and it already has the config, we just need to start it up
+                    // with its output path and capture logs
+                    // TODO implement logs!
+                    try {
+                        long start = System.currentTimeMillis();
+
+                        taskDetails.getTask().execute(new TaskOutput(result.outputDir()));
+                        long elapsedMillis = System.currentTimeMillis() - start;
+                        if (elapsedMillis > 5) {
+                            System.out.println(taskDetails.getProject().getKey() + " finished " + taskDetails.getTaskFactory().getOutputType() + " in " + elapsedMillis + "ms");
+                        }
+                        result.markSuccess();
+
+                    } catch (Exception exception) {
+                        exception.printStackTrace();//TODO once we log, don't do this
+                        result.markFailure();
+                        listener.onFailure();
+                        throw new RuntimeException(exception);// don't safely return, we don't want to continue
+                    }
+
+                    // if this is a final task, execute it
+                    if (taskDetails.getTask() instanceof TaskFactory.FinalOutputTask) {
+                        boolean finished;
+                        try {
+                            // if this fails, we'll report failure to the listener
+                            finished = executeFinalTask(taskDetails, result);
+                        } catch (Exception exception) {
+                            // TODO can't proceed, shut everything down
+                            listener.onError(exception);
+                            throw new RuntimeException(exception);
+                        }
+                        if (finished) {
+                            scheduleMoreWork(result, true);
+                        }
+                    } else {
+                        // look for more work now that we've finished this one
+                        scheduleMoreWork(result, false);
+                    }
+                }
+
                 @Override
                 public void onReady(DiskCache.CacheResult cacheResult) {
                     // We can now begin this work off-thread, will be woke up when it finishes.
                     // It is too late to cancel at this time, so no need to check.
                     executor.execute(() -> {
                         executeTask(taskDetails, cacheResult, listener);
-
-                        // look for more work now that we've finished this one
-                        scheduleMoreWork(cacheResult);
                     });
                 }
 
@@ -172,25 +212,35 @@ public class TaskScheduler {
                         // NOTE: we are not calling setCurrentContents on this, since no task may depend on this
                         ready.add(taskDetails.getAsInput());
                         executor.execute(() -> {
+                            boolean finished;
                             try {
                                 // if this fails, we'll report failure to the listener
-                                executeFinalTask(taskDetails, cacheResult);
+                                finished = executeFinalTask(taskDetails, cacheResult);
                             } catch (Exception exception) {
                                 // TODO can't proceed, shut everything down
                                 listener.onError(exception);
                                 throw new RuntimeException(exception);
                             }
 
-                            // we have to schedule more work afterwards because this is what triggers "all done" at the end,
-                            // though it is likely that there isn't any more to do, since we just did the final output work
-                            scheduleMoreWork(cacheResult);
+                            if (finished) {
+                                // we have to schedule more work afterwards because this is what triggers "all done" at the end,
+                                // though it is likely that there isn't any more to do, since we just did the final output work
+                                scheduleMoreWork(cacheResult, true);
+                            }
                         });
                     } else {
-                        scheduleMoreWork(cacheResult);
+                        scheduleMoreWork(cacheResult, false);
                     }
                 }
 
-                private void scheduleMoreWork(DiskCache.CacheResult cacheResult) {
+
+                /**
+                 * Marks the currently running task as complete, registers its output to be available for future
+                 * tasks as inputs, and signals that more work can begin based on this change.
+                 * @param cacheResult the newly finished output
+                 * @param forceCheck
+                 */
+                private void scheduleMoreWork(DiskCache.CacheResult cacheResult, boolean forceCheck) {
                     boolean scheduleMore = false;
                     // mark current item as ready
                     synchronized (ready) {
@@ -216,11 +266,11 @@ public class TaskScheduler {
         });
     }
 
-    private void executeFinalTask(CollectedTaskInputs taskDetails, DiskCache.CacheResult cacheResult) throws Exception {
+    private boolean executeFinalTask(CollectedTaskInputs taskDetails, DiskCache.CacheResult cacheResult) throws Exception {
         if (!finalTaskMarker.compareAndSet(null, cacheResult.outputDir().toString())) {
             // failed to set it to null, some other thread already has the lock
             System.out.println("skipping final task, some other thread has the lock");
-            return;
+            return false;
         }
         System.out.println("starting final task " + taskDetails.getProject().getKey() + " " + taskDetails.getTaskFactory().getOutputType());
         long start = System.currentTimeMillis();
@@ -233,42 +283,9 @@ public class TaskScheduler {
         } finally {
             String previous = finalTaskMarker.getAndSet(null);
             if (!previous.equals(cacheResult.outputDir().toString())) {
-                throw new IllegalStateException("final task marker should have been " + cacheResult.outputDir() + ", instead was " + previous);
+                throw new AssertionError("final task marker should have been " + cacheResult.outputDir() + ", instead was " + previous);
             }
         }
-    }
-
-    private void executeTask(CollectedTaskInputs taskDetails, DiskCache.CacheResult result, BuildListener listener) {
-        // all inputs are populated, and it already has the config, we just need to start it up
-        // with its output path and capture logs
-        // TODO implement logs!
-        try {
-            long start = System.currentTimeMillis();
-
-            taskDetails.getTask().execute(new TaskOutput(result.outputDir()));
-            long elapsedMillis = System.currentTimeMillis() - start;
-            if (elapsedMillis > 5) {
-                System.out.println(taskDetails.getProject().getKey() + " finished " + taskDetails.getTaskFactory().getOutputType() + " in " + elapsedMillis + "ms");
-            }
-            result.markSuccess();
-
-        } catch (Exception exception) {
-            exception.printStackTrace();//TODO once we log, don't do this
-            result.markFailure();
-            listener.onFailure();
-            throw new RuntimeException(exception);// don't safely return, we don't want to continue
-        }
-
-        // if this is a final task, execute it
-        if (taskDetails.getTask() instanceof TaskFactory.FinalOutputTask) {
-            try {
-                // if this fails, we'll report failure to the listener
-                executeFinalTask(taskDetails, result);
-            } catch (Exception exception) {
-                // TODO can't proceed, shut everything down
-                listener.onError(exception);
-                throw new RuntimeException(exception);
-            }
-        }
+        return true;
     }
 }
