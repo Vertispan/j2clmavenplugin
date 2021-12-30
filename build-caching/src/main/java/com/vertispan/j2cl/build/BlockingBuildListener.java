@@ -10,22 +10,18 @@ public class BlockingBuildListener implements BuildListener {
 
     @Override
     public void onSuccess() {
-        System.out.println("success");
-        new Exception().printStackTrace();
         success = true;
         latch.countDown();
     }
 
     @Override
     public void onFailure() {
-        System.out.println("failure");
         success = false;
         latch.countDown();
     }
 
     @Override
     public void onError(Throwable throwable) {
-        System.out.println("error");
         this.throwable = throwable;
         latch.countDown();
     }

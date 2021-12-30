@@ -5,7 +5,13 @@ import com.vertispan.j2cl.build.task.OutputTypes;
 import com.vertispan.j2cl.build.task.TaskFactory;
 import com.vertispan.j2cl.build.task.TaskOutput;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -81,8 +87,7 @@ public class TaskScheduler {
                 if (firstNotificationSent.compareAndSet(false, true)) {
                     verifyFinalTaskMarkerNull();
                     listener.onSuccess();
-                    System.out.println("success sent");
-                } else System.out.println("success, but already sent, won't send again");
+                }
             }
 
             @Override
@@ -90,7 +95,7 @@ public class TaskScheduler {
                 if (firstNotificationSent.compareAndSet(false, true)) {
                     verifyFinalTaskMarkerNull();
                     listener.onFailure();
-                }else System.out.println("failure, but already sent, won't send again");
+                }
             }
 
             @Override
@@ -98,7 +103,7 @@ public class TaskScheduler {
                 if (firstNotificationSent.compareAndSet(false, true)) {
                     verifyFinalTaskMarkerNull();
                     listener.onError(throwable);
-                }else System.out.println("error, but already sent, won't send again");
+                }
             }
         });
 
@@ -113,7 +118,6 @@ public class TaskScheduler {
     }
 
     private void scheduleAvailableWork(Set<Input> ready, Map<Input, List<Input>> allInputs, Set<CollectedTaskInputs> remainingWork, BuildListener listener) {
-        System.out.println(remainingWork);
         if (remainingWork.isEmpty()) {
             // no work left, mark entire set of tasks as finished
             listener.onSuccess();
@@ -173,11 +177,11 @@ public class TaskScheduler {
                             throw new RuntimeException(exception);
                         }
                         if (finished) {
-                            scheduleMoreWork(result, true);
+                            scheduleMoreWork(result);
                         }
                     } else {
                         // look for more work now that we've finished this one
-                        scheduleMoreWork(result, false);
+                        scheduleMoreWork(result);
                     }
                 }
 
@@ -225,22 +229,20 @@ public class TaskScheduler {
                             if (finished) {
                                 // we have to schedule more work afterwards because this is what triggers "all done" at the end,
                                 // though it is likely that there isn't any more to do, since we just did the final output work
-                                scheduleMoreWork(cacheResult, true);
+                                scheduleMoreWork(cacheResult);
                             }
                         });
                     } else {
-                        scheduleMoreWork(cacheResult, false);
+                        scheduleMoreWork(cacheResult);
                     }
                 }
-
 
                 /**
                  * Marks the currently running task as complete, registers its output to be available for future
                  * tasks as inputs, and signals that more work can begin based on this change.
                  * @param cacheResult the newly finished output
-                 * @param forceCheck
                  */
-                private void scheduleMoreWork(DiskCache.CacheResult cacheResult, boolean forceCheck) {
+                private void scheduleMoreWork(DiskCache.CacheResult cacheResult) {
                     boolean scheduleMore = false;
                     // mark current item as ready
                     synchronized (ready) {
@@ -262,30 +264,32 @@ public class TaskScheduler {
                         scheduleAvailableWork(ready, allInputs, remainingWork, listener);
                     }
                 }
+
+                private boolean executeFinalTask(CollectedTaskInputs taskDetails, DiskCache.CacheResult cacheResult) throws Exception {
+                    if (!finalTaskMarker.compareAndSet(null, cacheResult.outputDir().toString())) {
+                        // failed to set it to null, some other thread already has the lock
+                        System.out.println("skipping final task, some other thread has the lock");
+                        return false;
+                    }
+                    System.out.println("starting final task " + taskDetails.getProject().getKey() + " " + taskDetails.getTaskFactory().getOutputType());
+                    long start = System.currentTimeMillis();
+                    try {
+                        ((TaskFactory.FinalOutputTask) taskDetails.getTask()).finish(new TaskOutput(cacheResult.outputDir()));
+                        System.out.println(taskDetails.getProject().getKey() + " final task " + taskDetails.getTaskFactory().getOutputType() + " finished in " + (System.currentTimeMillis() - start) + "ms");
+                    } catch (Throwable t) {
+                        System.out.println(taskDetails.getProject().getKey() + " final task " + taskDetails.getTaskFactory().getOutputType() + " failed in " + (System.currentTimeMillis() - start) + "ms");
+                        throw t;
+                    } finally {
+                        String previous = finalTaskMarker.getAndSet(null);
+                        if (!previous.equals(cacheResult.outputDir().toString())) {
+                            //noinspection ThrowFromFinallyBlock
+                            throw new AssertionError("final task marker should have been " + cacheResult.outputDir() + ", instead was " + previous);
+                        }
+                    }
+                    return true;
+                }
             });
         });
     }
 
-    private boolean executeFinalTask(CollectedTaskInputs taskDetails, DiskCache.CacheResult cacheResult) throws Exception {
-        if (!finalTaskMarker.compareAndSet(null, cacheResult.outputDir().toString())) {
-            // failed to set it to null, some other thread already has the lock
-            System.out.println("skipping final task, some other thread has the lock");
-            return false;
-        }
-        System.out.println("starting final task " + taskDetails.getProject().getKey() + " " + taskDetails.getTaskFactory().getOutputType());
-        long start = System.currentTimeMillis();
-        try {
-            ((TaskFactory.FinalOutputTask) taskDetails.getTask()).finish(new TaskOutput(cacheResult.outputDir()));
-            System.out.println(taskDetails.getProject().getKey() + " final task " + taskDetails.getTaskFactory().getOutputType() + " finished in " + (System.currentTimeMillis() - start) + "ms");
-        } catch (Throwable t) {
-            System.out.println(taskDetails.getProject().getKey() + " final task " + taskDetails.getTaskFactory().getOutputType() + " failed in " + (System.currentTimeMillis() - start) + "ms");
-            throw t;
-        } finally {
-            String previous = finalTaskMarker.getAndSet(null);
-            if (!previous.equals(cacheResult.outputDir().toString())) {
-                throw new AssertionError("final task marker should have been " + cacheResult.outputDir() + ", instead was " + previous);
-            }
-        }
-        return true;
-    }
 }

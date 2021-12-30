@@ -89,7 +89,6 @@ public class BuildService {
                     // TODO we could make this async instead of blocking, do them all at once
                     CollectedTaskInputs unpackJar = CollectedTaskInputs.jar(input.getProject());
                     BlockingBuildListener listener = new BlockingBuildListener();
-                    System.out.println("ignore this, it is just unpacking");
                     taskScheduler.submit(Collections.singletonList(unpackJar), listener);
                     try {
                         listener.blockUntilFinished();
@@ -183,7 +182,6 @@ public class BuildService {
     public synchronized Cancelable requestBuild(BuildListener buildListener) throws InterruptedException {
         // wait for the previous build, if any, to finish
         if (prevBuild != null) {
-            System.out.println("blocking until finished");
             prevBuild.blockUntilFinished();
         }
 
@@ -198,7 +196,6 @@ public class BuildService {
 
         // this could possibly be more fine grained, only submit the projects which could be affected by changes
         prevBuild = new WrappedBlockingBuildListener(buildListener);
-        System.out.println("STARTING REAL WORK");
         return taskScheduler.submit(inputs.values(), prevBuild);
     }
     class WrappedBlockingBuildListener extends BlockingBuildListener {
