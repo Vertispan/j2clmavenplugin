@@ -1,0 +1,27 @@
+# Build maven project and run tests. This currently runs on all commits to pull requests and branches, and must not
+# use any secrets or attempt to deploy, but only verify the build.
+name: Build and test
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set up Java 11
+        uses: actions/setup-java@v2
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+      - name: Build and test
+        run: |
+          mvn verify
+      - name: Upload test results for review
+        uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: test-results
+          path: |
+            j2cl-maven-plugin/target/it-tests/*/build.log
+            */target/surefire-reports/
+          retention-days: 5
