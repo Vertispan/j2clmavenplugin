@@ -21,6 +21,7 @@ jobs:
             - v2-dependencies-
 
       - run: mvn org.apache.maven.plugins:maven-dependency-plugin:3.2.0:go-offline -U
+      - run: mvn -v
 
       - save_cache:
           paths:
