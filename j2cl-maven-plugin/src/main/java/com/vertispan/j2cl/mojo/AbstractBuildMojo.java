@@ -273,6 +273,7 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
                             mavenProject.getCompileSourceRoots().stream(),
                             mavenProject.getResources().stream().map(FileSet::getDirectory)
                     )
+                            .distinct()
                             .filter(path -> new File(path).exists())
                             .collect(Collectors.toList())
             );
