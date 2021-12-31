@@ -17,8 +17,8 @@ import java.util.stream.Stream;
 @AutoService(TaskFactory.class)
 public class JavacTask extends TaskFactory {
 
-    public static final PathMatcher JAVA_SOURCES = FileSystems.getDefault().getPathMatcher("glob:**/*.java");
-    public static final PathMatcher JAVA_BYTECODE = FileSystems.getDefault().getPathMatcher("glob:**/*.class");
+    public static final PathMatcher JAVA_SOURCES = withSuffix(".java");
+    public static final PathMatcher JAVA_BYTECODE = withSuffix(".class");
 
     @Override
     public String getOutputType() {

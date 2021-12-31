@@ -12,8 +12,8 @@ import java.util.stream.Stream;
 
 @AutoService(TaskFactory.class)
 public class StripSourcesTask extends TaskFactory {
-    public static final PathMatcher JAVA_SOURCES = FileSystems.getDefault().getPathMatcher("glob:**/*.java");
-    public static final PathMatcher NATIVE_JS_SOURCES = FileSystems.getDefault().getPathMatcher("glob:**/*.native.js");
+    public static final PathMatcher JAVA_SOURCES = withSuffix(".java");
+    public static final PathMatcher NATIVE_JS_SOURCES = withSuffix(".native.js");
 
     @Override
     public String getOutputType() {

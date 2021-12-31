@@ -13,7 +13,7 @@ import java.nio.file.*;
 public class TestCollectionTask extends TaskFactory {
     private static final String TEST_SUMMARY_FILENAME = "test_summary.json";
     private static final PathMatcher TEST_SUMMARY_JSON = FileSystems.getDefault().getPathMatcher("glob:" + TEST_SUMMARY_FILENAME);
-    private static final PathMatcher TEST_SUITE = FileSystems.getDefault().getPathMatcher("glob:**/*.testsuite");
+    private static final PathMatcher TEST_SUITE = withSuffix(".testsuite");
 
     @Override
     public String getOutputType() {

@@ -12,12 +12,16 @@ import java.io.UncheckedIOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.PathMatcher;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @AutoService(TaskFactory.class)
 public class BundleJarTask extends TaskFactory {
+
+    public static final PathMatcher BUNDLE_JS = FileSystems.getDefault().getPathMatcher("glob:*.bundle.js");
+
     @Override
     public String getOutputType() {
         return OutputTypes.BUNDLED_JS_APP;
@@ -42,7 +46,7 @@ public class BundleJarTask extends TaskFactory {
                                 .map(inputs(OutputTypes.BUNDLED_JS)),
                         Stream.of(input(project, OutputTypes.BUNDLED_JS))
                 )
-                .map(i -> i.filter(FileSystems.getDefault().getPathMatcher("glob:*.bundle.js")))
+                .map(i -> i.filter(BUNDLE_JS))
                 .collect(Collectors.toList());
 
         //cheaty, but lets us cache
