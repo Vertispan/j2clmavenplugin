@@ -1,6 +1,8 @@
 package com.vertispan.j2cl.build.provided;
 
 import com.google.auto.service.AutoService;
+import com.vertispan.j2cl.build.BuildService;
+import com.vertispan.j2cl.build.DiskCache;
 import com.vertispan.j2cl.build.task.*;
 
 /**
@@ -26,8 +28,8 @@ public class IJsTask extends TaskFactory {
     }
 
     @Override
-    public Task resolve(Project project, Config config) {
-        Input js = input(project, OutputTypes.TRANSPILED_JS);
+    public Task resolve(Project project, Config config, BuildService buildService) {
+        Input js = input(project, OutputTypes.TRANSPILED_JS, buildService);
         return context -> {
             if (js.getFilesAndHashes().isEmpty()) {
                 // nothing to do

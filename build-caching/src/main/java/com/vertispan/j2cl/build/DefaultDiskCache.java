@@ -55,12 +55,12 @@ public class DefaultDiskCache extends DiskCache {
 
     @Override
     protected Path successMarker(Path taskDir) {
-        return taskDir.resolve("success");
+        return taskDir.resolve("status/success");
     }
 
     @Override
     protected Path failureMarker(Path taskDir) {
-        return taskDir.resolve("failure");
+        return taskDir.resolve("status/failure");
     }
 
     @Override

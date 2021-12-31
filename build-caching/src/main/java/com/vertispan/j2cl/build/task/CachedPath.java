@@ -23,4 +23,6 @@ public interface CachedPath {
      * The current hash of the file, can be used to diff old and new inputs to see which specific paths changed.
      */
     FileHash getHash();
+
+    long getLastModifiedTime();
 }

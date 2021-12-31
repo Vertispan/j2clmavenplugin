@@ -37,12 +37,14 @@ public class CollectedTaskInputs {
     private TaskFactory taskFactory;
     private List<Input> inputs;
     private Map<String, String> usedConfigs;
+    private BuildService buildService;
 
     // not used for anything except kept around to avoid recomputing it
     private TaskFactory.Task task;
 
-    public CollectedTaskInputs(Project project) {
+    public CollectedTaskInputs(Project project, BuildService buildService) {
         this.project = project;
+        this.buildService = buildService;
     }
 
     public static CollectedTaskInputs jar(Project project) {
@@ -50,15 +52,14 @@ public class CollectedTaskInputs {
         assert project.getSourceRoots().size() == 1;
         Path jarPath = Paths.get(project.getSourceRoots().get(0));
 
-        CollectedTaskInputs t = new CollectedTaskInputs(project);
+        CollectedTaskInputs t = new CollectedTaskInputs(project, null);
         t.setTaskFactory(new UnpackJarTaskFactory());
-        t.setTask(t.getTaskFactory().resolve(project, null));
+        t.setTask(t.getTaskFactory().resolve(project, null, null));
         // create a fake input and give it a hash so that this unpack only runs if the jar changes
-        Input jarInput = new Input(project, "jar");
+        Input jarInput = new Input(project, "jar", null);
         try {
             jarInput.setCurrentContents(new TaskOutput(
-                    Collections.singleton(new DiskCache.CacheEntry(jarPath.getFileName(), jarPath.getParent(), FileHasher.DEFAULT_FILE_HASHER.hash(jarPath)))
-            ));
+                    Collections.singleton(new DiskCache.CacheEntry(jarPath.getFileName(), jarPath.getParent(), FileHasher.DEFAULT_FILE_HASHER.hash(jarPath)))));
         } catch (IOException ioException) {
             throw new UncheckedIOException("Error hashing jar", ioException);
         }
@@ -68,7 +69,7 @@ public class CollectedTaskInputs {
     }
 
     public Input getAsInput() {
-        return new Input(project, taskFactory.getOutputType());
+        return new Input(project, taskFactory.getOutputType(), buildService);
     }
 
     public List<Input> getInputs() {

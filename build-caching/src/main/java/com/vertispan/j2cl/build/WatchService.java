@@ -1,15 +1,23 @@
 package com.vertispan.j2cl.build;
 
 import com.vertispan.j2cl.build.task.BuildLog;
+import com.google.common.base.Splitter;
 import io.methvin.watcher.DirectoryChangeEvent;
 import io.methvin.watcher.DirectoryChangeListener;
 import io.methvin.watcher.DirectoryWatcher;
 import io.methvin.watcher.hashing.FileHash;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.FileTime;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
@@ -61,12 +69,18 @@ public class WatchService {
         for (Map.Entry<Path, Project> entry : pathToProjects.entrySet()) {
             Project project = entry.getValue();
             Path rootPath = entry.getKey();
-            Map<Path, DiskCache.CacheEntry> projectFiles = directoryWatcher.pathHashes().entrySet().stream()
-                    .filter(e -> e.getValue() != FileHash.DIRECTORY)
+
+            Map<Path, DiskCache.CacheEntry> allFiles = directoryWatcher.pathHashes().entrySet().stream()
                     .filter(e -> e.getKey().startsWith(rootPath))
                     .map(e -> new DiskCache.CacheEntry(rootPath.relativize(e.getKey()), rootPath, e.getValue()))
                     .collect(Collectors.toMap(e -> e.getSourcePath(), Function.identity()));
-            buildService.triggerChanges(project, projectFiles, Collections.emptyMap(), Collections.emptySet());
+
+            Map<Path, DiskCache.CacheEntry> createdFiles = new HashMap<>();
+            Map<Path, DiskCache.CacheEntry> changedFiles = new HashMap<>();
+            Map<Path, DiskCache.CacheEntry> deletedFile = new HashMap<>();
+
+            populateChanges(project, allFiles, createdFiles, changedFiles, deletedFile);
+            buildService.triggerChanges(project, createdFiles, changedFiles, deletedFile);
         }
 
         // start the first build
@@ -76,16 +90,99 @@ public class WatchService {
         directoryWatcher.watchAsync(executorService);
     }
 
+    public void populateChanges(Project project,
+                                Map<Path, DiskCache.CacheEntry> all,
+                                Map<Path, DiskCache.CacheEntry> createdFiles,
+                                Map<Path, DiskCache.CacheEntry> changedFiles,
+                                Map<Path, DiskCache.CacheEntry> deletedFiles) {
+        Path projPath = buildService.getDiskCache().cacheDir.toPath().resolve(project.getKey().replaceAll("[^\\-_a-zA-Z0-9.]", "-"));
+        Path filesDat = projPath.resolve("files.dat");
+
+        boolean putAll = true;
+        try {
+            File file;
+            if ( Files.exists(filesDat) && ( file = filesDat.toFile()).length() > 0 ) {
+                try (BufferedReader lineScanner = new BufferedReader(new FileReader(file))) {
+                    readFiles(lineScanner, all, createdFiles,
+                              changedFiles, deletedFiles);
+                }
+                putAll = false;
+            }
+        } catch (IOException e) {
+            System.out.println("Unable to read incremental.dat file so will add all: \n" + e.getMessage());
+        }
+
+        if (putAll) {
+            // If there is no filesDat or it's not
+            createdFiles.putAll(all);
+        }
+    }
+
+    public void readFiles(BufferedReader lineScanner,
+                          Map<Path, DiskCache.CacheEntry> all,
+                          Map<Path, DiskCache.CacheEntry> createdFiles,
+                          Map<Path, DiskCache.CacheEntry> changedFiles,
+                          Map<Path, DiskCache.CacheEntry> deletedFiles) {
+
+        try {
+
+            String line     = lineScanner.readLine();
+            int    dirSize = Integer.valueOf(line);
+            for (int j = 0; j < dirSize; j++) {
+                String dir  = lineScanner.readLine();
+                Path   base = Paths.get(dir);
+
+                // get old files
+                line = lineScanner.readLine();
+                int    fileSize = Integer.valueOf(line);
+
+                for (int i = 0; i < fileSize; i++) {
+                    line = lineScanner.readLine();
+                    List<String>     resultList = Splitter.on(',').trimResults().splitToList(line);
+                    Iterator<String> it         = resultList.iterator();
+
+                    long   oldTime  = Long.valueOf(it.next());
+                    Path path     = Paths.get(it.next());
+
+                    DiskCache.CacheEntry entry = all.remove(path);
+
+                    if ( Files.isDirectory(path)) {
+                        continue; // ignore directories
+                    }
+                    // remove the keys, anything left over we know is added
+                    if (entry != null) {
+                        Path filePath = base.resolve(path);
+                        FileTime newTime = Files.getLastModifiedTime(filePath);
+                        if (newTime.toMillis() > oldTime) {
+                            // File has new filetime, so it's been updated
+                            changedFiles.put(filePath, entry);
+                        }
+                    } else {
+                        // file does not exist, so it was removed
+                        deletedFiles.put(path,
+                                         new DiskCache.CacheEntry(path, base, FileHash.fromLong(0)));
+                    }
+                }
+
+                // Any keys left over are added files, which must also processed, but ignore directories
+                all.entrySet().stream().filter( entry -> entry.getValue().getHash() != FileHash.DIRECTORY)
+                                       .forEach( entry -> createdFiles.put(entry.getKey(), entry.getValue()));
+            }
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
     private void update(Project project, Path rootPath, Path relativeFilePath, DirectoryChangeEvent.EventType eventType, FileHash hash) {
         switch (eventType) {
             case CREATE:
-                buildService.triggerChanges(project, Collections.singletonMap(relativeFilePath, new DiskCache.CacheEntry(relativeFilePath, rootPath, hash)), Collections.emptyMap(), Collections.emptySet());
+                buildService.triggerChanges(project, Collections.singletonMap(relativeFilePath, new DiskCache.CacheEntry(relativeFilePath, rootPath, hash)), Collections.emptyMap(), Collections.emptyMap());
                 break;
             case MODIFY:
-                buildService.triggerChanges(project, Collections.emptyMap(), Collections.singletonMap(relativeFilePath, new DiskCache.CacheEntry(relativeFilePath, rootPath, hash)), Collections.emptySet());
+                buildService.triggerChanges(project, Collections.emptyMap(), Collections.singletonMap(relativeFilePath, new DiskCache.CacheEntry(relativeFilePath, rootPath, hash)), Collections.emptyMap());
                 break;
             case DELETE:
-                buildService.triggerChanges(project, Collections.emptyMap(), Collections.emptyMap(), Collections.singleton(relativeFilePath));
+                buildService.triggerChanges(project, Collections.emptyMap(), Collections.emptyMap(), Collections.singletonMap(relativeFilePath, new DiskCache.CacheEntry(relativeFilePath, rootPath, hash)));
                 break;
             case OVERFLOW:
                 //TODO rescan?

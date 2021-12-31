@@ -40,6 +40,7 @@ public class TaskScheduler {
     // to start and this isn't null, we assert it is already set to this value (and skip the work), and assert it is
     // null when submitting any work.
     private final AtomicReference<String> finalTaskMarker = new AtomicReference<>();
+    private BuildService buildService;
 
     /**
      * Creates a scheduler to perform work as needed. Before any task is attempted, the
@@ -106,6 +107,10 @@ public class TaskScheduler {
         public boolean isDone() {
             return work.values().stream().noneMatch(s -> (s == TaskState.PENDING && !isCanceled.get()) || s == TaskState.RUNNING);
         }
+    }
+
+    public void setBuildService(BuildService buildService) {
+        this.buildService = buildService;
     }
 
     /**
@@ -222,7 +227,7 @@ public class TaskScheduler {
                         if (elapsedMillis > 5) {
                             buildLog.info("Finished " + taskDetails.getDebugName() + " in " + elapsedMillis + "ms");
                         }
-                        result.markSuccess();
+                        result.markSuccess(taskDetails.getAsInput());
 
                     } catch (Throwable exception) {
                         if (Thread.currentThread().isInterrupted()) {

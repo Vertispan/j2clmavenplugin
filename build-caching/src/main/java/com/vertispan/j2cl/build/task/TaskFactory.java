@@ -8,6 +8,9 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.vertispan.j2cl.build.BuildService;
+import com.vertispan.j2cl.build.DiskCache;
+
 /**
  * A task describes the type of output it provides, and for a given project will provide the
  * inputs it needs (its "dependencies", for want of a better phrase), and a way to start the
@@ -36,16 +39,16 @@ public abstract class TaskFactory {
 
     public final List<com.vertispan.j2cl.build.Input> inputs = new ArrayList<>();
 
-    protected Input input(Dependency dependency, String outputType) {
-        return input(dependency.getProject(), outputType);
+    protected Input input(Dependency dependency, String outputType, BuildService buildService) {
+        return input(dependency.getProject(), outputType, buildService);
     }
-    protected Input input(Project dependencyProject, String outputType) {
-        com.vertispan.j2cl.build.Input i = new com.vertispan.j2cl.build.Input((com.vertispan.j2cl.build.Project) dependencyProject, outputType);
+    protected Input input(Project dependencyProject, String outputType, BuildService buildService) {
+        com.vertispan.j2cl.build.Input i = new com.vertispan.j2cl.build.Input((com.vertispan.j2cl.build.Project) dependencyProject, outputType, buildService);
         inputs.add(i);
         return i;
     }
-    protected Function<Project, Input> inputs(String outputType) {
-        return p -> input(p, outputType);
+    protected Function<Project, Input> inputs(String outputType, BuildService buildService) {
+        return p -> input(p, outputType, buildService);
     }
 
     protected List<Project> scope(Collection<? extends Dependency> dependencies, Dependency.Scope scope) {
@@ -110,6 +113,6 @@ public abstract class TaskFactory {
      * @return a task that will be executed each time the given project
      * needs to be built, which should use created inputs and configs
      */
-    public abstract Task resolve(Project project, Config config);
+    public abstract Task resolve(Project project, Config config, BuildService buildService);
 
 }

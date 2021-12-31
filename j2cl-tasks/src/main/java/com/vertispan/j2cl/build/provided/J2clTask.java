@@ -2,6 +2,9 @@ package com.vertispan.j2cl.build.provided;
 
 import com.google.auto.service.AutoService;
 import com.google.j2cl.common.SourceUtils;
+import com.vertispan.j2cl.build.BuildService;
+import com.vertispan.j2cl.build.ChangedAcceptor;
+import com.vertispan.j2cl.build.DiskCache;
 import com.vertispan.j2cl.build.task.*;
 import com.vertispan.j2cl.tools.J2cl;
 
@@ -36,24 +39,31 @@ public class J2clTask extends TaskFactory {
     }
 
     @Override
-    public Task resolve(Project project, Config config) {
+    public Task resolve(Project project, Config config, BuildService buildService) {
+        boolean incremental = true;
         // J2CL is only interested in .java and .native.js files in our own sources
-        Input ownJavaSources = input(project, OutputTypes.STRIPPED_SOURCES).filter(JAVA_SOURCES, NATIVE_JS_SOURCES);
-        List<Input> ownNativeJsSources = Collections.singletonList(input(project, OutputTypes.BYTECODE).filter(NATIVE_JS_SOURCES));
+        Input ownJavaSources = input(project, OutputTypes.STRIPPED_SOURCES, buildService).filter(JAVA_SOURCES, NATIVE_JS_SOURCES);
+        List<Input> ownNativeJsSources = Collections.singletonList(input(project, OutputTypes.BYTECODE, buildService).filter(NATIVE_JS_SOURCES));
 
         // From our classpath, j2cl is only interested in our compile classpath's bytecode
-        List<Input> classpathHeaders = scope(project.getDependencies(), com.vertispan.j2cl.build.task.Dependency.Scope.COMPILE)
-                .stream()
-                .map(inputs(OutputTypes.STRIPPED_BYTECODE_HEADERS))
-                // we only want bytecode _changes_, but we'll use the whole dir
-                .map(input -> input.filter(JAVA_BYTECODE))
-                .collect(Collectors.toList());
+        List<Project> projects = scope(project.getDependencies(), com.vertispan.j2cl.build.task.Dependency.Scope.COMPILE);
+
+        List<Input> classpathHeaders = projects.stream()
+                                               .map(inputs(OutputTypes.STRIPPED_BYTECODE_HEADERS, buildService))
+                                               // we only want bytecode _changes_, but we'll use the whole dir
+                                               .map(input -> input.filter(JAVA_BYTECODE))
+                                               .collect(Collectors.toList());
 
         File bootstrapClasspath = config.getBootstrapClasspath();
         List<File> extraClasspath = config.getExtraClasspath();
         return context -> {
-            if (ownJavaSources.getFilesAndHashes().isEmpty()) {
-                return;// nothing to do
+            List<CachedPath> javaFiles = ownJavaSources.getFilesAndHashes()
+                    .stream()
+                    .filter( new ChangedAcceptor((com.vertispan.j2cl.build.Project) project, buildService))
+                    .collect(Collectors.toList());
+
+            if (javaFiles.isEmpty()) {
+                return;// no work to do
             }
             List<File> classpathDirs = Stream.concat(
                     classpathHeaders.stream().flatMap(i -> i.getParentPaths().stream().map(Path::toFile)),
@@ -65,14 +75,11 @@ public class J2clTask extends TaskFactory {
 
             // TODO convention for mapping to original file paths, provide FileInfo out of Inputs instead of Paths,
             //      automatically relativized?
-            List<SourceUtils.FileInfo> javaSources = ownJavaSources.getFilesAndHashes()
-                    .stream()
-                    .filter(e -> JAVA_SOURCES.matches(e.getSourcePath()))
+            List<SourceUtils.FileInfo> javaSources = javaFiles.stream().filter(e -> JAVA_SOURCES.matches(e.getSourcePath()))
                     .map(p -> SourceUtils.FileInfo.create(p.getAbsolutePath().toString(), p.getSourcePath().toString()))
                     .collect(Collectors.toList());
-            List<SourceUtils.FileInfo> nativeSources = ownNativeJsSources.stream().flatMap(i ->
-                    i.getFilesAndHashes()
-                            .stream())
+            List<SourceUtils.FileInfo> nativeSources = ownNativeJsSources.stream().flatMap(i -> i.getFilesAndHashes().stream())
+                    .filter( new ChangedAcceptor((com.vertispan.j2cl.build.Project) project, buildService))
                     .filter(e -> NATIVE_JS_SOURCES.matches(e.getSourcePath()))
                     .map(p -> SourceUtils.FileInfo.create(p.getAbsolutePath().toString(), p.getSourcePath().toString()))
                     .collect(Collectors.toList());

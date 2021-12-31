@@ -1,5 +1,7 @@
 package com.vertispan.j2cl.build;
 
+import com.vertispan.j2cl.build.task.OutputTypes;
+import io.methvin.watcher.hashing.FileHash;
 import io.methvin.watcher.hashing.Murmur3F;
 
 import java.nio.charset.StandardCharsets;
@@ -22,10 +24,12 @@ public class Input implements com.vertispan.j2cl.build.task.Input {
     private final String outputType;
 
     private TaskOutput contents;
+    private BuildService buildService;
 
-    public Input(Project project, String outputType) {
+    public Input(Project project, String outputType, BuildService buildService) {
         this.project = project;
         this.outputType = outputType;
+        this.buildService = buildService;
     }
 
     public boolean hasContents() {
@@ -98,6 +102,7 @@ public class Input implements com.vertispan.j2cl.build.task.Input {
      */
     public void setCurrentContents(TaskOutput contents) {
         this.contents = contents;
+        //this.diskCache = diskCache;
     }
 
     /**
@@ -136,6 +141,18 @@ public class Input implements com.vertispan.j2cl.build.task.Input {
         if (contents == null) {
             throw new NullPointerException("Contents not yet provided " + this);
         }
+//        //if (outputType.equals(OutputTypes.INPUT_SOURCES) || outputType.equals(OutputTypes.GENERATED_SOURCES)) {
+//            BuildMap buildMap = diskCache != null ? diskCache.getBuildMap(project) : null;
+//            if (buildMap != null) {
+//                return contents.filesAndHashes().stream()
+//                               .filter(entry -> {
+//                                   // always add directories, but filter files not in the change set
+//                                   return entry.getHash().equals(FileHash.DIRECTORY) ||
+//                                          buildMap.getChangedFiles().contains(entry.getSourcePath().toString());
+//                               })
+//                               .collect(Collectors.toList());
+//            }
+//        //}
         return contents.filesAndHashes();
     }
 

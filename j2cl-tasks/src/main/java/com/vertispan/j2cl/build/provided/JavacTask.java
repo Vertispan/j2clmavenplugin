@@ -2,6 +2,9 @@ package com.vertispan.j2cl.build.provided;
 
 import com.google.auto.service.AutoService;
 import com.google.j2cl.common.SourceUtils;
+import com.vertispan.j2cl.build.BuildService;
+import com.vertispan.j2cl.build.ChangedAcceptor;
+import com.vertispan.j2cl.build.DiskCache;
 import com.vertispan.j2cl.build.task.*;
 import com.vertispan.j2cl.tools.Javac;
 
@@ -35,21 +38,25 @@ public class JavacTask extends TaskFactory {
     }
 
     @Override
-    public Task resolve(Project project, Config config) {
+    public Task resolve(Project project, Config config, BuildService buildService) {
         // emits only stripped bytecode, so we're not worried about anything other than .java files to compile and .class on the classpath
-        Input ownSources = input(project, OutputTypes.STRIPPED_SOURCES).filter(JAVA_SOURCES);
+        Input ownSources = input(project, OutputTypes.STRIPPED_SOURCES, buildService).filter(JAVA_SOURCES);
 
-        List<Input> classpathHeaders = scope(project.getDependencies(), com.vertispan.j2cl.build.task.Dependency.Scope.COMPILE)
-                .stream()
-                .map(inputs(OutputTypes.STRIPPED_BYTECODE_HEADERS))
-                // we only want bytecode _changes_, but we'll use the whole dir
-                .map(input -> input.filter(JAVA_BYTECODE))
-                .collect(Collectors.toList());
+        List<Project> projects = scope(project.getDependencies(), com.vertispan.j2cl.build.task.Dependency.Scope.COMPILE);
+        List<Input> classpathHeaders = projects.stream()
+                                               .map(inputs(OutputTypes.STRIPPED_BYTECODE_HEADERS, buildService))
+                                               // we only want bytecode _changes_, but we'll use the whole dir
+                                               .map(input -> input.filter(JAVA_BYTECODE))
+                                               .collect(Collectors.toList());
 
         File bootstrapClasspath = config.getBootstrapClasspath();
         List<File> extraClasspath = config.getExtraClasspath();
         return context -> {
-            if (ownSources.getFilesAndHashes().isEmpty()) {
+            List<CachedPath> files = ownSources.getFilesAndHashes()
+                    .stream()
+                    .filter( new ChangedAcceptor((com.vertispan.j2cl.build.Project) project, buildService)).collect(Collectors.toList());
+
+            if (files.isEmpty()) {
                 return;// no work to do
             }
 
@@ -61,9 +68,8 @@ public class JavacTask extends TaskFactory {
 
             // TODO convention for mapping to original file paths, provide FileInfo out of Inputs instead of Paths,
             //      automatically relativized?
-            List<SourceUtils.FileInfo> sources = ownSources.getFilesAndHashes()
-                    .stream()
-                    .map(p -> SourceUtils.FileInfo.create(p.getAbsolutePath().toString(), p.getSourcePath().toString()))
+            List<SourceUtils.FileInfo> sources = files.stream()
+                                                      .map(p -> SourceUtils.FileInfo.create(p.getAbsolutePath().toString(), p.getSourcePath().toString()))
                     .collect(Collectors.toList());
 
             javac.compile(sources);

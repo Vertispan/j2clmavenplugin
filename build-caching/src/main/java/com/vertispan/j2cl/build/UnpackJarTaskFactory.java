@@ -29,7 +29,7 @@ public class UnpackJarTaskFactory extends TaskFactory {
     }
 
     @Override
-    public Task resolve(Project project, Config config) {
+    public Task resolve(Project project, Config config, BuildService buildService) {
         // we don't have any proper inputs or configs
 
         // given the first (only) entry in the project's sources, unpack them

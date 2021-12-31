@@ -44,6 +44,7 @@ public class J2cl {
                     .setOutput(output)
                     .setSources(sourcesToCompile)
                     .setNativeSources(nativeSources)
+                    .setEmitBuildMap(true)
                     .build();
 
             log.debug(options.toString());
