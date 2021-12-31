@@ -29,7 +29,7 @@ public class Javac {
     JavaCompiler compiler;
     StandardJavaFileManager fileManager;
 
-    public Javac(File generatedClassesPath, List<File> classpath, File classesDirFile, File bootstrap) throws IOException {
+    public Javac(File generatedClassesPath, List<File> sourcePaths, List<File> classpath, File classesDirFile, File bootstrap) throws IOException {
 //        for (File file : classpath) {
 //            System.out.println(file.getAbsolutePath() + " " + file.exists() + " " + file.isDirectory());
 //        }
@@ -43,7 +43,7 @@ public class Javac {
         }
         compiler = ToolProvider.getSystemJavaCompiler();
         fileManager = compiler.getStandardFileManager(null, null, null);
-        fileManager.setLocation(StandardLocation.SOURCE_PATH, Collections.emptyList());
+        fileManager.setLocation(StandardLocation.SOURCE_PATH, sourcePaths);
         if (generatedClassesPath != null) {
             fileManager.setLocation(StandardLocation.SOURCE_OUTPUT, Collections.singleton(generatedClassesPath));
         }
