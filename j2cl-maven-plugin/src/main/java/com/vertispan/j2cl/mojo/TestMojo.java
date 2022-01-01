@@ -48,6 +48,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.logging.Level;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Mojo(name = "test", requiresDependencyResolution = ResolutionScope.TEST)
@@ -375,7 +376,8 @@ public class TestMojo extends AbstractBuildMojo {
                 int port = ((ServerConnector) server.getConnectors()[0]).getLocalPort();
 
                 try {
-                    String url = "http://localhost:" + port + "/" + startupHtmlFile.toString();
+                    String path = startupHtmlFile.toString().replaceAll(Pattern.quote(File.separator), "/");
+                    String url = "http://localhost:" + port + "/" + path;
                     getLog().info("fetching " + url);
                     driver.get(url);
 
