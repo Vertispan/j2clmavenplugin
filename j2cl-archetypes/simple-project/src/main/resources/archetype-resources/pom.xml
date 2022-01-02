@@ -9,13 +9,11 @@
   <version>\${version}</version>
 
   <properties>
-    <webappdir>\${project.build.directory}/webapp</webappdir>
-    <webapp.libdir>${webappdir}/WEB-INF/lib</webapp.libdir>
-
     <j2cl.maven.plugin.version>${project.version}</j2cl.maven.plugin.version>
-    <elemental2.version>1.0.0</elemental2.version>
+    <elemental2.version>1.1.0</elemental2.version>
 
-    <google.jsinterop.version>1.0.0</google.jsinterop.version>
+    <jsinterop.base.version>1.0.0</jsinterop.base.version>
+    <elemental2.version>1.1.0</elemental2.version>
     <j2cl.version>${j2cl.version}</j2cl.version>
 
     <maven.compiler.target>${maven.compiler.source}</maven.compiler.target>
@@ -39,7 +37,7 @@
     <dependency>
       <groupId>com.google.jsinterop</groupId>
       <artifactId>base</artifactId>
-      <version>\${google.jsinterop.version}</version>
+      <version>\${jsinterop.base.version}</version>
     </dependency>
 
     <dependency>
@@ -147,8 +145,6 @@
         </executions>
         <configuration>
           <webappDirectory>\${project.build.directory}/gwt/launcherDir/</webappDirectory>
-          <compilationLevel>ADVANCED</compilationLevel>
-          <entrypoint>${package}.${module}</entrypoint>
           <tests>
             <test>${package}.${module}Test</test>
           </tests>

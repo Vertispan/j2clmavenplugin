@@ -13,4 +13,15 @@
 
     <name>Simple J2CL Project Archetype</name>
     <description>A project that transforms Java to JS, and nothing else.</description>
+    <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+                <includes>
+                    <include>**/*</include>
+                </includes>
+            </resource>
+        </resources>
+    </build>
 </project>
