@@ -213,6 +213,14 @@ public class PropertyTrackingConfig implements Config {
     @Override
     public Path getWebappDirectory() {
         // Note that this deliberately circumvents the hash building
-        return Paths.get(config.findNode("webappDirectory").readString());
+        ConfigValueProvider.ConfigNode configNode=config.findNode("webappDirectory");
+        if(configNode==null) {
+            throw new IllegalStateException("No 'webappDirectory' found");
+        }
+        String s = configNode.readString();
+        if(s==null) {
+            throw new IllegalStateException("Could not get value of '"+configNode.getPath()+"' from pom.xml in <configuration>");
+        }
+        return Paths.get(s);
     }
 }
