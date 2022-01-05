@@ -39,6 +39,7 @@ public class WatchService {
     }
 
     public void watch(Map<Project, List<Path>> sourcePathsToWatch) throws IOException {
+        buildLog.info("Start watching "+sourcePathsToWatch);
         Map<Path, Project> pathToProjects = new HashMap<>();
         sourcePathsToWatch.forEach((project, paths) -> {
             paths.forEach(path -> pathToProjects.put(path, project));

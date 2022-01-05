@@ -97,6 +97,10 @@ public class TaskScheduler {
     }
 
     private void scheduleAvailableWork(Set<Input> ready, Map<Input, List<Input>> allInputs, Set<CollectedTaskInputs> remainingWork, BuildListener listener) {
+        if(remainingWork.size() == 1)
+            buildLog.debug("Remaining work: task "+remainingWork.iterator().next().getDebugName());
+        else
+            buildLog.debug("Remaining work: "+remainingWork.size()+" tasks");
         if (remainingWork.isEmpty()) {
             // no work left, mark entire set of tasks as finished
             listener.onSuccess();
@@ -202,33 +206,35 @@ public class TaskScheduler {
     }
 
     private void executeFinalTask(CollectedTaskInputs taskDetails, DiskCache.CacheResult cacheResult) throws Exception {
-        System.out.println("starting final task " + taskDetails.getProject().getKey() + " " + taskDetails.getTaskFactory().getOutputType());
+        buildLog.info("starting final task " + taskDetails.getDebugName());
         long start = System.currentTimeMillis();
         try {
             ((TaskFactory.FinalOutputTask) taskDetails.getTask()).finish(new TaskOutput(cacheResult.outputDir()));
-            System.out.println(taskDetails.getProject().getKey() + " final task " + taskDetails.getTaskFactory().getOutputType() + " finished in " + (System.currentTimeMillis() - start) + "ms");
+            buildLog.info("Finished " + taskDetails.getDebugName() + " in " + (System.currentTimeMillis() - start) + "ms");
         } catch (Throwable t) {
-            System.out.println(taskDetails.getProject().getKey() + " final task " + taskDetails.getTaskFactory().getOutputType() + " failed in " + (System.currentTimeMillis() - start) + "ms");
+            buildLog.info("FAILED   " + taskDetails.getDebugName() + " in " + (System.currentTimeMillis() - start) + "ms");
             throw t;
         }
+        buildLog.info("--- Ready for browser refresh");
     }
 
     private void executeTask(CollectedTaskInputs taskDetails, DiskCache.CacheResult result, BuildListener listener) {
         // all inputs are populated, and it already has the config, we just need to start it up
         // with its output path and capture logs
         // TODO implement logs!
+        buildLog.info("Started  "+taskDetails.getDebugName() + " on " + taskDetails.getInputs().size()+" inputs ...");
         try {
             long start = System.currentTimeMillis();
 
             taskDetails.getTask().execute(new TaskOutput(result.outputDir()));
             long elapsedMillis = System.currentTimeMillis() - start;
             if (elapsedMillis > 5) {
-                System.out.println(taskDetails.getProject().getKey() + " finished " + taskDetails.getTaskFactory().getOutputType() + " in " + elapsedMillis + "ms");
+                buildLog.info("Finished " + taskDetails.getDebugName() + " in " + elapsedMillis + "ms");
             }
             result.markSuccess();
 
         } catch (Exception exception) {
-            exception.printStackTrace();//TODO once we log, don't do this
+            buildLog.error(exception);
             result.markFailure();
             listener.onFailure();
             throw new RuntimeException(exception);// don't safely return, we don't want to continue
