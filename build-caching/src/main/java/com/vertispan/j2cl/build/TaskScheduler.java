@@ -213,7 +213,7 @@ public class TaskScheduler {
             ((TaskFactory.FinalOutputTask) taskDetails.getTask()).finish(new TaskOutput(cacheResult.outputDir()));
             buildLog.info("Finished " + taskDetails.getDebugName() + " in " + (System.currentTimeMillis() - start) + "ms");
         } catch (Throwable t) {
-            buildLog.info("FAILED   " + taskDetails.getDebugName() + " in " + (System.currentTimeMillis() - start) + "ms");
+            buildLog.error("FAILED   " + taskDetails.getDebugName() + " in " + (System.currentTimeMillis() - start) + "ms",t);
             throw t;
         }
         buildLog.info("--- Ready for browser refresh");
