@@ -248,11 +248,12 @@ public class BuildMojo extends AbstractBuildMojo {
             throw new MojoExecutionException("Failed to create cache", ioException);
         }
         ScheduledExecutorService executor = Executors.newScheduledThreadPool(getWorkerTheadCount());
-        TaskScheduler taskScheduler = new TaskScheduler(executor, diskCache);
+        MavenLog mavenLog = new MavenLog(getLog());
+        TaskScheduler taskScheduler = new TaskScheduler(executor, diskCache, mavenLog);
         TaskRegistry taskRegistry = new TaskRegistry(outputToNameMappings);
 
         // Given these, build the graph of work we need to complete
-        BuildService buildService = new BuildService(taskRegistry, taskScheduler, diskCache);
+        BuildService buildService = new BuildService(taskRegistry, taskScheduler, diskCache,mavenLog);
         buildService.assignProject(p, outputTask, config);
 
         // Get the hash of all current files, since we aren't running a watch service
