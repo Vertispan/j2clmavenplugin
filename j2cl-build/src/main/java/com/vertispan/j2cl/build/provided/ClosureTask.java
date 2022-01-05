@@ -153,6 +153,9 @@ public class ClosureTask extends TaskFactory {
             @Override
             public void finish(TaskOutput taskOutput) throws IOException {
                 Path webappDirectory = config.getWebappDirectory();
+                if(webappDirectory==null) {
+                    throw new IllegalArgumentException("No webapp directory defined");
+                }
                 if (!Files.exists(webappDirectory)) {
                     Files.createDirectories(webappDirectory);
                 }

@@ -14,7 +14,7 @@
 
   <modules>
     <module>build-caching</module>
-    <module>j2cl-tools</module>
+    <module>j2cl-build</module>
     <module>j2cl-maven-plugin</module>
   </modules>
 
