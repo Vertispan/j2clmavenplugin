@@ -1,6 +1,7 @@
 package com.vertispan.j2cl.build;
 
 import com.vertispan.j2cl.build.impl.CollectedTaskInputs;
+import com.vertispan.j2cl.build.task.BuildLog;
 import com.vertispan.j2cl.build.task.OutputTypes;
 import com.vertispan.j2cl.build.task.TaskFactory;
 import com.vertispan.j2cl.build.task.TaskOutput;
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
 public class TaskScheduler {
     private final Executor executor;
     private final DiskCache diskCache;
+    private final BuildLog buildLog;
 
     /**
      * Creates a scheduler to perform work as needed. Before any task is attempted, the
@@ -36,9 +38,10 @@ public class TaskScheduler {
      * @param executor
      * @param diskCache
      */
-    public TaskScheduler(Executor executor, DiskCache diskCache) {
+    public TaskScheduler(Executor executor, DiskCache diskCache, BuildLog buildLog) {
         this.executor = executor;
         this.diskCache = diskCache;
+        this.buildLog = buildLog;
     }
 
     /**

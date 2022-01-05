@@ -1,6 +1,7 @@
 package com.vertispan.j2cl.build;
 
 import com.vertispan.j2cl.build.impl.CollectedTaskInputs;
+import com.vertispan.j2cl.build.task.BuildLog;
 import com.vertispan.j2cl.build.task.OutputTypes;
 import com.vertispan.j2cl.build.task.TaskFactory;
 
@@ -22,13 +23,15 @@ public class BuildService {
 
     // hashes of each file in each project, updated under lock
     private final Map<Project, Map<Path, DiskCache.CacheEntry>> currentProjectSourceHash = new HashMap<>();
+    private final BuildLog buildLog;
 
     private BlockingBuildListener prevBuild;
 
-    public BuildService(TaskRegistry taskRegistry, TaskScheduler taskScheduler, DiskCache diskCache) {
+    public BuildService(TaskRegistry taskRegistry, TaskScheduler taskScheduler, DiskCache diskCache, BuildLog buildLog) {
         this.taskRegistry = taskRegistry;
         this.taskScheduler = taskScheduler;
         this.diskCache = diskCache;
+        this.buildLog = buildLog;
     }
 
     /**

@@ -1,5 +1,6 @@
 package com.vertispan.j2cl.build;
 
+import com.vertispan.j2cl.build.task.BuildLog;
 import io.methvin.watcher.DirectoryChangeEvent;
 import io.methvin.watcher.DirectoryChangeListener;
 import io.methvin.watcher.DirectoryWatcher;
@@ -27,12 +28,14 @@ public class WatchService {
     private final BuildQueue buildQueue;
     private final BuildService buildService;
     private final ScheduledExecutorService executorService;
+    private final BuildLog buildLog;
     private DirectoryWatcher directoryWatcher;
 
-    public WatchService(BuildService buildService, ScheduledExecutorService executorService) {
+    public WatchService(BuildService buildService, ScheduledExecutorService executorService, BuildLog log) {
         this.buildQueue = new BuildQueue(buildService);
         this.buildService = buildService;
         this.executorService = executorService;
+        this.buildLog =log;
     }
 
     public void watch(Map<Project, List<Path>> sourcePathsToWatch) throws IOException {
