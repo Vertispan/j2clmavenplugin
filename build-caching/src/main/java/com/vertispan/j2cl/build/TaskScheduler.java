@@ -129,7 +129,7 @@ public class TaskScheduler {
             diskCache.waitForTask(taskDetails, new DiskCache.Listener() {
                 @Override
                 public void onReady(DiskCache.CacheResult cacheResult) {
-                    // We can now begin this work off-thread, will be woke up when it finishes.
+                    // We can now begin this work off-thread, will be woken up when it finishes.
                     // It is too late to cancel at this time, so no need to check.
                     executor.execute(() -> {
                         executeTask(taskDetails, cacheResult, listener);

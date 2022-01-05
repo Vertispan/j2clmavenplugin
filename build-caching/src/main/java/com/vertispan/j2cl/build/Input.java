@@ -9,7 +9,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * New instances of this are made at every chance, and equality is only based on the
+ * New instances of this are made at every change, and equality is only based on the
  * project and output type, so this can serve as a key when looking up work to do.
  *
  * Each instance can be updated to point at a specific disk cache entry where its
