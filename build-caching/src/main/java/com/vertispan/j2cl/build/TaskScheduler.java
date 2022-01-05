@@ -97,10 +97,11 @@ public class TaskScheduler {
     }
 
     private void scheduleAvailableWork(Set<Input> ready, Map<Input, List<Input>> allInputs, Set<CollectedTaskInputs> remainingWork, BuildListener listener) {
-        if(remainingWork.size() == 1)
-            buildLog.debug("Remaining work: task "+remainingWork.iterator().next().getDebugName());
-        else
+        if (remainingWork.size() == 1) {
+            buildLog.debug("Remaining work: task " + remainingWork.iterator().next().getDebugName());
+        } else {
             buildLog.debug("Remaining work: "+remainingWork.size()+" tasks");
+        }
         if (remainingWork.isEmpty()) {
             // no work left, mark entire set of tasks as finished
             listener.onSuccess();

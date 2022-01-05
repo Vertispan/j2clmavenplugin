@@ -218,7 +218,7 @@ public class PropertyTrackingConfig implements Config {
             throw new IllegalStateException("No 'webappDirectory' found");
         }
         String s = configNode.readString();
-        if(s==null) {
+        if(s == null) {
             throw new IllegalStateException("Could not get value of '"+configNode.getPath()+"' from pom.xml in <configuration>");
         }
         return Paths.get(s);
