@@ -1,0 +1,60 @@
+# Build maven project and run tests. This currently runs on all commits to pull requests and branches, and must not
+# use any secrets or attempt to deploy, but only verify the build.
+name: Build and test
+on: [push, pull_request]
+jobs:
+  os-test:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set up Java 11
+        uses: actions/setup-java@v2
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+      - name: Build and test
+        run: |
+          mvn --batch-mode verify '-Dinvoker.timeoutInSeconds=300'
+      - name: Upload test results for review
+        uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: test-results-${{ matrix.os }}
+          path: |
+            j2cl-maven-plugin/target/it-tests/*/build.log
+            */target/surefire-reports/
+          retention-days: 5
+  maven-version-test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        mvn: ['3.8.4', '3.6.3', '3.5.4', '3.3.9', '3.2.5']
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set up Java 11
+        uses: actions/setup-java@v2
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+      - name: Set up maven wrapper for specified version
+        run: |
+          mvn wrapper:wrapper -Dmaven=${{ matrix.mvn }}
+      - name: Build and test
+        run: |
+          ./mvnw --batch-mode verify '-Dinvoker.timeoutInSeconds=300'
+      - name: Upload test results for review
+        uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: test-results-mvn-v${{ matrix.mvn }}
+          path: |
+            j2cl-maven-plugin/target/it-tests/*/build.log
+            */target/surefire-reports/
+          retention-days: 5

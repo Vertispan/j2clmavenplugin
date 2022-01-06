@@ -17,8 +17,8 @@ import java.util.stream.Stream;
 
 @AutoService(TaskFactory.class)
 public class ClosureTask extends TaskFactory {
-    public static final PathMatcher JS_SOURCES = FileSystems.getDefault().getPathMatcher("glob:**/*.js");
-    public static final PathMatcher NATIVE_JS_SOURCES = FileSystems.getDefault().getPathMatcher("glob:**/*.native.js");
+    public static final PathMatcher JS_SOURCES = withSuffix(".js");
+    public static final PathMatcher NATIVE_JS_SOURCES = withSuffix(".native.js");
     public static final PathMatcher PLAIN_JS_SOURCES = new PathMatcher() {
         @Override
         public boolean matches(Path path) {

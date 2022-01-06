@@ -17,8 +17,8 @@ import java.util.stream.Stream;
 @AutoService(TaskFactory.class)
 public class JavacTask extends TaskFactory {
 
-    public static final PathMatcher JAVA_SOURCES = FileSystems.getDefault().getPathMatcher("glob:**/*.java");
-    public static final PathMatcher JAVA_BYTECODE = FileSystems.getDefault().getPathMatcher("glob:**/*.class");
+    public static final PathMatcher JAVA_SOURCES = withSuffix(".java");
+    public static final PathMatcher JAVA_BYTECODE = withSuffix(".class");
 
     @Override
     public String getOutputType() {
@@ -57,7 +57,8 @@ public class JavacTask extends TaskFactory {
             List<File> classpathDirs = Stream.concat(classpathHeaders.stream().map(Input::getParentPaths).flatMap(Collection::stream).map(Path::toFile),
                     extraClasspath.stream()).collect(Collectors.toList());
 
-            Javac javac = new Javac(null, classpathDirs, output.path().toFile(), bootstrapClasspath);
+            List<File> sourcePaths = ownSources.getParentPaths().stream().map(Path::toFile).collect(Collectors.toList());
+            Javac javac = new Javac(null, sourcePaths, classpathDirs, output.path().toFile(), bootstrapClasspath);
 
             // TODO convention for mapping to original file paths, provide FileInfo out of Inputs instead of Paths,
             //      automatically relativized?

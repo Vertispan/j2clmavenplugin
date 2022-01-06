@@ -1,5 +1,7 @@
 package com.vertispan.j2cl.build.task;
 
+import java.nio.file.Path;
+import java.nio.file.PathMatcher;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -18,6 +20,20 @@ import java.util.stream.Collectors;
  *
  */
 public abstract class TaskFactory {
+    protected static PathMatcher withSuffix(String suffix) {
+        return new PathMatcher() {
+            @Override
+            public boolean matches(Path p) {
+                return p.getFileName().toString().endsWith(suffix);
+            }
+
+            @Override
+            public String toString() {
+                return "Filenames that end with " + suffix;
+            }
+        };
+    }
+
     public final List<com.vertispan.j2cl.build.Input> inputs = new ArrayList<>();
 
     protected Input input(Dependency dependency, String outputType) {

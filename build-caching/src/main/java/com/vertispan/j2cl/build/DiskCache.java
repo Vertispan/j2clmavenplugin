@@ -94,7 +94,7 @@ public abstract class DiskCache {
                 for (WatchEvent<?> event : key.pollEvents()) {
                     if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE) {
                         // task ended one way or the other
-                        Path taskDir = (Path) key.watchable();
+                        Path taskDir = pathFromWatchable(key.watchable());
                         Path createdPath = taskDir.resolve((Path) event.context());
                         Set<PendingCacheResult> listeners = taskFutures.get(taskDir);
                         if (createdPath.equals(successMarker(taskDir))) {
@@ -107,7 +107,6 @@ public abstract class DiskCache {
                                 listeners.forEach(l -> l.error(ioException));
                             }
                         } else if (createdPath.equals(failureMarker(taskDir))) {
-                            assert createdPath.equals(failureMarker(taskDir));
                             listeners.forEach(PendingCacheResult::failure);
                         } //else this is the log file
                     } else if (event.kind() == StandardWatchEventKinds.ENTRY_DELETE) {
@@ -126,6 +125,16 @@ public abstract class DiskCache {
             // asked to shut down, time to stop
             // TODO mark all pending work as canceled?
         }
+    }
+
+    private Path pathFromWatchable(Watchable watchable) {
+        if (watchable instanceof WatchablePath) {
+            return ((WatchablePath) watchable).getFile();
+        }
+        if (watchable instanceof Path) {
+            return (Path) watchable;
+        }
+        throw new UnsupportedOperationException("Can't handle watchable of type " + watchable.getClass());
     }
 
     private TaskOutput makeOutput(Path taskDir) {

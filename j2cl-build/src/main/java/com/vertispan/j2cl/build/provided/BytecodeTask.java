@@ -12,7 +12,6 @@ import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.util.Collection;
 import java.util.List;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -29,8 +28,8 @@ import java.util.stream.Stream;
 @AutoService(TaskFactory.class)
 public class BytecodeTask extends TaskFactory {
 
-    public static final PathMatcher JAVA_SOURCES = FileSystems.getDefault().getPathMatcher("glob:**/*.java");
-    public static final PathMatcher JAVA_BYTECODE = FileSystems.getDefault().getPathMatcher("glob:**/*.class");
+    public static final PathMatcher JAVA_SOURCES = withSuffix(".java");
+    public static final PathMatcher JAVA_BYTECODE = withSuffix(".class");
 
     @Override
     public String getOutputType() {
@@ -78,16 +77,14 @@ public class BytecodeTask extends TaskFactory {
                 return;// no work to do
             }
 
-            List<File> classpathDirs = Stream.of(
+            List<File> classpathDirs = Stream.concat(
                     bytecodeClasspath.stream().map(Input::getParentPaths).flatMap(Collection::stream).map(Path::toFile),
-                    extraClasspath.stream(),
-                    inputDirs.getParentPaths().stream().map(Path::toFile)
-            )
-                    .flatMap(Function.identity())
-                    .collect(Collectors.toList());
+                    extraClasspath.stream()
+            ).collect(Collectors.toList());
 
             // TODO don't dump APT to the same dir?
-            Javac javac = new Javac(output.path().toFile(), classpathDirs, output.path().toFile(), bootstrapClasspath);
+            List<File> sourcePaths = inputDirs.getParentPaths().stream().map(Path::toFile).collect(Collectors.toList());
+            Javac javac = new Javac(output.path().toFile(), sourcePaths, classpathDirs, output.path().toFile(), bootstrapClasspath);
 
             // TODO convention for mapping to original file paths, provide FileInfo out of Inputs instead of Paths,
             //      automatically relativized?

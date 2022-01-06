@@ -6,9 +6,16 @@ import com.vertispan.j2cl.build.task.OutputTypes;
 import com.vertispan.j2cl.build.task.TaskFactory;
 import com.vertispan.j2cl.build.task.TaskOutput;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -24,6 +31,13 @@ public class TaskScheduler {
     private final Executor executor;
     private final DiskCache diskCache;
     private final BuildLog buildLog;
+
+    // This is technically incorrect, but covers the current use cases, and should fail loudly if this assumption
+    // ends up being violated, so we know what to fix. This should be null upon submit(), set to the path of the
+    // CacheResult when a final-task begins, and nulled out again when the final-task ends. If a final-task attempts
+    // to start and this isn't null, we assert it is already set to this value (and skip the work), and assert it is
+    // null when submitting any work.
+    private final AtomicReference<String> finalTaskMarker = new AtomicReference<>();
 
     /**
      * Creates a scheduler to perform work as needed. Before any task is attempted, the
@@ -48,6 +62,7 @@ public class TaskScheduler {
      * Params need to specify dependencies so we can track them internally, and when submitted
      */
     public Cancelable submit(Collection<CollectedTaskInputs> inputs, BuildListener listener) {
+        verifyFinalTaskMarkerNull();
         // Build an initial set of work that doesn't need doing, we'll add to this as we go
         // We aren't concerned about missing filtered instances here
         Set<Input> ready = inputs.stream()
@@ -69,10 +84,11 @@ public class TaskScheduler {
         remainingWork.removeIf(item -> ready.contains(item.getAsInput()));
 
         scheduleAvailableWork(Collections.synchronizedSet(ready), allInputs, remainingWork, new BuildListener() {
-            AtomicBoolean firstNotificationSent = new AtomicBoolean(false);
+            private final AtomicBoolean firstNotificationSent = new AtomicBoolean(false);
             @Override
             public void onSuccess() {
                 if (firstNotificationSent.compareAndSet(false, true)) {
+                    verifyFinalTaskMarkerNull();
                     listener.onSuccess();
                 }
             }
@@ -80,20 +96,28 @@ public class TaskScheduler {
             @Override
             public void onFailure() {
                 if (firstNotificationSent.compareAndSet(false, true)) {
+                    verifyFinalTaskMarkerNull();
                     listener.onFailure();
                 }
-
             }
 
             @Override
             public void onError(Throwable throwable) {
                 if (firstNotificationSent.compareAndSet(false, true)) {
+                    verifyFinalTaskMarkerNull();
                     listener.onError(throwable);
                 }
             }
         });
 
         return remainingWork::clear;
+    }
+
+    private void verifyFinalTaskMarkerNull() {
+        String marker = finalTaskMarker.get();
+        if (marker != null) {
+            throw new IllegalStateException("Expected final task marker to be null - builds running concurrently? " + marker);
+        }
     }
 
     private void scheduleAvailableWork(Set<Input> ready, Map<Input, List<Input>> allInputs, Set<CollectedTaskInputs> remainingWork, BuildListener listener) {
@@ -128,15 +152,53 @@ public class TaskScheduler {
 
             // check to see if this task is finished (or failed), or can be built by us now
             diskCache.waitForTask(taskDetails, new DiskCache.Listener() {
+                private void executeTask(CollectedTaskInputs taskDetails, DiskCache.CacheResult result, BuildListener listener) {
+                    // all inputs are populated, and it already has the config, we just need to start it up
+                    // with its output path and capture logs
+                    buildLog.info("Started  "+taskDetails.getDebugName() + " on " + taskDetails.getInputs().size()+" inputs ...");
+                    try {
+                        long start = System.currentTimeMillis();
+
+                        taskDetails.getTask().execute(new TaskOutput(result.outputDir()));
+                        long elapsedMillis = System.currentTimeMillis() - start;
+                        if (elapsedMillis > 5) {
+                            buildLog.info("Finished " + taskDetails.getDebugName() + " in " + elapsedMillis + "ms");
+                        }
+                        result.markSuccess();
+
+                    } catch (Exception exception) {
+                        buildLog.error("Exception executing task " + taskDetails.getDebugName(), exception);
+                        result.markFailure();
+                        listener.onFailure();
+                        throw new RuntimeException(exception);// don't safely return, we don't want to continue
+                    }
+
+                    // if this is a final task, execute it
+                    if (taskDetails.getTask() instanceof TaskFactory.FinalOutputTask) {
+                        boolean finished;
+                        try {
+                            // if this fails, we'll report failure to the listener
+                            finished = executeFinalTask(taskDetails, result);
+                        } catch (Exception exception) {
+                            // TODO can't proceed, shut everything down
+                            listener.onError(exception);
+                            throw new RuntimeException(exception);
+                        }
+                        if (finished) {
+                            scheduleMoreWork(result);
+                        }
+                    } else {
+                        // look for more work now that we've finished this one
+                        scheduleMoreWork(result);
+                    }
+                }
+
                 @Override
                 public void onReady(DiskCache.CacheResult cacheResult) {
                     // We can now begin this work off-thread, will be woken up when it finishes.
                     // It is too late to cancel at this time, so no need to check.
                     executor.execute(() -> {
                         executeTask(taskDetails, cacheResult, listener);
-
-                        // look for more work now that we've finished this one
-                        scheduleMoreWork(cacheResult);
                     });
                 }
 
@@ -162,24 +224,32 @@ public class TaskScheduler {
                         // NOTE: we are not calling setCurrentContents on this, since no task may depend on this
                         ready.add(taskDetails.getAsInput());
                         executor.execute(() -> {
+                            boolean finished;
                             try {
                                 // if this fails, we'll report failure to the listener
-                                executeFinalTask(taskDetails, cacheResult);
+                                finished = executeFinalTask(taskDetails, cacheResult);
                             } catch (Exception exception) {
                                 // TODO can't proceed, shut everything down
                                 listener.onError(exception);
                                 throw new RuntimeException(exception);
                             }
 
-                            // we have to schedule more work afterwards because this is what triggers "all done" at the end,
-                            // though it is likely that there isn't any more to do, since we just did the final output work
-                            scheduleMoreWork(cacheResult);
+                            if (finished) {
+                                // we have to schedule more work afterwards because this is what triggers "all done" at the end,
+                                // though it is likely that there isn't any more to do, since we just did the final output work
+                                scheduleMoreWork(cacheResult);
+                            }
                         });
                     } else {
                         scheduleMoreWork(cacheResult);
                     }
                 }
 
+                /**
+                 * Marks the currently running task as complete, registers its output to be available for future
+                 * tasks as inputs, and signals that more work can begin based on this change.
+                 * @param cacheResult the newly finished output
+                 */
                 private void scheduleMoreWork(DiskCache.CacheResult cacheResult) {
                     boolean scheduleMore = false;
                     // mark current item as ready
@@ -202,55 +272,32 @@ public class TaskScheduler {
                         scheduleAvailableWork(ready, allInputs, remainingWork, listener);
                     }
                 }
+
+                private boolean executeFinalTask(CollectedTaskInputs taskDetails, DiskCache.CacheResult cacheResult) throws Exception {
+                    if (!finalTaskMarker.compareAndSet(null, cacheResult.outputDir().toString())) {
+                        // failed to set it to null, some other thread already has the lock
+                        System.out.println("skipping final task, some other thread has the lock");
+                        return false;
+                    }
+                    buildLog.info("starting final task " + taskDetails.getDebugName());
+                    long start = System.currentTimeMillis();
+                    try {
+                        ((TaskFactory.FinalOutputTask) taskDetails.getTask()).finish(new TaskOutput(cacheResult.outputDir()));
+                        buildLog.info("Finished " + taskDetails.getDebugName() + " in " + (System.currentTimeMillis() - start) + "ms");
+                    } catch (Throwable t) {
+                        buildLog.error("FAILED   " + taskDetails.getDebugName() + " in " + (System.currentTimeMillis() - start) + "ms",t);
+                        throw t;
+                    } finally {
+                        String previous = finalTaskMarker.getAndSet(null);
+                        if (!previous.equals(cacheResult.outputDir().toString())) {
+                            //noinspection ThrowFromFinallyBlock
+                            throw new AssertionError("final task marker should have been " + cacheResult.outputDir() + ", instead was " + previous);
+                        }
+                    }
+                    buildLog.info("--- Ready for browser refresh");
+                    return true;
+                }
             });
         });
-    }
-
-    private void executeFinalTask(CollectedTaskInputs taskDetails, DiskCache.CacheResult cacheResult) throws Exception {
-        buildLog.info("starting final task " + taskDetails.getDebugName());
-        long start = System.currentTimeMillis();
-        try {
-            ((TaskFactory.FinalOutputTask) taskDetails.getTask()).finish(new TaskOutput(cacheResult.outputDir()));
-            buildLog.info("Finished " + taskDetails.getDebugName() + " in " + (System.currentTimeMillis() - start) + "ms");
-        } catch (Throwable t) {
-            buildLog.error("FAILED   " + taskDetails.getDebugName() + " in " + (System.currentTimeMillis() - start) + "ms",t);
-            throw t;
-        }
-        buildLog.info("--- Ready for browser refresh");
-    }
-
-    private void executeTask(CollectedTaskInputs taskDetails, DiskCache.CacheResult result, BuildListener listener) {
-        // all inputs are populated, and it already has the config, we just need to start it up
-        // with its output path and capture logs
-        // TODO implement logs!
-        buildLog.info("Started  "+taskDetails.getDebugName() + " on " + taskDetails.getInputs().size()+" inputs ...");
-        try {
-            long start = System.currentTimeMillis();
-
-            taskDetails.getTask().execute(new TaskOutput(result.outputDir()));
-            long elapsedMillis = System.currentTimeMillis() - start;
-            if (elapsedMillis > 5) {
-                buildLog.info("Finished " + taskDetails.getDebugName() + " in " + elapsedMillis + "ms");
-            }
-            result.markSuccess();
-
-        } catch (Exception exception) {
-            buildLog.error(exception);
-            result.markFailure();
-            listener.onFailure();
-            throw new RuntimeException(exception);// don't safely return, we don't want to continue
-        }
-
-            // if this is a final task, execute it
-            if (taskDetails.getTask() instanceof TaskFactory.FinalOutputTask) {
-                try {
-                    // if this fails, we'll report failure to the listener
-                    executeFinalTask(taskDetails, result);
-                } catch (Exception exception) {
-                    // TODO can't proceed, shut everything down
-                    listener.onError(exception);
-                    throw new RuntimeException(exception);
-                }
-            }
     }
 }
