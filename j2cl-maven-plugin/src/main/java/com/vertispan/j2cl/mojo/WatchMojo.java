@@ -201,7 +201,7 @@ public class WatchMojo extends AbstractBuildMojo {
                             child.setValue(initialScriptFilename);
                             watchGoalConfig.addChild(child);
                         }
-                        if (watchGoalConfig.getChild("webappDirectory") == null) {
+                        if (watchGoalConfig.getChild("webappDirectory") == null || watchGoalConfig.getChild("webappDirectory").getValue() == null) {
                             Xpp3Dom child = new Xpp3Dom("webappDirectory");
                             child.setValue(webappDirectory);
                             watchGoalConfig.addChild(child);
