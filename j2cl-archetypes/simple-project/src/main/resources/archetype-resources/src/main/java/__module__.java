@@ -4,13 +4,10 @@ import elemental2.dom.DomGlobal;
 import elemental2.dom.HTMLButtonElement;
 import elemental2.dom.HTMLDivElement;
 
-import com.google.gwt.core.client.EntryPoint;
-
-public class ${module} implements EntryPoint {
+public class ${module} {
 
     public static final String HELLO_WORLD = "Hello J2CL world!";
 
-    @Override
     public void onModuleLoad() {
         HTMLDivElement wrapper = (HTMLDivElement) DomGlobal.document.createElement("div");
         wrapper.classList.add("wrapper");
