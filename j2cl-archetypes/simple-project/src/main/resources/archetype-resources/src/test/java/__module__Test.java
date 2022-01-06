@@ -9,7 +9,7 @@ import static org.junit.Assert.assertEquals;
 public class ${module}Test {
 
     @Test
-    public void testGetRanges() {
+    public void someSimpleTest() {
         assertEquals(${module}.HELLO_WORLD, new ${module}().helloWorldString());
     }
 }

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<archetype-descriptor name="J2CL-Maven archetype">
+<archetype-descriptor name="Simple J2cl Maven Project Archetype">
   <requiredProperties>
     <requiredProperty key="module" />
   </requiredProperties>
@@ -23,12 +23,6 @@
       <directory>src/test/java</directory>
       <includes>
         <include>**/*.java</include>
-      </includes>
-    </fileSet>
-    <fileSet filtered="true" encoding="UTF-8">
-      <directory>src/main/tomcatconf</directory>
-      <includes>
-        <include>**/*.xml</include>
       </includes>
     </fileSet>
   </fileSets>
