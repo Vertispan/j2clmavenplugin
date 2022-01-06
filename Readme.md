@@ -11,8 +11,13 @@ built from here:
 
 ------------------------
 
-# Usage
-A fully working sample project can be found at https://github.com/treblereel/j2cl-tests
+# Example usage
+
+A fully working sample project can be found at https://github.com/treblereel/j2cl-tests. Also consider the
+[Maven Archetypes](j2cl-archetypes/README.md) that are developed in this project, or check out the [integration
+tests](j2cl-maven-plugin/src/it/) used to verify various aspects of the project each build, especially
+[hello-world-single](j2cl-maven-plugin/src/it/hello-world-single) and
+[hello-world-reactor](j2cl-maven-plugin/src/it/hello-world-reactor).
 
 # Goals
 
@@ -56,60 +61,7 @@ depend on it, etc.
 For "dev mode", we want to keep these processes running, keep as much cached and jit'd as possible, to
 prevent spending startup time over and over on each project. If we execute a single maven goal to do this,
 we will want it to be run on a "parent" in the reactor, so that any changed modules are detected and
-recompiled correctly, rather than depending on stale sources
-
-----
-## Setting up a new project
-
-J2CL Maven plugin generates the project structure and the build script (maven pom.xml).
-To create a new project, run the following command:
-```
-mvn archetype:generate -DarchetypeGroupId=com.vertispan.j2cl \
--DarchetypeArtifactId=simple-project \
--DarchetypeVersion=0.19-SNAPSHOT
-```
-
-Tip: if you don't have a pre-installed `simple-project`, you can install it manually:
-```
-mvn org.apache.maven.plugins:maven-dependency-plugin:get \
--DrepoUrl=https://repo.vertispan.com/j2cl/ \
--Dartifact=com.vertispan.j2cl:simple-project:0.19-SNAPSHOT
-```
-
-The application generation script asks you to provide necessary details: 
-
-* groupId - Maven groupId of a resulting application
-* artifactId - Maven artifactId of a resulting application
-* version - version of a resulting application
-* package - a package where a module (EntryPoint) will be stored
-* module - the name of the EntryPoint
-
-Alternatively, you can create a project with one command providing  
-```
-mvn archetype:generate -DarchetypeGroupId=com.vertispan.j2cl \
--DarchetypeArtifactId=simple-project \
--DarchetypeVersion=0.19-SNAPSHOT \
--DgroupId=my.project.group.id \
--DartifactId=myapp \
--Dversion=1.0-SNAPSHOT \
--Dmodule=App
-```
-
-After completion, a generated project is ready to work, so you can run it in Dev Mode.
-
-1. Open a console and run:
-```
-mvn clean j2cl:watch
-```
-
-2. After you get a similar message: `done with pool work for my.project.group.id:myapp:1.0-SNAPSHOT AssembleOutput-...`, open a new console and type the following command to run a Jetty server:
-```
-mvn jetty:run
-```
-
-In a few seconds you will be able to access your application at http://127.0.0.1:8080.
-
-For more details on using Dev Mode and building applications read the related topics below.
+recompiled correctly, rather than depending on stale sources.
 
 ----
 
