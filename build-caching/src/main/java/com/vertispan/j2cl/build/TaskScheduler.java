@@ -156,7 +156,8 @@ public class TaskScheduler {
                 private void executeTask(CollectedTaskInputs taskDetails, DiskCache.CacheResult result, BuildListener listener) {
                     // all inputs are populated, and it already has the config, we just need to start it up
                     // with its output path and capture logs
-                    buildLog.info("Started  "+taskDetails.getDebugName() + " on " + taskDetails.getInputs().size()+" inputs ...");
+                    buildLog.info("Starting " + taskDetails.getDebugName());
+                    buildLog.debug("Task " + taskDetails.getDebugName() + " has " + taskDetails.getInputs().size() + " inputs");
                     TaskBuildLog log;
                     try {
                         log = new TaskBuildLog(buildLog, taskDetails.getDebugName(), result.logFile());
@@ -284,16 +285,16 @@ public class TaskScheduler {
                 private boolean executeFinalTask(CollectedTaskInputs taskDetails, DiskCache.CacheResult cacheResult) throws Exception {
                     if (!finalTaskMarker.compareAndSet(null, cacheResult.outputDir().toString())) {
                         // failed to set it to null, some other thread already has the lock
-                        System.out.println("skipping final task, some other thread has the lock");
+                        buildLog.info("skipping final task, some other thread has the lock");
                         return false;
                     }
-                    buildLog.info("starting final task " + taskDetails.getDebugName());
+                    buildLog.info("Starting final task " + taskDetails.getDebugName());
                     long start = System.currentTimeMillis();
                     try {
                         //TODO Make sure that we want to write this to _only_ the current log, and not also to any file
                         //TODO Also be sure to write a prefix automatically
                         ((TaskFactory.FinalOutputTask) taskDetails.getTask()).finish(new TaskContext(cacheResult.outputDir(), buildLog));
-                        buildLog.info("Finished " + taskDetails.getDebugName() + " in " + (System.currentTimeMillis() - start) + "ms");
+                        buildLog.info("Finished final task " + taskDetails.getDebugName() + " in " + (System.currentTimeMillis() - start) + "ms");
                     } catch (Throwable t) {
                         buildLog.error("FAILED   " + taskDetails.getDebugName() + " in " + (System.currentTimeMillis() - start) + "ms",t);
                         throw t;

@@ -129,11 +129,7 @@ public class CollectedTaskInputs {
         return task;
     }
 
-    public boolean isFinalTask() {
-        return getTask() instanceof TaskFactory.FinalOutputTask;
-    }
-
     public String getDebugName() {
-        return getProject().getKey() + "/" + getTaskFactory().getOutputType() + (isFinalTask()?"/final":"");
+        return getProject().getKey() + "/" + getTaskFactory().getOutputType();
     }
 }
