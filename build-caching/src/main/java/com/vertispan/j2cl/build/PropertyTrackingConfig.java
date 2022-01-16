@@ -214,11 +214,11 @@ public class PropertyTrackingConfig implements Config {
     public Path getWebappDirectory() {
         // Note that this deliberately circumvents the hash building
         ConfigValueProvider.ConfigNode configNode=config.findNode("webappDirectory");
-        if(configNode==null) {
+        if (configNode==null) {
             throw new IllegalStateException("No 'webappDirectory' found");
         }
         String s = configNode.readString();
-        if(s == null) {
+        if (s == null) {
             throw new IllegalStateException("Could not get value of '"+configNode.getPath()+"' from pom.xml in <configuration>");
         }
         return Paths.get(s);

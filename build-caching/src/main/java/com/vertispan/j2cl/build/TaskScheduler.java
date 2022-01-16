@@ -125,7 +125,7 @@ public class TaskScheduler {
         if (remainingWork.size() == 1) {
             buildLog.debug("Remaining work: task " + remainingWork.iterator().next().getDebugName());
         } else {
-            buildLog.debug("Remaining work: "+remainingWork.size()+" tasks");
+            buildLog.debug("Remaining work: " + remainingWork.size() + " tasks");
         }
         if (remainingWork.isEmpty()) {
             // no work left, mark entire set of tasks as finished

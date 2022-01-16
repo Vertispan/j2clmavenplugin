@@ -85,7 +85,7 @@ public class TaskBuildLog implements BuildLog {
 
     // Helpers adapted from gwtproject/gwt, does not suppress repeated lines like jre does
     private void printStackTrace(Throwable t, String prefix) {
-        printStackTrace(t, "", prefix, Collections.newSetFromMap(new IdentityHashMap<>()));
+        printStackTrace(t, prefix, "", Collections.newSetFromMap(new IdentityHashMap<>()));
     }
     private void printStackTrace(Throwable t, String indent, String prefix, Set<Throwable> seen) {
         if (!seen.add(t)) {
@@ -105,12 +105,12 @@ public class TaskBuildLog implements BuildLog {
 
         Throwable[] suppressed = t.getSuppressed();
         for (Throwable throwable : suppressed) {
-            printStackTrace(throwable, "Suppressed: ", "\t" + indent, seen);
+            printStackTrace(throwable, indent + "\t", "Suppressed: ", seen);
         }
 
         Throwable cause = t.getCause();
         if (cause != null) {
-            printStackTrace(cause, "Caused by: ", indent, seen);
+            printStackTrace(cause, indent, "Caused by: ", seen);
         }
     }
 }
