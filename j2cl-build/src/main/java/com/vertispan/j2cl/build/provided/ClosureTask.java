@@ -84,10 +84,10 @@ public class ClosureTask extends TaskFactory {
         String sourcemapDirectory = "sources";
         return new FinalOutputTask() {
             @Override
-            public void execute(TaskOutput output) throws Exception {
-                Closure closureCompiler = new Closure();
+            public void execute(TaskContext context) throws Exception {
+                Closure closureCompiler = new Closure(context);
 
-                File closureOutputDir = output.path().toFile();
+                File closureOutputDir = context.outputPath().toFile();
 
                 CompilationLevel compilationLevel = CompilationLevel.fromString(compilationLevelConfig);
 
@@ -151,12 +151,12 @@ public class ClosureTask extends TaskFactory {
             }
 
             @Override
-            public void finish(TaskOutput taskOutput) throws IOException {
+            public void finish(TaskContext taskContext) throws IOException {
                 Path webappDirectory = config.getWebappDirectory();
                 if (!Files.exists(webappDirectory)) {
                     Files.createDirectories(webappDirectory);
                 }
-                FileUtils.copyDirectory(taskOutput.path().toFile(), webappDirectory.toFile());
+                FileUtils.copyDirectory(taskContext.outputPath().toFile(), webappDirectory.toFile());
             }
         };
     }

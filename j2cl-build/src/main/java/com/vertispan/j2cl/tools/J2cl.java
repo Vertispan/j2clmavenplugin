@@ -7,6 +7,7 @@ import com.google.j2cl.transpiler.backend.Backend;
 import com.google.j2cl.transpiler.frontend.Frontend;
 import com.google.j2cl.transpiler.J2clTranspiler;
 import com.google.j2cl.transpiler.J2clTranspilerOptions;
+import com.vertispan.j2cl.build.task.BuildLog;
 
 import javax.annotation.Nonnull;
 import java.io.File;
@@ -19,9 +20,11 @@ public class J2cl {
 
     private final J2clTranspilerOptions.Builder optionsBuilder;
     private final File jsOutDir;
+    private final BuildLog log;
 
-    public J2cl(List<File> strippedClasspath, @Nonnull File bootstrap, File jsOutDir) {
+    public J2cl(List<File> strippedClasspath, @Nonnull File bootstrap, File jsOutDir, BuildLog log) {
         this.jsOutDir = jsOutDir;
+        this.log = log;
         optionsBuilder = J2clTranspilerOptions.newBuilder()
                 .setFrontend(Frontend.JDT)
                 .setBackend(Backend.CLOSURE)
@@ -36,33 +39,25 @@ public class J2cl {
 
     public boolean transpile(List<SourceUtils.FileInfo> sourcesToCompile, List<SourceUtils.FileInfo> nativeSources) {
         Problems problems = new Problems();
-        J2clTranspilerOptions options = null;
         try (OutputUtils.Output output = OutputUtils.initOutput(jsOutDir.toPath(), problems)) {
-            options = optionsBuilder
+            J2clTranspilerOptions options = optionsBuilder
                     .setOutput(output)
                     .setSources(sourcesToCompile)
                     .setNativeSources(nativeSources)
                     .build();
 
+            log.debug(options.toString());
+
             J2clTranspiler.transpile(options, problems);
         } catch (Problems.Exit e) {
             // Program aborted due to errors recorded in problems, will be logged below
-        } catch (Throwable t) {
-            if (options != null) {
-                System.out.println(options);
-            }
-            throw t;
         }
 
-//        if (problems.hasErrors() || problems.hasWarnings()) {
-//            problems.getErrors().forEach(System.out::println);
-//            problems.getWarnings().forEach(System.out::println);
-//        } else {
-//            problems.getInfoMessages().forEach(System.out::println);
-//        }
-        problems.getMessages().forEach(System.out::println);
-        if (problems.hasErrors()) {
-            System.out.println(options);
+        if (problems.hasErrors() || problems.hasWarnings()) {
+            problems.getWarnings().forEach(log::warn);
+            problems.getErrors().forEach(log::error);
+        } else {
+            problems.getInfoMessages().forEach(log::info);
         }
         return !problems.hasErrors();
     }

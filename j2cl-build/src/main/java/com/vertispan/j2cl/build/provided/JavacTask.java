@@ -6,7 +6,6 @@ import com.vertispan.j2cl.build.task.*;
 import com.vertispan.j2cl.tools.Javac;
 
 import java.io.File;
-import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.util.Collection;
@@ -49,7 +48,7 @@ public class JavacTask extends TaskFactory {
 
         File bootstrapClasspath = config.getBootstrapClasspath();
         List<File> extraClasspath = config.getExtraClasspath();
-        return output -> {
+        return context -> {
             if (ownSources.getFilesAndHashes().isEmpty()) {
                 return;// no work to do
             }
@@ -58,7 +57,7 @@ public class JavacTask extends TaskFactory {
                     extraClasspath.stream()).collect(Collectors.toList());
 
             List<File> sourcePaths = ownSources.getParentPaths().stream().map(Path::toFile).collect(Collectors.toList());
-            Javac javac = new Javac(null, sourcePaths, classpathDirs, output.path().toFile(), bootstrapClasspath);
+            Javac javac = new Javac(context, null, sourcePaths, classpathDirs, context.outputPath().toFile(), bootstrapClasspath);
 
             // TODO convention for mapping to original file paths, provide FileInfo out of Inputs instead of Paths,
             //      automatically relativized?

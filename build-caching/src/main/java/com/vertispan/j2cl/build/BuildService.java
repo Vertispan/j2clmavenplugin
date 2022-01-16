@@ -155,9 +155,7 @@ public class BuildService {
                                     }
                             ));
                     triggerChanges(project, hashes, Collections.emptyMap(), Collections.emptySet());
-
                 });
-
     }
 
     /**

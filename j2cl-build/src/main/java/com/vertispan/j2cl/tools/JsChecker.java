@@ -4,6 +4,7 @@ import com.google.j2cl.common.SourceUtils;
 import com.google.javascript.jscomp.*;
 import com.google.javascript.jscomp.Compiler;
 import com.google.javascript.jscomp.parsing.Config;
+import com.vertispan.j2cl.build.task.BuildLog;
 
 import java.io.File;
 import java.io.IOException;
@@ -17,10 +18,11 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class JsChecker {
     private final List<File> upstreamExterns;
+    private final BuildLog log;
 
-    public JsChecker(List<File> upstreamExterns) {
-
+    public JsChecker(List<File> upstreamExterns, BuildLog log) {
         this.upstreamExterns = upstreamExterns;
+        this.log = log;
     }
 
     public boolean checkAndGenerateExterns(List<SourceUtils.FileInfo> jsInputs, File externsFile) {
@@ -28,6 +30,8 @@ public class JsChecker {
 //        jsInputs.stream().map(SourceUtils.FileInfo::sourcePath).forEach(System.out::println);
         // configure compiler
         Compiler compiler = new Compiler();
+        compiler.setErrorManager(new SortingErrorManager(Collections.singleton(new LoggingErrorReportGenerator(compiler, log))));
+
         CompilerOptions options = new CompilerOptions();
         options.setLanguage(CompilerOptions.LanguageMode.ECMASCRIPT_2017);
         options.setStrictModeInput(true);
@@ -56,12 +60,14 @@ public class JsChecker {
                 options);
 
         if (!result.success) {
-            result.errors.forEach(System.out::println);
+            // results were already piped through the LoggingErrorReportGenerator
             return false;
         }
 
 
         // write errors
+        // TODO This is probably unnecessary, should have already gone out through our own error manager,
+        //      but worth confirming.
 //        if (!expectFailure) {
 //            for (String line : errorManager.stderr) {
 //                System.err.println(line);

@@ -2,6 +2,7 @@ package com.vertispan.j2cl.build.task;
 
 public interface BuildLog {
 
+    //TODO add a check for isDebug
     void debug(String msg);
 
     void info(String msg);

@@ -38,24 +38,24 @@ public class TestCollectionTask extends TaskFactory {
         Input apt = input(project, OutputTypes.GENERATED_SOURCES).filter(TEST_SUMMARY_JSON, TEST_SUITE);
         return new FinalOutputTask() {
             @Override
-            public void execute(TaskOutput output) throws Exception {
+            public void execute(TaskContext context) throws Exception {
                 // TODO If both container a test summary, we should fail, rather than overwrite
                 // Or even better, merge?
 
                 for (CachedPath entry : src.getFilesAndHashes()) {
-                    Files.createDirectories(output.path().resolve(entry.getSourcePath()).getParent());
-                    Files.copy(entry.getAbsolutePath(), output.path().resolve(entry.getSourcePath()));
+                    Files.createDirectories(context.outputPath().resolve(entry.getSourcePath()).getParent());
+                    Files.copy(entry.getAbsolutePath(), context.outputPath().resolve(entry.getSourcePath()));
                 }
                 for (CachedPath entry : apt.getFilesAndHashes()) {
-                    Files.createDirectories(output.path().resolve(entry.getSourcePath()).getParent());
-                    Files.copy(entry.getAbsolutePath(), output.path().resolve(entry.getSourcePath()));
+                    Files.createDirectories(context.outputPath().resolve(entry.getSourcePath()).getParent());
+                    Files.copy(entry.getAbsolutePath(), context.outputPath().resolve(entry.getSourcePath()));
                 }
             }
 
             @Override
-            public void finish(TaskOutput taskOutput) throws Exception {
+            public void finish(TaskContext taskContext) throws Exception {
                 Files.createDirectories(config.getWebappDirectory());
-                FileUtils.copyDirectory(taskOutput.path().toFile(), config.getWebappDirectory().toFile());
+                FileUtils.copyDirectory(taskContext.outputPath().toFile(), config.getWebappDirectory().toFile());
             }
         };
     }

@@ -4,8 +4,9 @@ import com.vertispan.j2cl.build.impl.CollectedTaskInputs;
 import com.vertispan.j2cl.build.task.BuildLog;
 import com.vertispan.j2cl.build.task.OutputTypes;
 import com.vertispan.j2cl.build.task.TaskFactory;
-import com.vertispan.j2cl.build.task.TaskOutput;
+import com.vertispan.j2cl.build.task.TaskContext;
 
+import java.io.FileNotFoundException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -156,10 +157,17 @@ public class TaskScheduler {
                     // all inputs are populated, and it already has the config, we just need to start it up
                     // with its output path and capture logs
                     buildLog.info("Started  "+taskDetails.getDebugName() + " on " + taskDetails.getInputs().size()+" inputs ...");
+                    TaskBuildLog log;
+                    try {
+                        log = new TaskBuildLog(buildLog, taskDetails.getDebugName(), result.logFile());
+                    } catch (FileNotFoundException e) {
+                        // Can't proceed without being able to write to disk, just shut down
+                        listener.onError(e);
+                        throw new RuntimeException(e);
+                    }
                     try {
                         long start = System.currentTimeMillis();
-
-                        taskDetails.getTask().execute(new TaskOutput(result.outputDir()));
+                        taskDetails.getTask().execute(new TaskContext(result.outputDir(), log));
                         long elapsedMillis = System.currentTimeMillis() - start;
                         if (elapsedMillis > 5) {
                             buildLog.info("Finished " + taskDetails.getDebugName() + " in " + elapsedMillis + "ms");
@@ -282,7 +290,9 @@ public class TaskScheduler {
                     buildLog.info("starting final task " + taskDetails.getDebugName());
                     long start = System.currentTimeMillis();
                     try {
-                        ((TaskFactory.FinalOutputTask) taskDetails.getTask()).finish(new TaskOutput(cacheResult.outputDir()));
+                        //TODO Make sure that we want to write this to _only_ the current log, and not also to any file
+                        //TODO Also be sure to write a prefix automatically
+                        ((TaskFactory.FinalOutputTask) taskDetails.getTask()).finish(new TaskContext(cacheResult.outputDir(), buildLog));
                         buildLog.info("Finished " + taskDetails.getDebugName() + " in " + (System.currentTimeMillis() - start) + "ms");
                     } catch (Throwable t) {
                         buildLog.error("FAILED   " + taskDetails.getDebugName() + " in " + (System.currentTimeMillis() - start) + "ms",t);
@@ -294,7 +304,6 @@ public class TaskScheduler {
                             throw new AssertionError("final task marker should have been " + cacheResult.outputDir() + ", instead was " + previous);
                         }
                     }
-                    buildLog.info("--- Ready for browser refresh");
                     return true;
                 }
             });

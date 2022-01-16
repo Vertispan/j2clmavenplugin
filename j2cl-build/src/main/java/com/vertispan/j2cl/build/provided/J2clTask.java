@@ -6,7 +6,6 @@ import com.vertispan.j2cl.build.task.*;
 import com.vertispan.j2cl.tools.J2cl;
 
 import java.io.File;
-import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.util.List;
@@ -55,7 +54,7 @@ public class J2clTask extends TaskFactory {
 
         File bootstrapClasspath = config.getBootstrapClasspath();
         List<File> extraClasspath = config.getExtraClasspath();
-        return output -> {
+        return context -> {
             if (ownJavaSources.getFilesAndHashes().isEmpty()) {
                 return;// nothing to do
             }
@@ -65,7 +64,7 @@ public class J2clTask extends TaskFactory {
             )
                     .collect(Collectors.toList());
 
-            J2cl j2cl = new J2cl(classpathDirs, bootstrapClasspath, output.path().toFile());
+            J2cl j2cl = new J2cl(classpathDirs, bootstrapClasspath, context.outputPath().toFile(), context);
 
             // TODO convention for mapping to original file paths, provide FileInfo out of Inputs instead of Paths,
             //      automatically relativized?

@@ -5,7 +5,6 @@ import com.google.j2cl.common.SourceUtils;
 import com.vertispan.j2cl.build.task.*;
 import com.vertispan.j2cl.tools.GwtIncompatiblePreprocessor;
 
-import java.nio.file.FileSystems;
 import java.nio.file.PathMatcher;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -35,11 +34,11 @@ public class StripSourcesTask extends TaskFactory {
         Input inputSources = input(project, OutputTypes.INPUT_SOURCES).filter(JAVA_SOURCES, NATIVE_JS_SOURCES);
         Input generatedSources = input(project, OutputTypes.GENERATED_SOURCES).filter(JAVA_SOURCES, NATIVE_JS_SOURCES);
 
-        return output -> {
+        return context -> {
             if (inputSources.getFilesAndHashes().isEmpty()) {
                 return;// nothing to do
             }
-            GwtIncompatiblePreprocessor preprocessor = new GwtIncompatiblePreprocessor(output.path().toFile());
+            GwtIncompatiblePreprocessor preprocessor = new GwtIncompatiblePreprocessor(context.outputPath().toFile(), context);
             preprocessor.preprocess(
                     Stream.concat(
                             inputSources.getFilesAndHashes().stream(),

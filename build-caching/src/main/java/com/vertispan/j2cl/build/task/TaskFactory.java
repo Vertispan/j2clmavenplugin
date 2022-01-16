@@ -77,7 +77,7 @@ public abstract class TaskFactory {
      */
     @FunctionalInterface
     public interface Task {
-        void execute(TaskOutput output) throws Exception;
+        void execute(TaskContext context) throws Exception;
     }
 
     /**
@@ -92,7 +92,7 @@ public abstract class TaskFactory {
      * task last ran will be available as a parameter.
      */
     public interface FinalOutputTask extends Task {
-        void finish(TaskOutput taskOutput) throws Exception;
+        void finish(TaskContext taskContext) throws Exception;
     }
 
     /**

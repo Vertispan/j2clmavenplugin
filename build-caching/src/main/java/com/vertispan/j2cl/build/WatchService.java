@@ -166,6 +166,9 @@ public class WatchService {
         @Override
         public void onSuccess() {
             finishBuild();
+            if (buildState.get() == BuildState.IDLE) {
+                buildLog.info("-----  Build Complete: ready for browser refresh  -----");
+            }
         }
 
         @Override
