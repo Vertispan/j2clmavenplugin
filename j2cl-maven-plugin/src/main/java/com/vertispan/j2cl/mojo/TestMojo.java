@@ -254,7 +254,7 @@ public class TestMojo extends AbstractBuildMojo {
         TaskRegistry taskRegistry = new TaskRegistry(outputToNameMappings);
 
         // Given these, build the graph of work we need to complete to get the list of tests
-        BuildService buildService = new BuildService(taskRegistry, taskScheduler, diskCache, mavenLog);
+        BuildService buildService = new BuildService(taskRegistry, taskScheduler, diskCache);
         buildService.assignProject(test, "test_summary", config);
 
         // Get the hash of all current files, since we aren't running a watch service
@@ -313,7 +313,7 @@ public class TestMojo extends AbstractBuildMojo {
 
                 // Fresh build service (to avoid re-running other final tasks) since we're building serially,
                 // but we reuse the params
-                buildService = new BuildService(taskRegistry, taskScheduler, diskCache,mavenLog);
+                buildService = new BuildService(taskRegistry, taskScheduler, diskCache);
                 buildService.assignProject(suite, outputTask, overridenConfig);
                 buildService.initialHashes();
                 BlockingBuildListener l = new BlockingBuildListener();

@@ -23,15 +23,13 @@ public class BuildService {
 
     // hashes of each file in each project, updated under lock
     private final Map<Project, Map<Path, DiskCache.CacheEntry>> currentProjectSourceHash = new HashMap<>();
-    private final BuildLog buildLog;
 
     private BlockingBuildListener prevBuild;
 
-    public BuildService(TaskRegistry taskRegistry, TaskScheduler taskScheduler, DiskCache diskCache, BuildLog buildLog) {
+    public BuildService(TaskRegistry taskRegistry, TaskScheduler taskScheduler, DiskCache diskCache) {
         this.taskRegistry = taskRegistry;
         this.taskScheduler = taskScheduler;
         this.diskCache = diskCache;
-        this.buildLog = buildLog;
     }
 
     /**

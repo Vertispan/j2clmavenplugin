@@ -7,6 +7,9 @@ import com.google.javascript.jscomp.MessageFormatter;
 import com.google.javascript.jscomp.SortingErrorManager;
 import com.vertispan.j2cl.build.task.BuildLog;
 
+/**
+ * Error manager implementation for Closure Compiler, to append errors and warnings to the build log.
+ */
 public class LoggingErrorReportGenerator implements SortingErrorManager.ErrorReportGenerator {
     private final Compiler compiler;
     private final BuildLog log;
@@ -25,5 +28,10 @@ public class LoggingErrorReportGenerator implements SortingErrorManager.ErrorRep
         manager.getErrors().forEach(e -> {
             log.error(e.format(CheckLevel.ERROR, formatter));
         });
+        if (manager.getTypedPercent() > 0) {
+            log.info(String.format("%d error(s), %d warning(s), %.1f%% typed%n", manager.getErrorCount(), manager.getWarningCount(), manager.getTypedPercent()));
+        } else {
+            log.info(String.format("%d error(s), %d warning(s)%n", manager.getErrorCount(), manager.getWarningCount()));
+        }
     }
 }

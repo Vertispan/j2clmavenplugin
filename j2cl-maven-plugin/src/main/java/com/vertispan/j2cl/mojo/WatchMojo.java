@@ -169,7 +169,7 @@ public class WatchMojo extends AbstractBuildMojo {
 
         // TODO support individual task registries per execution
         TaskRegistry taskRegistry = new TaskRegistry(taskMappings);
-        BuildService buildService = new BuildService(taskRegistry, taskScheduler, diskCache, mavenLog);
+        BuildService buildService = new BuildService(taskRegistry, taskScheduler, diskCache);
         // TODO end
 
         // assemble all of the projects we are hoping to run - if we fail in this process, we can't actually start building or watching
@@ -238,7 +238,7 @@ public class WatchMojo extends AbstractBuildMojo {
         } catch (Exception ex) {
             throw new MojoExecutionException("Failed to build project model", ex);
         }
-        WatchService watchService = new WatchService(buildService, executor, new MavenLog(getLog()));
+        WatchService watchService = new WatchService(buildService, executor, mavenLog);
         try {
             // trigger initial changes, and start up watching for future ones to rebuild
             watchService.watch(builtProjects.values().stream().filter(Project::hasSourcesMapped).collect(Collectors.toMap(Function.identity(), p -> p.getSourceRoots().stream().map(Paths::get).collect(Collectors.toList()))));

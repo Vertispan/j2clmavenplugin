@@ -50,8 +50,9 @@ public class TaskScheduler {
      * Caller is responsible for shutting down the executor service - canceling ongoing work
      * should be supported, but presently isn't.
      *
-     * @param executor
-     * @param diskCache
+     * @param executor executor to submit work to, to be performed off thread
+     * @param diskCache cache to read results from, and save new results to
+     * @param buildLog log to write details to about work being performed
      */
     public TaskScheduler(Executor executor, DiskCache diskCache, BuildLog buildLog) {
         this.executor = executor;
