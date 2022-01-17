@@ -10,7 +10,7 @@ mvn archetype:generate -DarchetypeGroupId=com.vertispan.j2cl \
 -DarchetypeVersion=0.19-SNAPSHOT
 ```
 
-To specify thess four variables, add them as system properties:
+To specify these four variables, add them as system properties:
 ```
 mvn archetype:generate -DarchetypeGroupId=com.vertispan.j2cl \
 -DarchetypeArtifactId=<archetype-name> \
@@ -21,15 +21,25 @@ mvn archetype:generate -DarchetypeGroupId=com.vertispan.j2cl \
 -Dmodule=MyApp
 ```
 
+Tip: if you don't have a pre-installed `j2cl-maven-plugin`, you can install it manually, taking care
+to replace `<archetype-name>` with the name of the archetype:
+```
+mvn org.apache.maven.plugins:maven-dependency-plugin:get \
+-DrepoUrl=https://repo.vertispan.com/j2cl/ \
+-Dartifact=com.vertispan.j2cl:<archetype-name>:0.19-SNAPSHOT
+```
+
 # `simple-project`
 
 This project is a simple html page, with a css file, and a single Java class. It is not a good example
 of how to set up a client/server project, but serves only to show how to make very simple standalone
 samples.
 
-After creating this, run `mvn jetty:run` in one window, and `mvn j2cl:watch` in another. When both are
-running, open `http://localhost:8080` in a browser to see the app. Refresh the page in the browser
-after editing any source file.
+After creating this, you'll need two consoles to start it. First, run `mvn jetty:run` in one window -
+you'll know it is working when it reports "Started Jetty Server". In the other console window, run
+`mvn j2cl:watch`, and wait for `Build Complete: ready for browser refresh`. With both running, open
+`http://localhost:8080/` in a browser to see the app. Refresh the page in the browser after editing
+any source file (and seeing the "Build Complete" message in the j2cl:watch log).
 
 To deploy a sample to a servlet container, use `mvn verify` to build a war, then copy it from the
 `target/` directory to the webapps directory of the servlet container. Alternatively, just run
