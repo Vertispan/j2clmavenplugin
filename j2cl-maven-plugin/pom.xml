@@ -91,7 +91,7 @@
 
     <dependency>
       <groupId>com.vertispan.j2cl</groupId>
-      <artifactId>j2cl-build</artifactId>
+      <artifactId>j2cl-tasks</artifactId>
       <version>${project.version}</version>
     </dependency>
 

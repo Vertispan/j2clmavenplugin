@@ -9,9 +9,10 @@
         <artifactId>j2cl-tools</artifactId>
         <version>0.19-SNAPSHOT</version>
     </parent>
-    <artifactId>j2cl-build</artifactId>
+    <artifactId>j2cl-tasks</artifactId>
 
-    <name>J2CL Cachable builds</name>
+    <name>j2cl-tasks</name>
+    <description>Default tasks for a cachable J2CL build</description>
 
     <dependencies>
         <!-- j2cl dependencies -->
