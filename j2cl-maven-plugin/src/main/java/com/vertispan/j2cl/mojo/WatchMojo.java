@@ -164,7 +164,8 @@ public class WatchMojo extends AbstractBuildMojo {
             throw new MojoExecutionException("Failed to create cache", ioException);
         }
         ScheduledExecutorService executor = Executors.newScheduledThreadPool(getWorkerTheadCount());
-        TaskScheduler taskScheduler = new TaskScheduler(executor, diskCache);
+        MavenLog mavenLog = new MavenLog(getLog());
+        TaskScheduler taskScheduler = new TaskScheduler(executor, diskCache, mavenLog);
 
         // TODO support individual task registries per execution
         TaskRegistry taskRegistry = new TaskRegistry(taskMappings);
@@ -237,7 +238,7 @@ public class WatchMojo extends AbstractBuildMojo {
         } catch (Exception ex) {
             throw new MojoExecutionException("Failed to build project model", ex);
         }
-        WatchService watchService = new WatchService(buildService, executor);
+        WatchService watchService = new WatchService(buildService, executor, mavenLog);
         try {
             // trigger initial changes, and start up watching for future ones to rebuild
             watchService.watch(builtProjects.values().stream().filter(Project::hasSourcesMapped).collect(Collectors.toMap(Function.identity(), p -> p.getSourceRoots().stream().map(Paths::get).collect(Collectors.toList()))));
@@ -245,6 +246,7 @@ public class WatchMojo extends AbstractBuildMojo {
             throw new MojoExecutionException("Error when watching projects", ioException);
         }
         try {
+            getLog().info("Watching for changes");
             Thread.sleep(24 * 60 * 60 * 1000);
         } catch (InterruptedException e) {
             e.printStackTrace();

@@ -6,7 +6,6 @@ import com.vertispan.j2cl.build.task.*;
 import com.vertispan.j2cl.tools.Javac;
 
 import java.io.File;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
@@ -51,10 +50,10 @@ public class BytecodeTask extends TaskFactory {
         if (!project.hasSourcesMapped()) {
             // instead copy the bytecode out of the jar so it can be used by downtream bytecode/apt tasks
             Input existingUnpackedBytecode = input(project, OutputTypes.INPUT_SOURCES);//.filter(JAVA_BYTECODE);
-            return output -> {
+            return context -> {
                 for (CachedPath entry : existingUnpackedBytecode.getFilesAndHashes()) {
-                    Files.createDirectories(output.path().resolve(entry.getSourcePath()).getParent());
-                    Files.copy(entry.getAbsolutePath(), output.path().resolve(entry.getSourcePath()));
+                    Files.createDirectories(context.outputPath().resolve(entry.getSourcePath()).getParent());
+                    Files.copy(entry.getAbsolutePath(), context.outputPath().resolve(entry.getSourcePath()));
                 }
             };
         }
@@ -72,7 +71,7 @@ public class BytecodeTask extends TaskFactory {
 
         File bootstrapClasspath = config.getBootstrapClasspath();
         List<File> extraClasspath = config.getExtraClasspath();
-        return output -> {
+        return context -> {
             if (inputSources.getFilesAndHashes().isEmpty()) {
                 return;// no work to do
             }
@@ -84,7 +83,7 @@ public class BytecodeTask extends TaskFactory {
 
             // TODO don't dump APT to the same dir?
             List<File> sourcePaths = inputDirs.getParentPaths().stream().map(Path::toFile).collect(Collectors.toList());
-            Javac javac = new Javac(output.path().toFile(), sourcePaths, classpathDirs, output.path().toFile(), bootstrapClasspath);
+            Javac javac = new Javac(context, context.outputPath().toFile(), sourcePaths, classpathDirs, context.outputPath().toFile(), bootstrapClasspath);
 
             // TODO convention for mapping to original file paths, provide FileInfo out of Inputs instead of Paths,
             //      automatically relativized?

@@ -2,6 +2,7 @@ package com.vertispan.j2cl.tools;
 
 import com.google.javascript.jscomp.*;
 import com.google.javascript.jscomp.Compiler;
+import com.vertispan.j2cl.build.task.BuildLog;
 import com.vertispan.j2cl.build.task.CachedPath;
 import com.vertispan.j2cl.build.task.Input;
 
@@ -19,6 +20,11 @@ public class Closure {
      * actually share the options instance itself.
      */
     private static final Object GLOBAL_CLOSURE_ARGS_LOCK = new Object();
+    private final BuildLog log;
+
+    public Closure(BuildLog log) {
+        this.log = log;
+    }
 
     public boolean compile(
             CompilationLevel compilationLevel,
@@ -138,10 +144,10 @@ public class Closure {
 
         final InProcessJsCompRunner jscompRunner;
         synchronized (GLOBAL_CLOSURE_ARGS_LOCK) {
-            jscompRunner = new InProcessJsCompRunner(jscompArgs.toArray(new String[0]), jsCompiler, exportTestFunctions, checkAssertions);
+            jscompRunner = new InProcessJsCompRunner(log, jscompArgs.toArray(new String[0]), jsCompiler, exportTestFunctions, checkAssertions);
         }
         if (!jscompRunner.shouldRunCompiler()) {
-//            jscompArgs.forEach(System.out::println);
+            jscompArgs.forEach(log::debug);
             return false;
         }
 
@@ -152,7 +158,7 @@ public class Closure {
             jscompRunner.run();
 
             if (jscompRunner.hasErrors() || jscompRunner.exitCode != 0) {
-                jscompArgs.forEach(System.out::println);
+                jscompArgs.forEach(log::debug);
                 return false;
             }
         } finally {
@@ -167,13 +173,13 @@ public class Closure {
     static class InProcessJsCompRunner extends CommandLineRunner {
         private final boolean exportTestFunctions;
         private final boolean checkAssertions;
-
         private final Compiler compiler;
         private Integer exitCode;
 
-        InProcessJsCompRunner(String[] args, Compiler compiler, boolean exportTestFunctions, boolean checkAssertions) {
+        InProcessJsCompRunner(BuildLog log, String[] args, Compiler compiler, boolean exportTestFunctions, boolean checkAssertions) {
             super(args);
             this.compiler = compiler;
+            this.compiler.setErrorManager(new SortingErrorManager(Collections.singleton(new LoggingErrorReportGenerator(compiler, log))));
             this.exportTestFunctions = exportTestFunctions;
             this.checkAssertions = checkAssertions;
             setExitCodeReceiver(exitCode -> {

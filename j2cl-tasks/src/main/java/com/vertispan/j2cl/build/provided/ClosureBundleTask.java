@@ -53,9 +53,9 @@ public class ClosureBundleTask extends TaskFactory {
                 .map(i -> i.filter(ClosureTask.PLAIN_JS_SOURCES))
                 .collect(Collectors.toList());
 
-        return output -> {
-            assert Files.isDirectory(output.path());
-            File closureOutputDir = output.path().toFile();
+        return context -> {
+            assert Files.isDirectory(context.outputPath());
+            File closureOutputDir = context.outputPath().toFile();
 
             // even though we're already making the file in our own hash dir, we also want to
             // name the file by a hash so it has a unique filename based on its contents
@@ -69,7 +69,7 @@ public class ClosureBundleTask extends TaskFactory {
                 return;// nothing to do
             }
 
-            Closure closureCompiler = new Closure();
+            Closure closureCompiler = new Closure(context);
 
             // copy the sources locally so that we can create usable sourcemaps
             //TODO consider a soft link

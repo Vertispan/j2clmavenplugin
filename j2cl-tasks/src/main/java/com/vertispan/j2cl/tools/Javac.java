@@ -1,6 +1,7 @@
 package com.vertispan.j2cl.tools;
 
 import com.google.j2cl.common.SourceUtils.FileInfo;
+import com.vertispan.j2cl.build.task.BuildLog;
 
 import javax.lang.model.SourceVersion;
 import javax.tools.*;
@@ -11,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 /**
@@ -25,11 +27,14 @@ import java.util.stream.Collectors;
  */
 public class Javac {
 
+    private final BuildLog log;
     List<String> javacOptions;
     JavaCompiler compiler;
     StandardJavaFileManager fileManager;
+    private DiagnosticCollector<? super JavaFileObject> listener;
 
-    public Javac(File generatedClassesPath, List<File> sourcePaths, List<File> classpath, File classesDirFile, File bootstrap) throws IOException {
+    public Javac(BuildLog log, File generatedClassesPath, List<File> sourcePaths, List<File> classpath, File classesDirFile, File bootstrap) throws IOException {
+        this.log = log;
 //        for (File file : classpath) {
 //            System.out.println(file.getAbsolutePath() + " " + file.exists() + " " + file.isDirectory());
 //        }
@@ -42,7 +47,8 @@ public class Javac {
             javacOptions.add("--release=8");
         }
         compiler = ToolProvider.getSystemJavaCompiler();
-        fileManager = compiler.getStandardFileManager(null, null, null);
+        listener = new DiagnosticCollector<>();
+        fileManager = compiler.getStandardFileManager(listener, null, null);
         fileManager.setLocation(StandardLocation.SOURCE_PATH, sourcePaths);
         if (generatedClassesPath != null) {
             fileManager.setLocation(StandardLocation.SOURCE_OUTPUT, Collections.singleton(generatedClassesPath));
@@ -57,8 +63,29 @@ public class Javac {
         //TODO pass-non null for "classes" to properly kick apt?
         //TODO consider a different classpath for this tasks, so as to not interfere with everything else?
 
-        CompilationTask task = compiler.getTask(null, fileManager, null, javacOptions, null, modifiedFileObjects);
+        CompilationTask task = compiler.getTask(null, fileManager, listener, javacOptions, null, modifiedFileObjects);
 
-        return task.call();
+        try {
+            return task.call();
+        } finally {
+            listener.getDiagnostics().forEach(d -> {
+                String messageToLog = d.getMessage(Locale.getDefault());
+                switch (d.getKind()) {
+                    case ERROR:
+                        log.error(messageToLog);
+                        break;
+                    case WARNING:
+                    case MANDATORY_WARNING:
+                        log.warn(messageToLog);
+                        break;
+                    case NOTE:
+                        log.info(messageToLog);
+                        break;
+                    case OTHER:
+                        log.debug(messageToLog);
+                        break;
+                }
+            });
+        }
     }
 }

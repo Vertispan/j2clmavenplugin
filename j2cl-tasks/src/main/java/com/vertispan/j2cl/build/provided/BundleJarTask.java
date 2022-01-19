@@ -56,7 +56,7 @@ public class BundleJarTask extends TaskFactory {
 
         return new FinalOutputTask() {
             @Override
-            public void execute(TaskOutput output) throws Exception {
+            public void execute(TaskContext context) throws Exception {
                 // We won't do any actual work in here, the jsSources and jszip work is doing everything we care about, and
                 // since we already have to copy to output, we won't do it a second time.
                 // Note that if we have BundleJarTask and ClosureTask both feed to an "actual final task" this assumption
@@ -64,7 +64,7 @@ public class BundleJarTask extends TaskFactory {
             }
 
             @Override
-            public void finish(TaskOutput taskOutput) throws IOException {
+            public void finish(TaskContext taskContext) throws IOException {
                 // we technically still have access to all of the inputs, since we know that the
                 // cachable task has already finished, and until we return it isn't possible for
                 // a new compile to start

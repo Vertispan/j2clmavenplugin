@@ -38,8 +38,8 @@ public class JsZipBundleTask extends TaskFactory {
     public Task resolve(Project project, Config config) {
         // we actually ignore project here, and just read from config
         List<File> extraJsZips = config.getExtraJsZips();
-        return output -> {
-            Closure closureCompiler = new Closure();
+        return context -> {
+            Closure closureCompiler = new Closure(context);
 
             boolean success = closureCompiler.compile(
                     CompilationLevel.BUNDLE,
@@ -57,7 +57,7 @@ public class JsZipBundleTask extends TaskFactory {
                     false,
                     false,
                     "CUSTOM", // doesn't matter, bundle won't check this
-                    output.path().resolve("j2cl-base.js").toString()
+                    context.outputPath().resolve("j2cl-base.js").toString()
             );
 
             if (!success) {

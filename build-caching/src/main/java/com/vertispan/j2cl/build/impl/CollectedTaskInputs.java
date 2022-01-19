@@ -128,4 +128,8 @@ public class CollectedTaskInputs {
     public TaskFactory.Task getTask() {
         return task;
     }
+
+    public String getDebugName() {
+        return getProject().getKey() + "/" + getTaskFactory().getOutputType();
+    }
 }

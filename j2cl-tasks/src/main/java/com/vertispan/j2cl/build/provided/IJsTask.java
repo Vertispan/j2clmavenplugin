@@ -28,13 +28,13 @@ public class IJsTask extends TaskFactory {
     @Override
     public Task resolve(Project project, Config config) {
         Input js = input(project, OutputTypes.TRANSPILED_JS);
-        return output -> {
+        return context -> {
             if (js.getFilesAndHashes().isEmpty()) {
                 // nothing to do
             }
 
             // for now we're going to just copy the JS
-            System.out.println("TODO " + getClass());
+            context.warn("TODO " + getClass());
 
         };
     }

@@ -1,10 +1,12 @@
 package com.vertispan.j2cl.build;
 
 import com.vertispan.j2cl.build.impl.CollectedTaskInputs;
+import com.vertispan.j2cl.build.task.BuildLog;
 import com.vertispan.j2cl.build.task.OutputTypes;
 import com.vertispan.j2cl.build.task.TaskFactory;
-import com.vertispan.j2cl.build.task.TaskOutput;
+import com.vertispan.j2cl.build.task.TaskContext;
 
+import java.io.FileNotFoundException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -29,6 +31,7 @@ import java.util.stream.Collectors;
 public class TaskScheduler {
     private final Executor executor;
     private final DiskCache diskCache;
+    private final BuildLog buildLog;
 
     // This is technically incorrect, but covers the current use cases, and should fail loudly if this assumption
     // ends up being violated, so we know what to fix. This should be null upon submit(), set to the path of the
@@ -47,12 +50,14 @@ public class TaskScheduler {
      * Caller is responsible for shutting down the executor service - canceling ongoing work
      * should be supported, but presently isn't.
      *
-     * @param executor
-     * @param diskCache
+     * @param executor executor to submit work to, to be performed off thread
+     * @param diskCache cache to read results from, and save new results to
+     * @param buildLog log to write details to about work being performed
      */
-    public TaskScheduler(Executor executor, DiskCache diskCache) {
+    public TaskScheduler(Executor executor, DiskCache diskCache, BuildLog buildLog) {
         this.executor = executor;
         this.diskCache = diskCache;
+        this.buildLog = buildLog;
     }
 
     /**
@@ -118,6 +123,11 @@ public class TaskScheduler {
     }
 
     private void scheduleAvailableWork(Set<Input> ready, Map<Input, List<Input>> allInputs, Set<CollectedTaskInputs> remainingWork, BuildListener listener) {
+        if (remainingWork.size() == 1) {
+            buildLog.debug("Remaining work: task " + remainingWork.iterator().next().getDebugName());
+        } else {
+            buildLog.debug("Remaining work: " + remainingWork.size() + " tasks");
+        }
         if (remainingWork.isEmpty()) {
             // no work left, mark entire set of tasks as finished
             listener.onSuccess();
@@ -147,19 +157,27 @@ public class TaskScheduler {
                 private void executeTask(CollectedTaskInputs taskDetails, DiskCache.CacheResult result, BuildListener listener) {
                     // all inputs are populated, and it already has the config, we just need to start it up
                     // with its output path and capture logs
-                    // TODO implement logs!
+                    buildLog.info("Starting " + taskDetails.getDebugName());
+                    buildLog.debug("Task " + taskDetails.getDebugName() + " has " + taskDetails.getInputs().size() + " inputs");
+                    TaskBuildLog log;
+                    try {
+                        log = new TaskBuildLog(buildLog, taskDetails.getDebugName(), result.logFile());
+                    } catch (FileNotFoundException e) {
+                        // Can't proceed without being able to write to disk, just shut down
+                        listener.onError(e);
+                        throw new RuntimeException(e);
+                    }
                     try {
                         long start = System.currentTimeMillis();
-
-                        taskDetails.getTask().execute(new TaskOutput(result.outputDir()));
+                        taskDetails.getTask().execute(new TaskContext(result.outputDir(), log));
                         long elapsedMillis = System.currentTimeMillis() - start;
                         if (elapsedMillis > 5) {
-                            System.out.println(taskDetails.getProject().getKey() + " finished " + taskDetails.getTaskFactory().getOutputType() + " in " + elapsedMillis + "ms");
+                            buildLog.info("Finished " + taskDetails.getDebugName() + " in " + elapsedMillis + "ms");
                         }
                         result.markSuccess();
 
                     } catch (Exception exception) {
-                        exception.printStackTrace();//TODO once we log, don't do this
+                        buildLog.error("Exception executing task " + taskDetails.getDebugName(), exception);
                         result.markFailure();
                         listener.onFailure();
                         throw new RuntimeException(exception);// don't safely return, we don't want to continue
@@ -187,7 +205,7 @@ public class TaskScheduler {
 
                 @Override
                 public void onReady(DiskCache.CacheResult cacheResult) {
-                    // We can now begin this work off-thread, will be woke up when it finishes.
+                    // We can now begin this work off-thread, will be woken up when it finishes.
                     // It is too late to cancel at this time, so no need to check.
                     executor.execute(() -> {
                         executeTask(taskDetails, cacheResult, listener);
@@ -268,16 +286,18 @@ public class TaskScheduler {
                 private boolean executeFinalTask(CollectedTaskInputs taskDetails, DiskCache.CacheResult cacheResult) throws Exception {
                     if (!finalTaskMarker.compareAndSet(null, cacheResult.outputDir().toString())) {
                         // failed to set it to null, some other thread already has the lock
-                        System.out.println("skipping final task, some other thread has the lock");
+                        buildLog.info("skipping final task, some other thread has the lock");
                         return false;
                     }
-                    System.out.println("starting final task " + taskDetails.getProject().getKey() + " " + taskDetails.getTaskFactory().getOutputType());
+                    buildLog.info("Starting final task " + taskDetails.getDebugName());
                     long start = System.currentTimeMillis();
                     try {
-                        ((TaskFactory.FinalOutputTask) taskDetails.getTask()).finish(new TaskOutput(cacheResult.outputDir()));
-                        System.out.println(taskDetails.getProject().getKey() + " final task " + taskDetails.getTaskFactory().getOutputType() + " finished in " + (System.currentTimeMillis() - start) + "ms");
+                        //TODO Make sure that we want to write this to _only_ the current log, and not also to any file
+                        //TODO Also be sure to write a prefix automatically
+                        ((TaskFactory.FinalOutputTask) taskDetails.getTask()).finish(new TaskContext(cacheResult.outputDir(), buildLog));
+                        buildLog.info("Finished final task " + taskDetails.getDebugName() + " in " + (System.currentTimeMillis() - start) + "ms");
                     } catch (Throwable t) {
-                        System.out.println(taskDetails.getProject().getKey() + " final task " + taskDetails.getTaskFactory().getOutputType() + " failed in " + (System.currentTimeMillis() - start) + "ms");
+                        buildLog.error("FAILED   " + taskDetails.getDebugName() + " in " + (System.currentTimeMillis() - start) + "ms",t);
                         throw t;
                     } finally {
                         String previous = finalTaskMarker.getAndSet(null);
@@ -291,5 +311,4 @@ public class TaskScheduler {
             });
         });
     }
-
 }

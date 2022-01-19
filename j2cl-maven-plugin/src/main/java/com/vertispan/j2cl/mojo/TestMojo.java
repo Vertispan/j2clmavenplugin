@@ -249,7 +249,8 @@ public class TestMojo extends AbstractBuildMojo {
             throw new MojoExecutionException("Failed to create cache", ioException);
         }
         ScheduledExecutorService executor = Executors.newScheduledThreadPool(getWorkerTheadCount());
-        TaskScheduler taskScheduler = new TaskScheduler(executor, diskCache);
+        MavenLog mavenLog = new MavenLog(getLog());
+        TaskScheduler taskScheduler = new TaskScheduler(executor, diskCache, mavenLog);
         TaskRegistry taskRegistry = new TaskRegistry(outputToNameMappings);
 
         // Given these, build the graph of work we need to complete to get the list of tests
