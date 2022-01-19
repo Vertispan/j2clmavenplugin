@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>\${groupId}</groupId>
+  <artifactId>\${artifactId}</artifactId>
+  <packaging>war</packaging>
+  <version>\${version}</version>
+
+  <properties>
+    <j2cl.maven.plugin.version>${project.version}</j2cl.maven.plugin.version>
+    <elemental2.version>1.1.0</elemental2.version>
+
+    <jsinterop.base.version>1.0.0</jsinterop.base.version>
+    <j2cl.version>${j2cl.version}</j2cl.version>
+
+    <maven.compiler.target>${maven.compiler.source}</maven.compiler.target>
+    <maven.compiler.source>${maven.compiler.target}</maven.compiler.source>
+
+    <maven.compiler.plugin.version>3.8.1</maven.compiler.plugin.version>
+    <maven.jetty.plugin.version>9.4.44.v20210927</maven.jetty.plugin.version>
+    <maven.war.plugin.version>3.3.2</maven.war.plugin.version>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.google.elemental2</groupId>
+      <artifactId>elemental2-dom</artifactId>
+      <version>\${elemental2.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.google.jsinterop</groupId>
+      <artifactId>base</artifactId>
+      <version>\${jsinterop.base.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.vertispan.j2cl</groupId>
+      <artifactId>junit-annotations</artifactId>
+      <version>\${j2cl.version}</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>com.vertispan.j2cl</groupId>
+      <artifactId>gwttestcase-emul</artifactId>
+      <version>\${j2cl.version}</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>com.vertispan.j2cl</groupId>
+      <artifactId>gwttestcase-emul</artifactId>
+      <version>\${j2cl.version}</version>
+      <classifier>sources</classifier>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>com.vertispan.j2cl</groupId>
+      <artifactId>junit-emul</artifactId>
+      <version>\${j2cl.version}</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>com.vertispan.j2cl</groupId>
+      <artifactId>junit-emul</artifactId>
+      <version>\${j2cl.version}</version>
+      <classifier>sources</classifier>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>\${maven.compiler.plugin.version}</version>
+        <configuration>
+          <source>\${maven.compiler.source}</source>
+          <target>\${maven.compiler.target}</target>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-war-plugin</artifactId>
+        <version>\${maven.war.plugin.version}</version>
+      </plugin>
+      <plugin>
+        <groupId>com.vertispan.j2cl</groupId>
+        <artifactId>j2cl-maven-plugin</artifactId>
+        <version>\${j2cl.maven.plugin.version}</version>
+        <executions>
+          <execution>
+            <id>build-js</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>build</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>test-js</id>
+            <phase>test</phase>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <configuration>
+              <!-- In order to use htmlunit, we must compile to remove es6 classes -->
+              <compilationLevel>ADVANCED</compilationLevel>
+            </configuration>
+          </execution>
+        </executions>
+        <configuration>
+          <tests>
+            <test>${package}.${module}Test</test>
+          </tests>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-maven-plugin</artifactId>
+        <version>\${maven.jetty.plugin.version}</version>
+        <configuration>
+          <webApp>
+            <resourceBases>
+              <!-- Serve static content without copying from src/main/webapp -->
+              <resourceBase>src/main/webapp</resourceBase>
+              <!-- Serve compiled JS built by J2CL -->
+              <resourceBase>\${project.build.directory}/\${project.build.finalName}</resourceBase>
+            </resourceBases>
+          </webApp>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
+  <pluginRepositories>
+    <pluginRepository>
+      <id>vertispan-releases</id>
+      <name>Vertispan hosted artifacts-releases</name>
+      <url>https://repo.vertispan.com/j2cl</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+    </pluginRepository>
+    <pluginRepository>
+      <id>sonatype-snapshots-repo</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+      <snapshots>
+        <enabled>true</enabled>
+        <updatePolicy>daily</updatePolicy>
+        <checksumPolicy>fail</checksumPolicy>
+      </snapshots>
+    </pluginRepository>
+  </pluginRepositories>
+
+  <repositories>
+    <repository>
+      <id>google-snapshots</id>
+      <name>google-snapshots</name>
+      <url>https://oss.sonatype.org/content/repositories/google-snapshots/</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+    </repository>
+    <repository>
+      <id>vertispan-releases</id>
+      <name>Vertispan hosted artifacts-releases</name>
+      <url>https://repo.vertispan.com/j2cl/</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+    </repository>
+    <repository>
+      <id>vertispan-snapshots</id>
+      <name>Vertispan Snapshots</name>
+      <url>https://repo.vertispan.com/gwt-snapshot/</url>
+      <snapshots>
+        <enabled>true</enabled>
+        <updatePolicy>daily</updatePolicy>
+        <checksumPolicy>fail</checksumPolicy>
+      </snapshots>
+    </repository>
+    <repository>
+      <id>sonatype-snapshots-repo</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+      <snapshots>
+        <enabled>true</enabled>
+        <updatePolicy>daily</updatePolicy>
+        <checksumPolicy>fail</checksumPolicy>
+      </snapshots>
+    </repository>
+  </repositories>
+</project>

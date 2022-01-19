@@ -11,8 +11,13 @@ built from here:
 
 ------------------------
 
-# Usage
-A fully working sample project can be found at https://github.com/treblereel/j2cl-tests
+# Example usage
+
+A fully working sample project can be found at https://github.com/treblereel/j2cl-tests. Also consider the
+[Maven Archetypes](j2cl-archetypes/README.md) that are developed in this project, or check out the [integration
+tests](j2cl-maven-plugin/src/it/) used to verify various aspects of the project each build, especially
+[hello-world-single](j2cl-maven-plugin/src/it/hello-world-single) and
+[hello-world-reactor](j2cl-maven-plugin/src/it/hello-world-reactor).
 
 # Goals
 
@@ -56,7 +61,7 @@ depend on it, etc.
 For "dev mode", we want to keep these processes running, keep as much cached and jit'd as possible, to
 prevent spending startup time over and over on each project. If we execute a single maven goal to do this,
 we will want it to be run on a "parent" in the reactor, so that any changed modules are detected and
-recompiled correctly, rather than depending on stale sources
+recompiled correctly, rather than depending on stale sources.
 
 ----
 

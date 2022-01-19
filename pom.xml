@@ -16,6 +16,7 @@
     <module>build-caching</module>
     <module>j2cl-tasks</module>
     <module>j2cl-maven-plugin</module>
+    <module>j2cl-archetypes</module>
   </modules>
 
   <properties>

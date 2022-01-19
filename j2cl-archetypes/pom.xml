@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>com.vertispan.j2cl</groupId>
+    <artifactId>j2cl-tools</artifactId>
+    <version>0.19-SNAPSHOT</version>
+  </parent>
+  <artifactId>j2cl-maven-archetypes</artifactId>
+  <packaging>pom</packaging>
+
+  <name>J2CL Maven Archetypes</name>
+  <description>Maven project archetypes for using J2CL</description>
+
+  <build>
+    <extensions>
+      <extension>
+        <groupId>org.apache.maven.archetype</groupId>
+        <artifactId>archetype-packaging</artifactId>
+        <version>3.1.0</version>
+      </extension>
+    </extensions>
+
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-resources-plugin</artifactId>
+          <configuration>
+            <escapeString>\</escapeString>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-archetype-plugin</artifactId>
+          <version>3.1.0</version>
+          <configuration>
+            <ignoreEOLStyle>true</ignoreEOLStyle>
+          </configuration>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+  </build>
+
+  <modules>
+    <module>simple-project</module>
+  </modules>
+</project>

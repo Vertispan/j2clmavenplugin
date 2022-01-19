@@ -19,6 +19,7 @@ jobs:
           distribution: 'temurin'
       - name: Build and test
         run: |
+          mvn --batch-mode org.apache.maven.plugins:maven-dependency-plugin:3.2.0:go-offline
           mvn --batch-mode verify '-Dinvoker.timeoutInSeconds=300'
       - name: Upload test results for review
         uses: actions/upload-artifact@v2
@@ -48,6 +49,7 @@ jobs:
           mvn wrapper:wrapper -Dmaven=${{ matrix.mvn }}
       - name: Build and test
         run: |
+          ./mvnw --batch-mode org.apache.maven.plugins:maven-dependency-plugin:3.2.0:go-offline
           ./mvnw --batch-mode verify '-Dinvoker.timeoutInSeconds=300'
       - name: Upload test results for review
         uses: actions/upload-artifact@v2
