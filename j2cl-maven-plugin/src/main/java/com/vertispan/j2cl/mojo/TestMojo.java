@@ -242,13 +242,13 @@ public class TestMojo extends AbstractBuildMojo {
         Map<String, String> outputToNameMappings = taskMappings;
 
         // construct other required elements to get the work done
+        ScheduledExecutorService executor = Executors.newScheduledThreadPool(getWorkerTheadCount());
         final DiskCache diskCache;
         try {
-            diskCache = new DefaultDiskCache(getCacheDir().toFile());
+            diskCache = new DefaultDiskCache(getCacheDir().toFile(), executor);
         } catch (IOException ioException) {
             throw new MojoExecutionException("Failed to create cache", ioException);
         }
-        ScheduledExecutorService executor = Executors.newScheduledThreadPool(getWorkerTheadCount());
         MavenLog mavenLog = new MavenLog(getLog());
         TaskScheduler taskScheduler = new TaskScheduler(executor, diskCache, mavenLog);
         TaskRegistry taskRegistry = new TaskRegistry(outputToNameMappings);

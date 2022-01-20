@@ -157,13 +157,13 @@ public class WatchMojo extends AbstractBuildMojo {
         // the project in which j2cl:watch is running can define the thread count and
         // cache dir (plus a few other special things like webappDirectory), but the
         // other config options come from the plugin or goal config itself
+        ScheduledExecutorService executor = Executors.newScheduledThreadPool(getWorkerTheadCount());
         final DiskCache diskCache;
         try {
-            diskCache = new DefaultDiskCache(getCacheDir().toFile());
+            diskCache = new DefaultDiskCache(getCacheDir().toFile(), executor);
         } catch (IOException ioException) {
             throw new MojoExecutionException("Failed to create cache", ioException);
         }
-        ScheduledExecutorService executor = Executors.newScheduledThreadPool(getWorkerTheadCount());
         MavenLog mavenLog = new MavenLog(getLog());
         TaskScheduler taskScheduler = new TaskScheduler(executor, diskCache, mavenLog);
 
