@@ -176,7 +176,7 @@ public class TaskScheduler {
                         }
                         result.markSuccess();
 
-                    } catch (Exception exception) {
+                    } catch (Throwable exception) {
                         buildLog.error("Exception executing task " + taskDetails.getDebugName(), exception);
                         result.markFailure();
                         listener.onFailure();
