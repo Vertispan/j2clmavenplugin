@@ -29,6 +29,7 @@ public class BytecodeTask extends TaskFactory {
 
     public static final PathMatcher JAVA_SOURCES = withSuffix(".java");
     public static final PathMatcher JAVA_BYTECODE = withSuffix(".class");
+    public static final PathMatcher NOT_BYTECODE = p -> !JAVA_BYTECODE.matches(p);
 
     @Override
     public String getOutputType() {
@@ -63,6 +64,9 @@ public class BytecodeTask extends TaskFactory {
         Input inputDirs = input(project, OutputTypes.INPUT_SOURCES);
         // track just java files (so we can just compile them)
         Input inputSources = input(project, OutputTypes.INPUT_SOURCES).filter(JAVA_SOURCES);
+        // track resources so they are available to downstream processors on the classpath, as they would
+        // be if we had built a jar
+        Input resources = input(project, OutputTypes.INPUT_SOURCES).filter(NOT_BYTECODE);
 
         List<Input> bytecodeClasspath = scope(project.getDependencies(), com.vertispan.j2cl.build.task.Dependency.Scope.COMPILE)
                 .stream()
@@ -95,6 +99,10 @@ public class BytecodeTask extends TaskFactory {
             try {
                 if (!javac.compile(sources)) {
                     throw new RuntimeException("Failed to complete bytecode task, check log");
+                }
+                for (CachedPath entry : resources.getFilesAndHashes()) {
+                    Files.createDirectories(context.outputPath().resolve(entry.getSourcePath()).getParent());
+                    Files.copy(entry.getAbsolutePath(), context.outputPath().resolve(entry.getSourcePath()));
                 }
             } catch (Exception exception) {
                 exception.printStackTrace();
