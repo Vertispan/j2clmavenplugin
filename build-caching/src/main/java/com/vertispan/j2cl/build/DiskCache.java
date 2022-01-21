@@ -16,6 +16,7 @@ import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
 
 /**
  * Manages the cached task inputs and outputs.
@@ -56,6 +57,7 @@ public abstract class DiskCache {
     }
 
     protected final File cacheDir;
+    private final Executor executor;
     /**
      * A single watch service to monitor all changes to the cache dir, under the assumption that
      * the entire cache directory is on a single filesystem.
@@ -71,8 +73,9 @@ public abstract class DiskCache {
     private final Map<Path, Path> knownMarkers = new ConcurrentHashMap<>();
     private final Map<Path, Set<PendingCacheResult>> taskFutures = new ConcurrentHashMap<>();
 
-    public DiskCache(File cacheDir) throws IOException {
+    public DiskCache(File cacheDir, Executor executor) throws IOException {
         this.cacheDir = cacheDir;
+        this.executor = executor;
         cacheDir.mkdirs();
         if (!cacheDir.exists() && !cacheDir.isDirectory()) {
             throw new IllegalArgumentException("Can't use " + cacheDir + ", failed to create it, or already exists and isn't a directory");
@@ -291,7 +294,9 @@ public abstract class DiskCache {
                 return;
             }
             remove();
-            listener.onSuccess(new CacheResult(taskDir));
+            executor.execute(() -> {
+                listener.onSuccess(new CacheResult(taskDir));
+            });
         }
 
         private void remove() {

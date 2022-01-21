@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.concurrent.Executor;
 
 /**
  * Default implementation of the disk cache, with one directory per project name, and
@@ -20,10 +21,11 @@ public class DefaultDiskCache extends DiskCache {
      * Constructs a new disk cache using the specified directory. It is assumed that
      * this path will be entirely owned by this library (even if shared across processes),
      * and that its entire contents will exist on the same file system.
-      * @param cacheDir the directory in which to build the cache
+     * @param cacheDir the directory in which to build the cache
+     * @param executor executor to submit notification that another task can proceed
      */
-    public DefaultDiskCache(File cacheDir) throws IOException {
-        super(cacheDir);
+    public DefaultDiskCache(File cacheDir, Executor executor) throws IOException {
+        super(cacheDir, executor);
     }
 
     @Override
