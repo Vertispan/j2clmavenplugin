@@ -6,21 +6,41 @@ package com.vertispan.j2cl.build.task;
  */
 public interface OutputTypes {
     /**
-     * A special output type to indicate to use project's own sources.
+     * A special output type to indicate to use project's own sources, or
+     * the contents of an external dependency's jar/zip file.
      */
     String INPUT_SOURCES = "input_sources";
 
     /**
-     * Annotation processor output.
-     */
-    String GENERATED_SOURCES = "generated_sources";
-    /**
-     * Bytecode from the original and generated sources. Not suitable
-     * for j2cl, only meant to be used for downstream generated sources
-     * tasks that need a compile classpath and will generate sources
-     * that also need to be stripped.
+     * Represents the contents of a project if it were built into a jar
+     * file as an external dependency. Ostensibly should contain the
+     * un-stripped bytecode for a project and all of its resources (so
+     * that downstream projects can look for those resources on the
+     * classpath), but also presently ends up holding generated resources
+     * (so that the {@link #GENERATED_SOURCES} task can copy them out),
+     * and at that point it might as well contain the original Java
+     * sources too, unstripped. Including those sources however means
+     * that this becomes the source of truth for stripping sources,
+     * rather than the union of {@link #INPUT_SOURCES} and {@link #GENERATED_SOURCES}.
+     * This conflict arises since there could be .js files in the original
+     * sources, and we must copy them here since downstream projects
+     * could require them on the classpath - and after APT runs, we can't
+     * tell which sources were copied in and which came from sources,
+     * so we can't let downstream closure point to this (or generated
+     * sources) and input sources, it will find duplicate files.
      */
     String BYTECODE = "bytecode";
+
+    /**
+     * Formerly annotation processor output.
+     *
+     * DISABLED FOR NOW - reintroducing this would require an intermediate
+     * output that would feed .java files to this, and everything else to
+     * {@link #BYTECODE} including source .js files. Taking this step may
+     * be necessary for better incremental builds.
+     */
+    @Deprecated
+    String GENERATED_SOURCES = "generated_sources";
 
     /**
      * Sources where the Java code has had GwtIncompatible members stripped.

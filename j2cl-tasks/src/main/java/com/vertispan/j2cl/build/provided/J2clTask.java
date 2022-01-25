@@ -8,6 +8,7 @@ import com.vertispan.j2cl.tools.J2cl;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -38,11 +39,7 @@ public class J2clTask extends TaskFactory {
     public Task resolve(Project project, Config config) {
         // J2CL is only interested in .java and .native.js files in our own sources
         Input ownJavaSources = input(project, OutputTypes.STRIPPED_SOURCES).filter(JAVA_SOURCES, NATIVE_JS_SOURCES);
-        List<Input> ownNativeJsSources = Stream.of(
-                input(project, OutputTypes.INPUT_SOURCES).filter(NATIVE_JS_SOURCES),
-                input(project, OutputTypes.GENERATED_SOURCES).filter(NATIVE_JS_SOURCES)
-        )
-        .collect(Collectors.toList());
+        List<Input> ownNativeJsSources = Collections.singletonList(input(project, OutputTypes.BYTECODE).filter(NATIVE_JS_SOURCES));
 
         // From our classpath, j2cl is only interested in our compile classpath's bytecode
         List<Input> classpathHeaders = scope(project.getDependencies(), com.vertispan.j2cl.build.task.Dependency.Scope.COMPILE)

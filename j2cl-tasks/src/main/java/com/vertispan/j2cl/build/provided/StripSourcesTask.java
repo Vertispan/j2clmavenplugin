@@ -31,8 +31,8 @@ public class StripSourcesTask extends TaskFactory {
 
     @Override
     public Task resolve(Project project, Config config) {
-        Input inputSources = input(project, OutputTypes.INPUT_SOURCES).filter(JAVA_SOURCES, NATIVE_JS_SOURCES);
-        Input generatedSources = input(project, OutputTypes.GENERATED_SOURCES).filter(JAVA_SOURCES, NATIVE_JS_SOURCES);
+        Input inputSources = input(project, OutputTypes.BYTECODE).filter(JAVA_SOURCES);
+//        Input generatedSources = input(project, OutputTypes.GENERATED_SOURCES).filter(JAVA_SOURCES, NATIVE_JS_SOURCES);
 
         return context -> {
             if (inputSources.getFilesAndHashes().isEmpty()) {
@@ -40,10 +40,7 @@ public class StripSourcesTask extends TaskFactory {
             }
             GwtIncompatiblePreprocessor preprocessor = new GwtIncompatiblePreprocessor(context.outputPath().toFile(), context);
             preprocessor.preprocess(
-                    Stream.concat(
-                            inputSources.getFilesAndHashes().stream(),
-                            generatedSources.getFilesAndHashes().stream()
-                    )
+                    inputSources.getFilesAndHashes().stream()
                             .map(p -> SourceUtils.FileInfo.create(p.getAbsolutePath().toString(), p.getSourcePath().toString()))
                             .collect(Collectors.toList())
             );

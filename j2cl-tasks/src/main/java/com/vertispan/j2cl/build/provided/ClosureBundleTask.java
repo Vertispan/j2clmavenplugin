@@ -47,8 +47,7 @@ public class ClosureBundleTask extends TaskFactory {
         //      from the actual input source instead of copying it along each step
         List<Input> js = Stream.of(
                 input(project, OutputTypes.TRANSPILED_JS),
-                input(project, OutputTypes.GENERATED_SOURCES),
-                input(project, OutputTypes.INPUT_SOURCES)
+                input(project, OutputTypes.BYTECODE)
         )
                 .map(i -> i.filter(ClosureTask.PLAIN_JS_SOURCES))
                 .collect(Collectors.toList());

@@ -49,8 +49,8 @@ public class BytecodeTask extends TaskFactory {
     @Override
     public Task resolve(Project project, Config config) {
         if (!project.hasSourcesMapped()) {
-            // instead copy the bytecode out of the jar so it can be used by downtream bytecode/apt tasks
-            Input existingUnpackedBytecode = input(project, OutputTypes.INPUT_SOURCES);//.filter(JAVA_BYTECODE);
+            // instead, copy the bytecode+resources out of the jar so it can be used by downstream bytecode/apt tasks
+            Input existingUnpackedBytecode = input(project, OutputTypes.INPUT_SOURCES);
             return context -> {
                 for (CachedPath entry : existingUnpackedBytecode.getFilesAndHashes()) {
                     Files.createDirectories(context.outputPath().resolve(entry.getSourcePath()).getParent());
@@ -76,37 +76,40 @@ public class BytecodeTask extends TaskFactory {
         File bootstrapClasspath = config.getBootstrapClasspath();
         List<File> extraClasspath = config.getExtraClasspath();
         return context -> {
-            if (inputSources.getFilesAndHashes().isEmpty()) {
-                return;// no work to do
+            if (!inputSources.getFilesAndHashes().isEmpty()) {
+                // At least one .java file in sources, compile it (otherwise skip this and just copy resource)
+
+                List<File> classpathDirs = Stream.concat(
+                        bytecodeClasspath.stream().map(Input::getParentPaths).flatMap(Collection::stream).map(Path::toFile),
+                        extraClasspath.stream()
+                ).collect(Collectors.toList());
+
+                // TODO don't dump APT to the same dir?
+                List<File> sourcePaths = inputDirs.getParentPaths().stream().map(Path::toFile).collect(Collectors.toList());
+                Javac javac = new Javac(context, context.outputPath().toFile(), sourcePaths, classpathDirs, context.outputPath().toFile(), bootstrapClasspath);
+
+                // TODO convention for mapping to original file paths, provide FileInfo out of Inputs instead of Paths,
+                //      automatically relativized?
+                List<SourceUtils.FileInfo> sources = inputSources.getFilesAndHashes()
+                        .stream()
+                        .map(p -> SourceUtils.FileInfo.create(p.getAbsolutePath().toString(), p.getSourcePath().toString()))
+                        .collect(Collectors.toList());
+
+                try {
+                    if (!javac.compile(sources)) {
+                        throw new RuntimeException("Failed to complete bytecode task, check log");
+                    }
+                } catch (Exception exception) {
+                    exception.printStackTrace();
+                    throw exception;
+                }
             }
 
-            List<File> classpathDirs = Stream.concat(
-                    bytecodeClasspath.stream().map(Input::getParentPaths).flatMap(Collection::stream).map(Path::toFile),
-                    extraClasspath.stream()
-            ).collect(Collectors.toList());
-
-            // TODO don't dump APT to the same dir?
-            List<File> sourcePaths = inputDirs.getParentPaths().stream().map(Path::toFile).collect(Collectors.toList());
-            Javac javac = new Javac(context, context.outputPath().toFile(), sourcePaths, classpathDirs, context.outputPath().toFile(), bootstrapClasspath);
-
-            // TODO convention for mapping to original file paths, provide FileInfo out of Inputs instead of Paths,
-            //      automatically relativized?
-            List<SourceUtils.FileInfo> sources = inputSources.getFilesAndHashes()
-                    .stream()
-                    .map(p -> SourceUtils.FileInfo.create(p.getAbsolutePath().toString(), p.getSourcePath().toString()))
-                    .collect(Collectors.toList());
-
-            try {
-                if (!javac.compile(sources)) {
-                    throw new RuntimeException("Failed to complete bytecode task, check log");
-                }
-                for (CachedPath entry : resources.getFilesAndHashes()) {
-                    Files.createDirectories(context.outputPath().resolve(entry.getSourcePath()).getParent());
-                    Files.copy(entry.getAbsolutePath(), context.outputPath().resolve(entry.getSourcePath()));
-                }
-            } catch (Exception exception) {
-                exception.printStackTrace();
-                throw exception;
+            // Copy all resources, even .java files, so that this output is the source of truth as if this
+            // were freshly unpacked from a jar
+            for (CachedPath entry : resources.getFilesAndHashes()) {
+                Files.createDirectories(context.outputPath().resolve(entry.getSourcePath()).getParent());
+                Files.copy(entry.getAbsolutePath(), context.outputPath().resolve(entry.getSourcePath()));
             }
 
         };
