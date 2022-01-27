@@ -10,6 +10,8 @@ import org.junit.Test;
  * that assertions are working in our various expected states. The pom should specify the assertion.armed
  * property so that this file knows whether or not to expect that the assertions are alive and will go
  * off if they fail.
+ *
+ * Note that this will fail in BUNDLE/BUNDLE_JAR mode since closure can't optimize out asserts.
  */
 @J2clTestInput(MyTest.class)
 public class MyTest {

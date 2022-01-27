@@ -49,6 +49,23 @@ public class BundleJarTask extends TaskFactory {
                 .map(i -> i.filter(BUNDLE_JS))
                 .collect(Collectors.toList());
 
+        // Sort the projects, to try to include them in order. We can't be sure that all project
+        // dependencies will be (or should be) present, but we can make sure that we only load
+        // our own JS after any dependencies that will be included have already loaded.
+        List<Input> sourceOrder = new ArrayList<>();
+        Set<String> pendingProjectKeys = jsSources.stream().map(i -> i.getProject().getKey()).collect(Collectors.toSet());
+        List<Input> remaining = jsSources.stream().sorted(Comparator.comparing(i -> i.getProject().getDependencies().size())).collect(Collectors.toList());
+        while (!remaining.isEmpty()) {
+            for (Iterator<Input> iterator = remaining.iterator(); iterator.hasNext(); ) {
+                Input input = iterator.next();
+                if (input.getProject().getDependencies().stream().noneMatch(dep -> pendingProjectKeys.contains(dep.getProject().getKey()))) {
+                    iterator.remove();
+                    pendingProjectKeys.remove(input.getProject().getKey());
+                    sourceOrder.add(input);
+                }
+            }
+        }
+
         //cheaty, but lets us cache
         Input jszip = input(project, "jszipbundle");
 
@@ -78,7 +95,7 @@ public class BundleJarTask extends TaskFactory {
                     Gson gson = new GsonBuilder().setPrettyPrinting().create();
                     String scriptsArray = gson.toJson(Stream.concat(
                             Stream.of("j2cl-base.js"),//jre and bootstrap wiring, from the jszip input, always named the same
-                            jsSources.stream().flatMap(i -> i.getFilesAndHashes().stream()).map(CachedPath::getSourcePath).map(Path::toString)
+                            sourceOrder.stream().flatMap(i -> i.getFilesAndHashes().stream()).map(CachedPath::getSourcePath).map(Path::toString)
                     ).collect(Collectors.toList()));
                     // unconditionally set this to false, so that our dependency order works, since we're always in BUNDLE now
                     defines.put("goog.ENABLE_DEBUG_LOADER", false);

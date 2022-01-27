@@ -67,6 +67,11 @@ public class Input implements com.vertispan.j2cl.build.task.Input {
         }
 
         @Override
+        public com.vertispan.j2cl.build.task.Project getProject() {
+            return wrapped.getProject();
+        }
+
+        @Override
         public String toString() {
             return "FilteredInput{" +
                     "wrapped=" + wrapped +
@@ -109,9 +114,7 @@ public class Input implements com.vertispan.j2cl.build.task.Input {
         }
     }
 
-    /**
-     * Internal API.
-     */
+    @Override
     public Project getProject() {
         return project;
     }
