@@ -72,6 +72,7 @@ public class BundleJarTask extends TaskFactory {
         File initialScriptFile = config.getWebappDirectory().resolve(config.getInitialScriptFilename()).toFile();
         Map<String, Object> defines = new LinkedHashMap<>(config.getDefines());
 
+        Map<String, Object> defines = new LinkedHashMap<>(config.getDefines());
         return new FinalOutputTask() {
             @Override
             public void execute(TaskContext context) throws Exception {
