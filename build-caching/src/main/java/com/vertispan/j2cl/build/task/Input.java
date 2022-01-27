@@ -1,12 +1,8 @@
 package com.vertispan.j2cl.build.task;
 
-import com.vertispan.j2cl.build.DiskCache;
-import io.methvin.watcher.hashing.FileHash;
-
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.util.Collection;
-import java.util.Map;
 
 public interface Input {
     /**
@@ -35,4 +31,9 @@ public interface Input {
      * directories of mapped projects, may result in zero to many items.
      */
     Collection<Path> getParentPaths();
+
+    /**
+     * Gets the project that this input comes from.
+     */
+    Project getProject();
 }
