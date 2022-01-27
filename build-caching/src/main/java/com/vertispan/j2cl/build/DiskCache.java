@@ -237,6 +237,10 @@ public abstract class DiskCache {
 
                             @Override
                             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                                if (attrs.isDirectory()) {
+                                    // ignore directories
+                                    return FileVisitResult.CONTINUE;
+                                }
                                 FileHash hash = PathUtils.hash(fileHasher, file);
                                 if (hash == null) {
                                     //file could have been deleted or was otherwise unreadable
