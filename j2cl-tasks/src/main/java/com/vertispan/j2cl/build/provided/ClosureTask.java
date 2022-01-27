@@ -118,7 +118,6 @@ public class ClosureTask extends TaskFactory {
                     js = Closure.mapFromInputs(jsSources);
                 }
                 if (sources != null) {
-//                    Files.createDirectories(Paths.get(closureOutputDir.getAbsolutePath(), initialScriptFilename).getParent());
                     for (Path path : jsSources.stream().map(Input::getParentPaths).flatMap(Collection::stream).collect(Collectors.toList())) {
                         FileUtils.copyDirectory(path.toFile(), sources);
                     }
