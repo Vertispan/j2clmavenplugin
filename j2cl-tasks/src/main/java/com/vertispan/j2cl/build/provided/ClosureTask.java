@@ -42,7 +42,7 @@ public class ClosureTask extends TaskFactory {
 
     @Override
     public String getVersion() {
-        return "0";
+        return "1";
     }
 
     @Override
@@ -81,7 +81,6 @@ public class ClosureTask extends TaskFactory {
         List<File> extraJsZips = config.getExtraJsZips();
         String env = config.getEnv();
 
-        String sourcemapDirectory = "sources";
         return new FinalOutputTask() {
             @Override
             public void execute(TaskContext context) throws Exception {
@@ -94,28 +93,34 @@ public class ClosureTask extends TaskFactory {
                 // set up a source directory to build from, and to make sourcemaps work
                 // TODO move logic to the "post" phase to decide whether or not to copy the sourcemap dir
                 String jsOutputDir = new File(closureOutputDir + "/" + initialScriptFilename).getParent();
-                File sources;
-                if (compilationLevel == CompilationLevel.BUNDLE) {
-                    if (!sourcemapsEnabled) {
-                        //TODO warn that sourcemaps are there anyway, we can't disable in bundle modes?
-                    }
-                    sources = new File(jsOutputDir, sourcemapDirectory);
+                final File sources;
+                final Map<String, List<String>> js;
+                if (!sourcemapsEnabled) {
+                    // no sourcemaps, we can just reference the JS from their original dirs
+                    sources = null;
+                    js = Closure.mapFromInputs(jsSources);
+                } else if (compilationLevel == CompilationLevel.BUNDLE) {
+                    // For BUNDLE+sourcemapsEnabled we have to copy sources, closure must not embed them (better build perf),
+                    // and we also specify full paths to the source location
+                    sources = new File(jsOutputDir, Closure.SOURCES_DIRECTORY_NAME);
+                    js = Collections.singletonMap(
+                            sources.getAbsolutePath(),
+                            jsSources.stream()
+                                    .map(Input::getFilesAndHashes)
+                                    .flatMap(Collection::stream)
+                                    .map(CachedPath::getSourcePath)
+                                    .map(Path::toString)
+                                    .collect(Collectors.toList())
+                    );
                 } else {
-                    if (sourcemapsEnabled) {
-                        sources = new File(jsOutputDir, sourcemapDirectory);//write to the same place as in bundle mode
-                    } else {
-                        sources = null;
-                    }
+                    // For other modes, we're already asking closure to get work done, let's
+                    sources = new File(jsOutputDir, Closure.SOURCES_DIRECTORY_NAME);//write to the same place as in bundle mode
+                    js = Closure.mapFromInputs(jsSources);
                 }
                 if (sources != null) {
-                    Files.createDirectories(Paths.get(closureOutputDir.getAbsolutePath(), initialScriptFilename).getParent());
-
-                    //TODO this is quite dirty, we should make this a configurable input to match
-                    //     which files are important
-                    for (Input jsSource : jsSources) {
-                        for (Path path : jsSource.getParentPaths()) {
-                            FileUtils.copyDirectory(path.toFile(), sources);
-                        }
+//                    Files.createDirectories(Paths.get(closureOutputDir.getAbsolutePath(), initialScriptFilename).getParent());
+                    for (Path path : jsSources.stream().map(Input::getParentPaths).flatMap(Collection::stream).collect(Collectors.toList())) {
+                        FileUtils.copyDirectory(path.toFile(), sources);
                     }
                 }
 
@@ -129,7 +134,7 @@ public class ClosureTask extends TaskFactory {
                         compilationLevel,
                         dependencyMode,
                         languageOut,
-                        jsSources,
+                        js,
                         sources,
                         extraJsZips,
                         entrypoint,

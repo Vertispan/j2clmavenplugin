@@ -45,7 +45,7 @@ public class JsZipBundleTask extends TaskFactory {
                     CompilationLevel.BUNDLE,
                     DependencyOptions.DependencyMode.SORT_ONLY,
                     CompilerOptions.LanguageMode.NO_TRANSPILE,
-                    Collections.emptyList(),
+                    Collections.emptyMap(),
                     null,
                     extraJsZips,
                     Collections.emptyList(),
