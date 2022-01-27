@@ -10,6 +10,7 @@ import javax.annotation.Nullable;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class Closure {
     /**
@@ -49,7 +50,7 @@ public class Closure {
         Compiler jsCompiler = new Compiler(System.err);
 //        jsCompiler.setPersistentInputStore(persistentInputStore);
 
-        // list the parent directories of each input so that module resolution works as expected
+        // List the parent directories of each input so that module resolution works as expected
         jsInputs.stream()
                 .map(Input::getParentPaths)
                 .flatMap(Collection::stream)
@@ -59,10 +60,13 @@ public class Closure {
                     jscompArgs.add(parentPath);
                 });
 
-        // for each input, list each js file that was given to us
+        // For each input, list each js file that was given to us.
+        // Capture the relative paths as we go to ensure we don't have collisions, report them nicely
+        Map<String, Integer> relativePathsWithCount = new HashMap<>();
         jsInputs.stream()
                 .map(Input::getFilesAndHashes)
                 .flatMap(Collection::stream)
+                .peek(cachedPath -> relativePathsWithCount.compute(cachedPath.getSourcePath().toString(), (key, count) -> count == null ? 1 : count + 1))
                 .map(CachedPath::getAbsolutePath)
                 .map(Path::toString)
                 //TODO this distinct() call should not be needed, but we apparently have at least one dependency getting duplicated
@@ -71,6 +75,15 @@ public class Closure {
                     jscompArgs.add("--js");
                     jscompArgs.add(jsInputPath);
                 });
+
+        List<String> duplicateRelativePaths = relativePathsWithCount.entrySet().stream()
+                .filter(entry -> entry.getValue() > 1)
+                .map(Map.Entry::getKey).collect(Collectors.toList());
+        if (!duplicateRelativePaths.isEmpty()) {
+            log.error("Duplicate paths present, ensure only one dependency contributes a given file:");
+            duplicateRelativePaths.forEach(path -> log.error("\t" + path));
+            return false;
+        }
 
         jsZips.forEach(file -> {
             jscompArgs.add("--jszip");
