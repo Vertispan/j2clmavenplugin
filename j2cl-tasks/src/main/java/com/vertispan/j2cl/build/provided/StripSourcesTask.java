@@ -32,7 +32,6 @@ public class StripSourcesTask extends TaskFactory {
     @Override
     public Task resolve(Project project, Config config) {
         Input inputSources = input(project, OutputTypes.BYTECODE).filter(JAVA_SOURCES);
-//        Input generatedSources = input(project, OutputTypes.GENERATED_SOURCES).filter(JAVA_SOURCES, NATIVE_JS_SOURCES);
 
         return context -> {
             if (inputSources.getFilesAndHashes().isEmpty()) {

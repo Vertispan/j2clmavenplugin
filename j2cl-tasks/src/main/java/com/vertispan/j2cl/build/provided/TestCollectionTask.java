@@ -34,7 +34,6 @@ public class TestCollectionTask extends TaskFactory {
     public Task resolve(Project project, Config config) {
         // gather possible inputs so we can get the test summary file
         // we assume here that the user will correctly depend on the junit apt, might revise this later
-//        Input src = input(project, OutputTypes.INPUT_SOURCES).filter(TEST_SUMMARY_JSON, TEST_SUITE);
         Input apt = input(project, OutputTypes.BYTECODE).filter(TEST_SUMMARY_JSON, TEST_SUITE);
         return new FinalOutputTask() {
             @Override
@@ -42,10 +41,6 @@ public class TestCollectionTask extends TaskFactory {
                 // TODO If both contain a test summary, we should fail, rather than overwrite
                 // Or even better, merge?
 
-//                for (CachedPath entry : src.getFilesAndHashes()) {
-//                    Files.createDirectories(context.outputPath().resolve(entry.getSourcePath()).getParent());
-//                    Files.copy(entry.getAbsolutePath(), context.outputPath().resolve(entry.getSourcePath()));
-//                }
                 for (CachedPath entry : apt.getFilesAndHashes()) {
                     Files.createDirectories(context.outputPath().resolve(entry.getSourcePath()).getParent());
                     Files.copy(entry.getAbsolutePath(), context.outputPath().resolve(entry.getSourcePath()));

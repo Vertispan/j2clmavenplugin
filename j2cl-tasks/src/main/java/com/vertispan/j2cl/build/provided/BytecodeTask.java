@@ -5,6 +5,7 @@ import com.google.j2cl.common.SourceUtils;
 import com.vertispan.j2cl.build.task.*;
 import com.vertispan.j2cl.tools.Javac;
 
+import javax.annotation.Nullable;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -15,14 +16,11 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * This implementation and {@link AptTask} are wired together, if you replace
- * one you may need to replace the other at the same time (the SkipAptTask is an
- * exception to this).
- *
- * The assumption is that since these are generated at the same time by a single
- * invocation of javac, we want to generate the bytecode first for downstream
- * projects so they can also generate their own sources. With this though,
- * the AptTask should be a no-op, so it shouldn't really matter.
+ * This runs javac (and so, all annotation processors) on the input source, and
+ * produces a directory of all sources, resources, and bytecode of a reactor
+ * project. This results in a directory with the same contents you might get from
+ * unpacking the jar from a non-reactor dependency, so we can treat all
+ * dependencies the same, regardless of their origin.
  */
 @AutoService(TaskFactory.class)
 public class BytecodeTask extends TaskFactory {
@@ -84,9 +82,10 @@ public class BytecodeTask extends TaskFactory {
                         extraClasspath.stream()
                 ).collect(Collectors.toList());
 
-                // TODO don't dump APT to the same dir?
                 List<File> sourcePaths = inputDirs.getParentPaths().stream().map(Path::toFile).collect(Collectors.toList());
-                Javac javac = new Javac(context, context.outputPath().toFile(), sourcePaths, classpathDirs, context.outputPath().toFile(), bootstrapClasspath);
+                File generatedClassesDir = getGeneratedClassesDir(context);
+                File classOutputDir = context.outputPath().toFile();
+                Javac javac = new Javac(context, generatedClassesDir, sourcePaths, classpathDirs, classOutputDir, bootstrapClasspath);
 
                 // TODO convention for mapping to original file paths, provide FileInfo out of Inputs instead of Paths,
                 //      automatically relativized?
@@ -113,5 +112,10 @@ public class BytecodeTask extends TaskFactory {
             }
 
         };
+    }
+
+    @Nullable
+    protected File getGeneratedClassesDir(TaskContext context) {
+        return context.outputPath().toFile();
     }
 }
