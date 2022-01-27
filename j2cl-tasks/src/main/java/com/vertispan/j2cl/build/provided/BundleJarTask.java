@@ -53,6 +53,7 @@ public class BundleJarTask extends TaskFactory {
         Input jszip = input(project, "jszipbundle");
 
         File initialScriptFile = config.getWebappDirectory().resolve(config.getInitialScriptFilename()).toFile();
+        Map<String, Object> defines = new LinkedHashMap<>(config.getDefines());
 
         return new FinalOutputTask() {
             @Override
@@ -79,7 +80,6 @@ public class BundleJarTask extends TaskFactory {
                             Stream.of("j2cl-base.js"),//jre and bootstrap wiring, from the jszip input, always named the same
                             jsSources.stream().flatMap(i -> i.getFilesAndHashes().stream()).map(CachedPath::getSourcePath).map(Path::toString)
                     ).collect(Collectors.toList()));
-                    Map<String, Object> defines = new LinkedHashMap<>(config.getDefines());
                     // unconditionally set this to false, so that our dependency order works, since we're always in BUNDLE now
                     defines.put("goog.ENABLE_DEBUG_LOADER", false);
 
