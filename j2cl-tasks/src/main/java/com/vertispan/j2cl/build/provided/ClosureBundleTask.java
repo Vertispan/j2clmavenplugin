@@ -38,7 +38,7 @@ public class ClosureBundleTask extends TaskFactory {
 
     @Override
     public String getVersion() {
-        return "0";
+        return "1";
     }
 
     @Override
@@ -73,7 +73,7 @@ public class ClosureBundleTask extends TaskFactory {
 
             // copy the sources locally so that we can create usable sourcemaps
             //TODO consider a soft link
-            File sources = new File(closureOutputDir, "sources");
+            File sources = new File(closureOutputDir, Closure.SOURCES_DIRECTORY_NAME);
             for (Path path : js.stream().map(Input::getParentPaths).flatMap(Collection::stream).collect(Collectors.toList())) {
                 FileUtils.copyDirectory(path.toFile(), sources);
             }
@@ -83,7 +83,15 @@ public class ClosureBundleTask extends TaskFactory {
                     CompilationLevel.BUNDLE,
                     DependencyOptions.DependencyMode.SORT_ONLY,
                     CompilerOptions.LanguageMode.NO_TRANSPILE,
-                    js,
+                    Collections.singletonMap(
+                            sources.getAbsolutePath(),
+                            js.stream()
+                                    .map(Input::getFilesAndHashes)
+                                    .flatMap(Collection::stream)
+                                    .map(CachedPath::getSourcePath)
+                                    .map(Path::toString)
+                                    .collect(Collectors.toList())
+                    ),
                     sources,
                     Collections.emptyList(),
                     Collections.emptyList(),

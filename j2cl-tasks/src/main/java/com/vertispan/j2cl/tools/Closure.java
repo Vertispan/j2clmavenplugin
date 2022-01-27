@@ -2,16 +2,23 @@ package com.vertispan.j2cl.tools;
 
 import com.google.javascript.jscomp.*;
 import com.google.javascript.jscomp.Compiler;
+import com.vertispan.j2cl.build.DiskCache;
 import com.vertispan.j2cl.build.task.BuildLog;
-import com.vertispan.j2cl.build.task.CachedPath;
 import com.vertispan.j2cl.build.task.Input;
 
 import javax.annotation.Nullable;
 import java.io.File;
-import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class Closure {
+    public static final String SOURCES_DIRECTORY_NAME = "sources";
     /**
      * Closure compiler uses static variables at least when parsing arguments, so we have to ensure
      * that only one thread at a time is trying to parse args, otherwise we risk CMEs. The comments
@@ -26,11 +33,21 @@ public class Closure {
         this.log = log;
     }
 
+    public static Map<String, List<String>> mapFromInputs(List<Input> inputs) {
+        return inputs.stream()
+                .map(Input::getFilesAndHashes)
+                .flatMap(Collection::stream)
+                .collect(Collectors.groupingBy(
+                        c -> ((DiskCache.CacheEntry)c).getAbsoluteParent().toString(),
+                        Collectors.mapping(c -> c.getSourcePath().toString(), Collectors.toList())
+                ));
+    }
+
     public boolean compile(
             CompilationLevel compilationLevel,
             DependencyOptions.DependencyMode dependencyMode,
             CompilerOptions.LanguageMode languageOut,
-            List<Input> jsInputs,
+            Map<String, List<String>> jsInputs,
             @Nullable File jsSourceDir,
             List<File> jsZips,
             List<String> entrypoints,
@@ -49,28 +66,36 @@ public class Closure {
         Compiler jsCompiler = new Compiler(System.err);
 //        jsCompiler.setPersistentInputStore(persistentInputStore);
 
-        // list the parent directories of each input so that module resolution works as expected
-        jsInputs.stream()
-                .map(Input::getParentPaths)
-                .flatMap(Collection::stream)
-                .map(Path::toString)
-                .forEach(parentPath -> {
-                    jscompArgs.add("--js_module_root");
-                    jscompArgs.add(parentPath);
-                });
+        // List the parent directories of each input so that module resolution works as expected
+        jsInputs.keySet().forEach(parentPath -> {
+            jscompArgs.add("--js_module_root");
+            jscompArgs.add(parentPath);
+            jscompArgs.add("--source_map_location_mapping");
+            jscompArgs.add(parentPath + "|" + SOURCES_DIRECTORY_NAME);
+        });
 
-        // for each input, list each js file that was given to us
-        jsInputs.stream()
-                .map(Input::getFilesAndHashes)
-                .flatMap(Collection::stream)
-                .map(CachedPath::getAbsolutePath)
-                .map(Path::toString)
+        // For each input, list each js file that was given to us.
+        // Capture the relative paths as we go to ensure we don't have collisions, report them nicely
+        Map<String, Integer> relativePathsWithCount = new HashMap<>();
+        jsInputs.entrySet().stream()
+                .flatMap(e -> e.getValue().stream()
+                        .peek(relPath -> relativePathsWithCount.compute(relPath, (key, count) -> count == null ? 1 : count + 1))
+                        .map(relPath -> e.getKey() + File.separator + relPath) )
                 //TODO this distinct() call should not be needed, but we apparently have at least one dependency getting duplicated
                 .distinct()
                 .forEach(jsInputPath -> {
                     jscompArgs.add("--js");
                     jscompArgs.add(jsInputPath);
                 });
+
+        List<String> duplicateRelativePaths = relativePathsWithCount.entrySet().stream()
+                .filter(entry -> entry.getValue() > 1)
+                .map(Map.Entry::getKey).collect(Collectors.toList());
+        if (!duplicateRelativePaths.isEmpty()) {
+            log.error("Duplicate paths present, ensure only one dependency contributes a given file:");
+            duplicateRelativePaths.forEach(path -> log.error("\t" + path));
+            return false;
+        }
 
         jsZips.forEach(file -> {
             jscompArgs.add("--jszip");
@@ -146,8 +171,8 @@ public class Closure {
         synchronized (GLOBAL_CLOSURE_ARGS_LOCK) {
             jscompRunner = new InProcessJsCompRunner(log, jscompArgs.toArray(new String[0]), jsCompiler, exportTestFunctions, checkAssertions);
         }
+        jscompArgs.forEach(log::debug);
         if (!jscompRunner.shouldRunCompiler()) {
-            jscompArgs.forEach(log::debug);
             return false;
         }
 
@@ -158,7 +183,6 @@ public class Closure {
             jscompRunner.run();
 
             if (jscompRunner.hasErrors() || jscompRunner.exitCode != 0) {
-                jscompArgs.forEach(log::debug);
                 return false;
             }
         } finally {
