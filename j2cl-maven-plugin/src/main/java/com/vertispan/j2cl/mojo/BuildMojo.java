@@ -160,9 +160,6 @@ public class BuildMojo extends AbstractBuildMojo {
 
     @Parameter
     protected Map<String, String> defines = new TreeMap<>();
-    
-    @Parameter
-    protected Map<String, String> taskMappings = new HashMap<>();
 
     /**
      * Closure flag: "Rewrite ES6 library calls to use polyfills provided by the compiler's runtime."
@@ -237,9 +234,6 @@ public class BuildMojo extends AbstractBuildMojo {
         // given the build output, determine what tasks we're going to run
         String outputTask = getOutputTask(compilationLevel);
 
-        // use any task wiring if specified
-        Map<String, String> outputToNameMappings = taskMappings;
-
         // construct other required elements to get the work done
         ScheduledExecutorService executor = Executors.newScheduledThreadPool(getWorkerTheadCount());
         final DiskCache diskCache;
@@ -250,7 +244,7 @@ public class BuildMojo extends AbstractBuildMojo {
         }
         MavenLog mavenLog = new MavenLog(getLog());
         TaskScheduler taskScheduler = new TaskScheduler(executor, diskCache, mavenLog);
-        TaskRegistry taskRegistry = new TaskRegistry(outputToNameMappings);
+        TaskRegistry taskRegistry = createTaskRegistry();
 
         // Given these, build the graph of work we need to complete
         BuildService buildService = new BuildService(taskRegistry, taskScheduler, diskCache);

@@ -2,6 +2,8 @@ package com.vertispan.j2cl.mojo;
 
 import com.vertispan.j2cl.build.Dependency;
 import com.vertispan.j2cl.build.Project;
+import com.vertispan.j2cl.build.TaskRegistry;
+import com.vertispan.j2cl.build.provided.SkipAptTask;
 import com.vertispan.j2cl.build.task.OutputTypes;
 import org.apache.maven.RepositoryUtils;
 import org.apache.maven.artifact.Artifact;
@@ -73,6 +75,9 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
     @Parameter
     protected List<DependencyReplacement> dependencyReplacements;
 
+    @Parameter(defaultValue = "AVOID_MAVEN")
+    private AnnotationProcessorMode annotationProcessorMode;
+
     private List<DependencyReplacement> defaultDependencyReplacements = Arrays.asList(
             new DependencyReplacement("com.google.jsinterop:base", "com.vertispan.jsinterop:base:" + Versions.VERTISPAN_JSINTEROP_BASE_VERSION),
             new DependencyReplacement("org.realityforge.com.google.jsinterop:base", "com.vertispan.jsinterop:base:" + Versions.VERTISPAN_JSINTEROP_BASE_VERSION),
@@ -96,6 +101,9 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
 
     @Parameter(readonly = true, defaultValue = "${mojoExecution}")
     protected MojoExecution mojoExecution;
+
+    @Parameter
+    protected Map<String, String> taskMappings = new HashMap<>();
 
     private static String key(Artifact artifact) {
         // this is roughly DefaultArtifact.toString, minus scope, since we don't care what the scope is for the purposes of building projects
@@ -275,6 +283,7 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
                     )
                             .distinct()
                             .filter(path -> new File(path).exists())
+                            .filter(path -> !(annotationProcessorMode.pluginShouldExcludeGeneratedAnnotationsDir() && path.endsWith("generated-sources/annotations")))
                             .collect(Collectors.toList())
             );
         } else {
@@ -304,5 +313,13 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
             default:
                 throw new IllegalStateException("Unsupported scope: " + scope);
         }
+    }
+
+    protected TaskRegistry createTaskRegistry() {
+        if (!annotationProcessorMode.pluginShouldRunApt()) {
+            taskMappings.put(OutputTypes.BYTECODE, SkipAptTask.SKIP_TASK_NAME);
+        }
+        // use any task wiring if specified
+        return new TaskRegistry(taskMappings);
     }
 }

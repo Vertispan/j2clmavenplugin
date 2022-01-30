@@ -18,6 +18,9 @@ import java.io.File;
  */
 @AutoService(TaskFactory.class)
 public class SkipAptTask extends BytecodeTask {
+
+    public static final String SKIP_TASK_NAME = "skip";
+
     @Override
     public String getOutputType() {
         return OutputTypes.BYTECODE;
@@ -25,7 +28,7 @@ public class SkipAptTask extends BytecodeTask {
 
     @Override
     public String getTaskName() {
-        return "skip";
+        return SKIP_TASK_NAME;
     }
 
     @Override

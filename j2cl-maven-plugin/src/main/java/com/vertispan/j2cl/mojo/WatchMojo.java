@@ -111,9 +111,6 @@ public class WatchMojo extends AbstractBuildMojo {
     @Parameter(defaultValue = "SORT_ONLY")
     protected String dependencyMode;
 
-    @Parameter
-    protected Map<String, String> taskMappings = new HashMap<>();
-
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         PluginDescriptor pluginDescriptor = (PluginDescriptor) getPluginContext().get("pluginDescriptor");
@@ -168,7 +165,7 @@ public class WatchMojo extends AbstractBuildMojo {
         TaskScheduler taskScheduler = new TaskScheduler(executor, diskCache, mavenLog);
 
         // TODO support individual task registries per execution
-        TaskRegistry taskRegistry = new TaskRegistry(taskMappings);
+        TaskRegistry taskRegistry = createTaskRegistry();
         BuildService buildService = new BuildService(taskRegistry, taskScheduler, diskCache);
         // TODO end
 

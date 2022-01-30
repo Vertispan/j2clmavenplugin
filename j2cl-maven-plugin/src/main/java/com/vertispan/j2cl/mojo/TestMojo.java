@@ -122,9 +122,6 @@ public class TestMojo extends AbstractBuildMojo {
     @Parameter
     protected Map<String, String> defines = new TreeMap<>();
 
-    @Parameter
-    protected Map<String, String> taskMappings = new HashMap<>();
-
     /**
      * Whether or not to leave Java assert checks in the compiled code. In j2cl:test, defaults to true. Has no
      * effect when the compilation level isn't set to ADVANCED_OPTIMIZATIONS, assertions will always remain
@@ -238,9 +235,6 @@ public class TestMojo extends AbstractBuildMojo {
         // given the build output, determine what tasks we're going to run
         String outputTask = getOutputTask(compilationLevel);
 
-        // use any task wiring if specified
-        Map<String, String> outputToNameMappings = taskMappings;
-
         // construct other required elements to get the work done
         ScheduledExecutorService executor = Executors.newScheduledThreadPool(getWorkerTheadCount());
         final DiskCache diskCache;
@@ -251,7 +245,7 @@ public class TestMojo extends AbstractBuildMojo {
         }
         MavenLog mavenLog = new MavenLog(getLog());
         TaskScheduler taskScheduler = new TaskScheduler(executor, diskCache, mavenLog);
-        TaskRegistry taskRegistry = new TaskRegistry(outputToNameMappings);
+        TaskRegistry taskRegistry = createTaskRegistry();
 
         // Given these, build the graph of work we need to complete to get the list of tests
         BuildService buildService = new BuildService(taskRegistry, taskScheduler, diskCache);
