@@ -93,6 +93,7 @@ public class ClosureTask extends TaskFactory {
                 // set up a source directory to build from, and to make sourcemaps work
                 // TODO move logic to the "post" phase to decide whether or not to copy the sourcemap dir
                 String jsOutputDir = new File(closureOutputDir + "/" + initialScriptFilename).getParent();
+                Files.createDirectories(Paths.get(jsOutputDir));
                 final File sources;
                 final Map<String, List<String>> js;
                 if (!sourcemapsEnabled) {
