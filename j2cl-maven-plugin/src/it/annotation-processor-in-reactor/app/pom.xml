@@ -57,7 +57,7 @@
                 <executions>
                     <execution>
                         <id>build-js</id>
-                        <phase>process-resources</phase>
+                        <phase>prepare-package</phase>
                         <goals>
                             <goal>build</goal>
                         </goals>

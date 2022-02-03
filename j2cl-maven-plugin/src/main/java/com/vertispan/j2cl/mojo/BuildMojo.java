@@ -1,12 +1,19 @@
 package com.vertispan.j2cl.mojo;
 
-import com.vertispan.j2cl.build.*;
+import com.vertispan.j2cl.build.BlockingBuildListener;
+import com.vertispan.j2cl.build.BuildService;
+import com.vertispan.j2cl.build.DefaultDiskCache;
+import com.vertispan.j2cl.build.DiskCache;
+import com.vertispan.j2cl.build.Project;
+import com.vertispan.j2cl.build.TaskRegistry;
+import com.vertispan.j2cl.build.TaskScheduler;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.model.Plugin;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugin.PluginParameterExpressionEvaluator;
 import org.apache.maven.plugin.descriptor.PluginDescriptor;
+import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
@@ -20,7 +27,14 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -89,8 +103,7 @@ import java.util.concurrent.ScheduledExecutorService;
  *     <li>https://github.com/google/jsinterop-base/blob/18973cb/java/jsinterop/base/jsinterop.js#L25-L28</li>
  * </ul>
  */
-@Mojo(name = "build", requiresDependencyResolution = ResolutionScope.COMPILE_PLUS_RUNTIME)
-//@Execute(phase = LifecyclePhase.PROCESS_CLASSES)
+@Mojo(name = "build", requiresDependencyResolution = ResolutionScope.COMPILE_PLUS_RUNTIME, defaultPhase = LifecyclePhase.PREPARE_PACKAGE)
 public class BuildMojo extends AbstractBuildMojo {
 
     /**

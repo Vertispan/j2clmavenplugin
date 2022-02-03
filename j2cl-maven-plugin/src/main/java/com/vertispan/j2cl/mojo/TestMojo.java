@@ -4,7 +4,15 @@ import com.gargoylesoftware.htmlunit.BrowserVersion;
 import com.google.common.io.CharStreams;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
-import com.vertispan.j2cl.build.*;
+import com.vertispan.j2cl.build.BlockingBuildListener;
+import com.vertispan.j2cl.build.BuildService;
+import com.vertispan.j2cl.build.DefaultDiskCache;
+import com.vertispan.j2cl.build.Dependency;
+import com.vertispan.j2cl.build.DiskCache;
+import com.vertispan.j2cl.build.Project;
+import com.vertispan.j2cl.build.PropertyTrackingConfig;
+import com.vertispan.j2cl.build.TaskRegistry;
+import com.vertispan.j2cl.build.TaskScheduler;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.model.FileSet;
 import org.apache.maven.model.Plugin;
@@ -12,6 +20,7 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugin.PluginParameterExpressionEvaluator;
 import org.apache.maven.plugin.descriptor.PluginDescriptor;
+import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
@@ -35,14 +44,29 @@ import org.openqa.selenium.logging.LogType;
 import org.openqa.selenium.logging.LoggingPreferences;
 import org.openqa.selenium.support.ui.FluentWait;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -51,7 +75,7 @@ import java.util.logging.Level;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-@Mojo(name = "test", requiresDependencyResolution = ResolutionScope.TEST)
+@Mojo(name = "test", requiresDependencyResolution = ResolutionScope.TEST, defaultPhase = LifecyclePhase.TEST)
 public class TestMojo extends AbstractBuildMojo {
     /**
      * The dependency scope to use for the classpath.

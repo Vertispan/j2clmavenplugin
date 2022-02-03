@@ -1,6 +1,12 @@
 package com.vertispan.j2cl.mojo;
 
-import com.vertispan.j2cl.build.*;
+import com.vertispan.j2cl.build.BuildService;
+import com.vertispan.j2cl.build.DefaultDiskCache;
+import com.vertispan.j2cl.build.DiskCache;
+import com.vertispan.j2cl.build.Project;
+import com.vertispan.j2cl.build.TaskRegistry;
+import com.vertispan.j2cl.build.TaskScheduler;
+import com.vertispan.j2cl.build.WatchService;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.model.Plugin;
 import org.apache.maven.model.PluginExecution;
@@ -21,7 +27,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Function;
