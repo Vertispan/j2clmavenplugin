@@ -18,6 +18,8 @@ import org.codehaus.plexus.util.xml.Xpp3Dom;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -194,6 +196,13 @@ public class BuildMojo extends AbstractBuildMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
+        // pre-create the directory so it is easier to find up front, even if it starts off empty
+        try {
+            Files.createDirectories(Paths.get(webappDirectory));
+        } catch (IOException e) {
+            throw new MojoExecutionException("Failed to create the webappDirectory " + webappDirectory, e);
+        }
+
         PluginDescriptor pluginDescriptor = (PluginDescriptor) getPluginContext().get("pluginDescriptor");
         String pluginVersion = pluginDescriptor.getVersion();
 

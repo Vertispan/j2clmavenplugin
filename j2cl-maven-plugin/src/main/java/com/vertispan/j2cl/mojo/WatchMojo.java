@@ -19,6 +19,7 @@ import org.codehaus.plexus.util.xml.Xpp3Dom;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.Executors;
@@ -125,6 +126,13 @@ public class WatchMojo extends AbstractBuildMojo {
                 getLog().error("No webappDirectory parameter was set. This should be defined in the parent pom (or passed as a property with name 'j2cl.webappDirectory') so that any j2cl module knows where to put its output");
                 throw new MojoFailureException("No webappDirectory parameter was set - this should be defined so that any j2cl module knows where to put its output");
             }
+        }
+
+        // pre-create the directory so it is easier to find up front, even if it starts off empty
+        try {
+            Files.createDirectories(Paths.get(webappDirectory));
+        } catch (IOException e) {
+            throw new MojoExecutionException("Failed to create the webappDirectory " + webappDirectory, e);
         }
 
         //TODO need to be very careful about allowing these to be configurable, possibly should tie them to the "plugin version" aspect of the hash

@@ -177,6 +177,13 @@ public class TestMojo extends AbstractBuildMojo {
             return;
         }
 
+        // pre-create the directory so it is easier to find up front, even if it starts off empty
+        try {
+            Files.createDirectories(Paths.get(webappDirectory));
+        } catch (IOException e) {
+            throw new MojoExecutionException("Failed to create the webappDirectory " + webappDirectory, e);
+        }
+
         Map<String, String> failedTests = new HashMap<>();
 
         PluginDescriptor pluginDescriptor = (PluginDescriptor) getPluginContext().get("pluginDescriptor");
