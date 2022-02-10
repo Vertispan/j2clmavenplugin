@@ -283,7 +283,8 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
                     )
                             .distinct()
                             .filter(path -> new File(path).exists())
-                            .filter(path -> !(annotationProcessorMode.pluginShouldExcludeGeneratedAnnotationsDir() && path.endsWith("generated-sources/annotations")))
+                            .filter(path -> !(annotationProcessorMode.pluginShouldExcludeGeneratedAnnotationsDir()
+                                    && path.endsWith("generated-sources" + File.separator + "annotations")))
                             .collect(Collectors.toList())
             );
         } else {
