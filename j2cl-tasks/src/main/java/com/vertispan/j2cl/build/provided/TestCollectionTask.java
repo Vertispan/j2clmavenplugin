@@ -11,13 +11,16 @@ import java.nio.file.*;
  */
 @AutoService(TaskFactory.class)
 public class TestCollectionTask extends TaskFactory {
+    // While this is an internal task, it is still possible to provide an alternative implementation
+    public static final String TEST_COLLECTION_OUTPUT_TYPE = "test_summary";
+
     private static final String TEST_SUMMARY_FILENAME = "test_summary.json";
     private static final PathMatcher TEST_SUMMARY_JSON = FileSystems.getDefault().getPathMatcher("glob:" + TEST_SUMMARY_FILENAME);
     private static final PathMatcher TEST_SUITE = withSuffix(".testsuite");
 
     @Override
     public String getOutputType() {
-        return "test_summary";
+        return TEST_COLLECTION_OUTPUT_TYPE;
     }
 
     @Override

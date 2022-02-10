@@ -13,6 +13,7 @@ import com.vertispan.j2cl.build.Project;
 import com.vertispan.j2cl.build.PropertyTrackingConfig;
 import com.vertispan.j2cl.build.TaskRegistry;
 import com.vertispan.j2cl.build.TaskScheduler;
+import com.vertispan.j2cl.build.provided.TestCollectionTask;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.model.FileSet;
 import org.apache.maven.model.Plugin;
@@ -280,7 +281,7 @@ public class TestMojo extends AbstractBuildMojo {
 
         // Given these, build the graph of work we need to complete to get the list of tests
         BuildService buildService = new BuildService(taskRegistry, taskScheduler, diskCache);
-        buildService.assignProject(test, "test_summary", config);
+        buildService.assignProject(test, TestCollectionTask.TEST_COLLECTION_OUTPUT_TYPE, config);
 
         // Get the hash of all current files, since we aren't running a watch service
         buildService.initialHashes();
