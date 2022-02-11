@@ -158,6 +158,10 @@ that is incompatible for GWT will annotate appropriately with `@GwtIncompatible`
 all annotation processors after stripping bytecode, which would require running on all artifacts from remote
 repositories as well.
 
+Reactor projects all have their generated content and bytecode built into a single directory, alongside original
+sources, resources, and bytecode. This results in a directory that should reflect accurately unpacking a jar
+which happens to include its own sources.
+
 
 ### Strip `@GwtIncompatible`
 The J2CL-provided `JavaPreprocessor` class is used to process all sources before they are compiled, stripping out

@@ -4,7 +4,16 @@ import com.gargoylesoftware.htmlunit.BrowserVersion;
 import com.google.common.io.CharStreams;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
-import com.vertispan.j2cl.build.*;
+import com.vertispan.j2cl.build.BlockingBuildListener;
+import com.vertispan.j2cl.build.BuildService;
+import com.vertispan.j2cl.build.DefaultDiskCache;
+import com.vertispan.j2cl.build.Dependency;
+import com.vertispan.j2cl.build.DiskCache;
+import com.vertispan.j2cl.build.Project;
+import com.vertispan.j2cl.build.PropertyTrackingConfig;
+import com.vertispan.j2cl.build.TaskRegistry;
+import com.vertispan.j2cl.build.TaskScheduler;
+import com.vertispan.j2cl.build.provided.TestCollectionTask;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.model.FileSet;
 import org.apache.maven.model.Plugin;
@@ -12,6 +21,7 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugin.PluginParameterExpressionEvaluator;
 import org.apache.maven.plugin.descriptor.PluginDescriptor;
+import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
@@ -35,14 +45,29 @@ import org.openqa.selenium.logging.LogType;
 import org.openqa.selenium.logging.LoggingPreferences;
 import org.openqa.selenium.support.ui.FluentWait;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -51,7 +76,7 @@ import java.util.logging.Level;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-@Mojo(name = "test", requiresDependencyResolution = ResolutionScope.TEST)
+@Mojo(name = "test", requiresDependencyResolution = ResolutionScope.TEST, defaultPhase = LifecyclePhase.TEST)
 public class TestMojo extends AbstractBuildMojo {
     /**
      * The dependency scope to use for the classpath.
@@ -122,9 +147,6 @@ public class TestMojo extends AbstractBuildMojo {
     @Parameter
     protected Map<String, String> defines = new TreeMap<>();
 
-    @Parameter
-    protected Map<String, String> taskMappings = new HashMap<>();
-
     /**
      * Whether or not to leave Java assert checks in the compiled code. In j2cl:test, defaults to true. Has no
      * effect when the compilation level isn't set to ADVANCED_OPTIMIZATIONS, assertions will always remain
@@ -178,6 +200,13 @@ public class TestMojo extends AbstractBuildMojo {
     public void execute() throws MojoExecutionException, MojoFailureException {
         if (skip) {
             return;
+        }
+
+        // pre-create the directory so it is easier to find up front, even if it starts off empty
+        try {
+            Files.createDirectories(Paths.get(webappDirectory));
+        } catch (IOException e) {
+            throw new MojoExecutionException("Failed to create the webappDirectory " + webappDirectory, e);
         }
 
         Map<String, String> failedTests = new HashMap<>();
@@ -238,9 +267,6 @@ public class TestMojo extends AbstractBuildMojo {
         // given the build output, determine what tasks we're going to run
         String outputTask = getOutputTask(compilationLevel);
 
-        // use any task wiring if specified
-        Map<String, String> outputToNameMappings = taskMappings;
-
         // construct other required elements to get the work done
         ScheduledExecutorService executor = Executors.newScheduledThreadPool(getWorkerTheadCount());
         final DiskCache diskCache;
@@ -251,11 +277,11 @@ public class TestMojo extends AbstractBuildMojo {
         }
         MavenLog mavenLog = new MavenLog(getLog());
         TaskScheduler taskScheduler = new TaskScheduler(executor, diskCache, mavenLog);
-        TaskRegistry taskRegistry = new TaskRegistry(outputToNameMappings);
+        TaskRegistry taskRegistry = createTaskRegistry();
 
         // Given these, build the graph of work we need to complete to get the list of tests
         BuildService buildService = new BuildService(taskRegistry, taskScheduler, diskCache);
-        buildService.assignProject(test, "test_summary", config);
+        buildService.assignProject(test, TestCollectionTask.TEST_COLLECTION_OUTPUT_TYPE, config);
 
         // Get the hash of all current files, since we aren't running a watch service
         buildService.initialHashes();

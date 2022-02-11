@@ -53,16 +53,18 @@ public class ClosureTask extends TaskFactory {
         List<Input> jsSources = Stream.concat(
                 Stream.of(
                         input(project, OutputTypes.TRANSPILED_JS).filter(JS_SOURCES),
-                        input(project, OutputTypes.GENERATED_SOURCES).filter(PLAIN_JS_SOURCES),
-                        input(project, OutputTypes.INPUT_SOURCES).filter(PLAIN_JS_SOURCES)
+                        // BYTECODE will contains original and generated js sources
+                        input(project, OutputTypes.BYTECODE).filter(PLAIN_JS_SOURCES)
                 ),
                 scope(project.getDependencies(), Dependency.Scope.RUNTIME)
                 .stream()
-                .flatMap(p -> Stream.of(
-                        input(p, OutputTypes.TRANSPILED_JS).filter(JS_SOURCES),
-                        input(p, OutputTypes.GENERATED_SOURCES).filter(PLAIN_JS_SOURCES),
-                        input(p, OutputTypes.INPUT_SOURCES).filter(PLAIN_JS_SOURCES)
-                ))
+                .flatMap(p -> {
+                    return Stream.of(
+                            input(p, OutputTypes.TRANSPILED_JS).filter(JS_SOURCES),
+                            // generated sources will include original input sources
+                            input(p, OutputTypes.BYTECODE).filter(PLAIN_JS_SOURCES)
+                    );
+                })
         ).collect(Collectors.toList());
 
 

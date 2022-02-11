@@ -31,7 +31,7 @@ public class Javac {
     List<String> javacOptions;
     JavaCompiler compiler;
     StandardJavaFileManager fileManager;
-    private DiagnosticCollector<? super JavaFileObject> listener;
+    private DiagnosticCollector<JavaFileObject> listener;
 
     public Javac(BuildLog log, File generatedClassesPath, List<File> sourcePaths, List<File> classpath, File classesDirFile, File bootstrap) throws IOException {
         this.log = log;
@@ -70,6 +70,13 @@ public class Javac {
         } finally {
             listener.getDiagnostics().forEach(d -> {
                 String messageToLog = d.getMessage(Locale.getDefault());
+                JavaFileObject source = d.getSource();
+
+                if (source != null) {
+                    String longFileName = source.toUri().getPath();
+                    String prefix = longFileName + ((d.getLineNumber() > 0) ? ":" + d.getLineNumber() : "") + " ";
+                    messageToLog = prefix + messageToLog;
+                }
                 switch (d.getKind()) {
                     case ERROR:
                         log.error(messageToLog);

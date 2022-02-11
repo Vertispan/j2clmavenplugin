@@ -11,13 +11,16 @@ import java.nio.file.*;
  */
 @AutoService(TaskFactory.class)
 public class TestCollectionTask extends TaskFactory {
+    // While this is an internal task, it is still possible to provide an alternative implementation
+    public static final String TEST_COLLECTION_OUTPUT_TYPE = "test_summary";
+
     private static final String TEST_SUMMARY_FILENAME = "test_summary.json";
     private static final PathMatcher TEST_SUMMARY_JSON = FileSystems.getDefault().getPathMatcher("glob:" + TEST_SUMMARY_FILENAME);
     private static final PathMatcher TEST_SUITE = withSuffix(".testsuite");
 
     @Override
     public String getOutputType() {
-        return "test_summary";
+        return TEST_COLLECTION_OUTPUT_TYPE;
     }
 
     @Override
@@ -34,18 +37,13 @@ public class TestCollectionTask extends TaskFactory {
     public Task resolve(Project project, Config config) {
         // gather possible inputs so we can get the test summary file
         // we assume here that the user will correctly depend on the junit apt, might revise this later
-        Input src = input(project, OutputTypes.INPUT_SOURCES).filter(TEST_SUMMARY_JSON, TEST_SUITE);
-        Input apt = input(project, OutputTypes.GENERATED_SOURCES).filter(TEST_SUMMARY_JSON, TEST_SUITE);
+        Input apt = input(project, OutputTypes.BYTECODE).filter(TEST_SUMMARY_JSON, TEST_SUITE);
         return new FinalOutputTask() {
             @Override
             public void execute(TaskContext context) throws Exception {
-                // TODO If both container a test summary, we should fail, rather than overwrite
+                // TODO If both contain a test summary, we should fail, rather than overwrite
                 // Or even better, merge?
 
-                for (CachedPath entry : src.getFilesAndHashes()) {
-                    Files.createDirectories(context.outputPath().resolve(entry.getSourcePath()).getParent());
-                    Files.copy(entry.getAbsolutePath(), context.outputPath().resolve(entry.getSourcePath()));
-                }
                 for (CachedPath entry : apt.getFilesAndHashes()) {
                     Files.createDirectories(context.outputPath().resolve(entry.getSourcePath()).getParent());
                     Files.copy(entry.getAbsolutePath(), context.outputPath().resolve(entry.getSourcePath()));

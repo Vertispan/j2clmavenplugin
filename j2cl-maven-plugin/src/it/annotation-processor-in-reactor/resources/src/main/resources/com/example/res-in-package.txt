@@ -1,0 +1,1 @@
+res-in-package.txt

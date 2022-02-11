@@ -1,12 +1,19 @@
 package com.vertispan.j2cl.mojo;
 
-import com.vertispan.j2cl.build.*;
+import com.vertispan.j2cl.build.BlockingBuildListener;
+import com.vertispan.j2cl.build.BuildService;
+import com.vertispan.j2cl.build.DefaultDiskCache;
+import com.vertispan.j2cl.build.DiskCache;
+import com.vertispan.j2cl.build.Project;
+import com.vertispan.j2cl.build.TaskRegistry;
+import com.vertispan.j2cl.build.TaskScheduler;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.model.Plugin;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugin.PluginParameterExpressionEvaluator;
 import org.apache.maven.plugin.descriptor.PluginDescriptor;
+import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
@@ -18,7 +25,16 @@ import org.codehaus.plexus.util.xml.Xpp3Dom;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -87,8 +103,7 @@ import java.util.concurrent.ScheduledExecutorService;
  *     <li>https://github.com/google/jsinterop-base/blob/18973cb/java/jsinterop/base/jsinterop.js#L25-L28</li>
  * </ul>
  */
-@Mojo(name = "build", requiresDependencyResolution = ResolutionScope.COMPILE_PLUS_RUNTIME)
-//@Execute(phase = LifecyclePhase.PROCESS_CLASSES)
+@Mojo(name = "build", requiresDependencyResolution = ResolutionScope.COMPILE_PLUS_RUNTIME, defaultPhase = LifecyclePhase.PREPARE_PACKAGE)
 public class BuildMojo extends AbstractBuildMojo {
 
     /**
@@ -160,9 +175,6 @@ public class BuildMojo extends AbstractBuildMojo {
 
     @Parameter
     protected Map<String, String> defines = new TreeMap<>();
-    
-    @Parameter
-    protected Map<String, String> taskMappings = new HashMap<>();
 
     /**
      * Closure flag: "Rewrite ES6 library calls to use polyfills provided by the compiler's runtime."
@@ -197,6 +209,13 @@ public class BuildMojo extends AbstractBuildMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
+        // pre-create the directory so it is easier to find up front, even if it starts off empty
+        try {
+            Files.createDirectories(Paths.get(webappDirectory));
+        } catch (IOException e) {
+            throw new MojoExecutionException("Failed to create the webappDirectory " + webappDirectory, e);
+        }
+
         PluginDescriptor pluginDescriptor = (PluginDescriptor) getPluginContext().get("pluginDescriptor");
         String pluginVersion = pluginDescriptor.getVersion();
 
@@ -237,9 +256,6 @@ public class BuildMojo extends AbstractBuildMojo {
         // given the build output, determine what tasks we're going to run
         String outputTask = getOutputTask(compilationLevel);
 
-        // use any task wiring if specified
-        Map<String, String> outputToNameMappings = taskMappings;
-
         // construct other required elements to get the work done
         ScheduledExecutorService executor = Executors.newScheduledThreadPool(getWorkerTheadCount());
         final DiskCache diskCache;
@@ -250,7 +266,7 @@ public class BuildMojo extends AbstractBuildMojo {
         }
         MavenLog mavenLog = new MavenLog(getLog());
         TaskScheduler taskScheduler = new TaskScheduler(executor, diskCache, mavenLog);
-        TaskRegistry taskRegistry = new TaskRegistry(outputToNameMappings);
+        TaskRegistry taskRegistry = createTaskRegistry();
 
         // Given these, build the graph of work we need to complete
         BuildService buildService = new BuildService(taskRegistry, taskScheduler, diskCache);
