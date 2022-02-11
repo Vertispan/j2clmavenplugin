@@ -33,7 +33,7 @@ public class SkipAptTask extends BytecodeTask {
 
     @Override
     public String getVersion() {
-        return "0";
+        return super.getVersion() + "0";
     }
 
     @Nullable
