@@ -98,7 +98,7 @@
                     in this one directory, so the jetty plugin or configuration needs to
                     know to serve this directory
                     -->
-                    <webappDirectory>${project.build.directory}/j2cl-watch</webappDirectory>
+                    <webappDirectory>\${project.build.directory}/j2cl-watch</webappDirectory>
                 </configuration>
             </plugin>
 

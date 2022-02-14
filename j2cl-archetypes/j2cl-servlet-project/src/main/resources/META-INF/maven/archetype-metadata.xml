@@ -41,6 +41,12 @@
                         <include>**/*.css</include>
                     </includes>
                 </fileSet>
+                <fileSet encoding="UTF-8">
+                    <directory>src/main/jettyconf</directory>
+                    <includes>
+                        <include>**/*.xml</include>
+                    </includes>
+                </fileSet>
             </fileSets>
         </module>
     </modules>

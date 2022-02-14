@@ -50,9 +50,6 @@
                         <goals>
                             <goal>build</goal>
                         </goals>
-                        <configuration>
-                            <initialScriptFilename>client-app.js</initialScriptFilename>
-                        </configuration>
                     </execution>
                 </executions>
             </plugin>
