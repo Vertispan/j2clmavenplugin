@@ -46,14 +46,12 @@
                 <artifactId>j2cl-maven-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>build-client-app-js</id>
                         <goals>
                             <goal>build</goal>
                         </goals>
                     </execution>
                 </executions>
             </plugin>
-
         </plugins>
     </build>
 </project>

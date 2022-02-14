@@ -53,7 +53,6 @@
                 <executions>
                     <execution>
                         <id>test-js</id>
-                        <phase>test</phase>
                         <goals>
                             <goal>test</goal>
                         </goals>

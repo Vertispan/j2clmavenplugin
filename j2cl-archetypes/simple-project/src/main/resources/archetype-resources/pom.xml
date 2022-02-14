@@ -95,15 +95,12 @@
         <version>\${j2cl.maven.plugin.version}</version>
         <executions>
           <execution>
-            <id>build-js</id>
-            <phase>generate-sources</phase>
             <goals>
               <goal>build</goal>
             </goals>
           </execution>
           <execution>
             <id>test-js</id>
-            <phase>test</phase>
             <goals>
               <goal>test</goal>
             </goals>
