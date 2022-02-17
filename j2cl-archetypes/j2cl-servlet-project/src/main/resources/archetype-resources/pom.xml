@@ -65,6 +65,15 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-war-plugin</artifactId>
                     <version>\${maven.war.plugin.version}</version>
+                    <configuration>
+                        <!--
+                        Disable this for not only the j2cl projects, but also for the
+                        server itself - if the web.xml is present, the @WebServlet
+                        annotation won't work, and if the file is missing, the plugin
+                        defaults to failing without this flag
+                        -->
+                        <failOnMissingWebXml>false</failOnMissingWebXml>
+                    </configuration>
                 </plugin>
                 <!--
                 This archetype only supports jetty at this time, though supporting
