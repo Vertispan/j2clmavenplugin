@@ -17,6 +17,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static com.vertispan.j2cl.build.provided.ClosureTask.COPIED_OUTPUT;
+
 @AutoService(TaskFactory.class)
 public class BundleJarTask extends TaskFactory {
 
@@ -72,6 +74,15 @@ public class BundleJarTask extends TaskFactory {
         File initialScriptFile = config.getWebappDirectory().resolve(config.getInitialScriptFilename()).toFile();
         Map<String, Object> defines = new LinkedHashMap<>(config.getDefines());
 
+        List<Input> outputToCopy = Stream.concat(
+                        Stream.of(project),
+                        scope(project.getDependencies(), Dependency.Scope.RUNTIME).stream()
+                )
+                // Only need to consider the original inputs and generated sources,
+                // J2CL won't contribute this kind of sources
+                .map(p -> input(p, OutputTypes.BYTECODE).filter(COPIED_OUTPUT))
+                .collect(Collectors.toList());
+
         return new FinalOutputTask() {
             @Override
             public void execute(TaskContext context) throws Exception {
@@ -123,6 +134,11 @@ public class BundleJarTask extends TaskFactory {
                     ));
                 } catch (IOException e) {
                     throw new UncheckedIOException("Failed to write html import file", e);
+                }
+                for (Input input : outputToCopy) {
+                    for (CachedPath entry : input.getFilesAndHashes()) {
+                        Files.copy(entry.getAbsolutePath(), taskContext.outputPath().resolve(entry.getSourcePath()));
+                    }
                 }
             }
         };

@@ -10,6 +10,9 @@ public interface Input {
      *
      * Specifies that only part of this input is required. A path entry that matches any
      * of the provided filters will be included.
+     *
+     * The path parameter given to the matcher will be the relative path of the file within
+     * this input - the parent path will not be provided.
      */
     Input filter(PathMatcher... filters);
 
