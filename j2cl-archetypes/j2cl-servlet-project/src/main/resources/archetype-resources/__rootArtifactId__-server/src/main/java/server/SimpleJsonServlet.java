@@ -1,5 +1,7 @@
 package ${package}.server;
 
+import ${package}.shared.SharedType;
+
 import java.io.IOException;
 import java.util.regex.Pattern;
 
@@ -25,11 +27,12 @@ public class SimpleJsonServlet extends HttpServlet {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             return;
         }
+        String reply = SharedType.sayHello(name);
 
         response.setContentType("application/json;charset=UTF-8");
 
         try (ServletOutputStream out = response.getOutputStream()) {
-            out.print("{\"response\":\"Hello, " + name + "\"}");
+            out.print("{\"response\":\"" + reply + "\"}");
         }
     }
 

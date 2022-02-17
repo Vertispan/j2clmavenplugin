@@ -1,5 +1,7 @@
 package ${package}.client;
 
+import ${package}.shared.SharedType;
+
 import elemental2.dom.DomGlobal;
 import elemental2.dom.HTMLButtonElement;
 import elemental2.dom.HTMLDivElement;
@@ -15,7 +17,7 @@ public class ${module} {
 
         HTMLButtonElement btn = (HTMLButtonElement) DomGlobal.document.createElement("button");
         btn.classList.add("myButton");
-        btn.textContent = "J2CL !!!";
+        btn.textContent = SharedType.sayHello("HTML");
 
         btn.addEventListener("click", evt -> {
             goGetData(btn);
