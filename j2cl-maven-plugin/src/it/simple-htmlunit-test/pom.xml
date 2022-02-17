@@ -42,8 +42,6 @@
                 <version>@project.version@</version>
                 <executions>
                     <execution>
-                        <id>test-js</id>
-                        <phase>prepare-package</phase>
                         <goals>
                             <goal>test</goal>
                         </goals>

@@ -34,8 +34,6 @@
         <version>@project.version@</version>
         <executions>
           <execution>
-            <id>build-js</id>
-            <phase>prepare-package</phase>
             <goals>
               <goal>build</goal>
             </goals>

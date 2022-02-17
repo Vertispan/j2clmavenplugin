@@ -23,7 +23,7 @@ public class ${module} {
         DomGlobal.document.body.appendChild(wrapper);
     }
 
-    String helloWorldString() {
+    public String helloWorldString() {
         return HELLO_WORLD;
     }
 }

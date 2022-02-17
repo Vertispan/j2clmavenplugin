@@ -58,7 +58,6 @@
                 <executions>
                     <execution>
                         <id>test-js-with-assertions-default</id>
-                        <phase>prepare-package</phase>
                         <goals>
                             <goal>test</goal>
                         </goals>
@@ -73,7 +72,6 @@
                     </execution>
                     <execution>
                         <id>test-js-with-assertions-true</id>
-                        <phase>prepare-package</phase>
                         <goals>
                             <goal>test</goal>
                         </goals>
@@ -87,7 +85,6 @@
                     </execution>
                     <execution>
                         <id>test-js-with-assertions-false</id>
-                        <phase>prepare-package</phase>
                         <goals>
                             <goal>test</goal>
                         </goals>

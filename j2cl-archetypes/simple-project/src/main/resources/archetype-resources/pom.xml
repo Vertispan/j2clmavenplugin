@@ -45,21 +45,6 @@
 
     <dependency>
       <groupId>com.vertispan.j2cl</groupId>
-      <artifactId>gwttestcase-emul</artifactId>
-      <version>\${j2cl.version}</version>
-      <scope>test</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>com.vertispan.j2cl</groupId>
-      <artifactId>gwttestcase-emul</artifactId>
-      <version>\${j2cl.version}</version>
-      <classifier>sources</classifier>
-      <scope>test</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>com.vertispan.j2cl</groupId>
       <artifactId>junit-emul</artifactId>
       <version>\${j2cl.version}</version>
       <scope>test</scope>
@@ -95,15 +80,12 @@
         <version>\${j2cl.maven.plugin.version}</version>
         <executions>
           <execution>
-            <id>build-js</id>
-            <phase>generate-sources</phase>
             <goals>
               <goal>build</goal>
             </goals>
           </execution>
           <execution>
             <id>test-js</id>
-            <phase>test</phase>
             <goals>
               <goal>test</goal>
             </goals>
