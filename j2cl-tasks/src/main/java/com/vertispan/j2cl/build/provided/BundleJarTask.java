@@ -18,6 +18,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.vertispan.j2cl.build.provided.ClosureTask.COPIED_OUTPUT;
+import static com.vertispan.j2cl.build.provided.ClosureTask.copiedOutputPath;
+import static com.vertispan.j2cl.build.provided.JsZipBundleTask.JSZIP_BUNDLE_OUTPUT_TYPE;
 
 @AutoService(TaskFactory.class)
 public class BundleJarTask extends TaskFactory {
@@ -69,7 +71,7 @@ public class BundleJarTask extends TaskFactory {
         }
 
         //cheaty, but lets us cache
-        Input jszip = input(project, "jszipbundle");
+        Input jszip = input(project, JSZIP_BUNDLE_OUTPUT_TYPE);
 
         File initialScriptFile = config.getWebappDirectory().resolve(config.getInitialScriptFilename()).toFile();
         Map<String, Object> defines = new LinkedHashMap<>(config.getDefines());
@@ -137,7 +139,7 @@ public class BundleJarTask extends TaskFactory {
                 }
                 for (Input input : outputToCopy) {
                     for (CachedPath entry : input.getFilesAndHashes()) {
-                        Files.copy(entry.getAbsolutePath(), taskContext.outputPath().resolve(entry.getSourcePath()));
+                        copiedOutputPath(initialScriptFile.getParentFile().toPath(), entry);
                     }
                 }
             }

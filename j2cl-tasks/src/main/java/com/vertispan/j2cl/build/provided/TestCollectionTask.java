@@ -45,8 +45,9 @@ public class TestCollectionTask extends TaskFactory {
                 // Or even better, merge?
 
                 for (CachedPath entry : apt.getFilesAndHashes()) {
-                    Files.createDirectories(context.outputPath().resolve(entry.getSourcePath()).getParent());
-                    Files.copy(entry.getAbsolutePath(), context.outputPath().resolve(entry.getSourcePath()));
+                    Path outputFile = context.outputPath().resolve(entry.getSourcePath());
+                    Files.createDirectories(outputFile.getParent());
+                    Files.copy(entry.getAbsolutePath(), outputFile);
                 }
             }
 

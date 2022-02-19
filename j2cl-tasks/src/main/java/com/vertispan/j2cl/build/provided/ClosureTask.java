@@ -18,18 +18,23 @@ import java.util.stream.StreamSupport;
 
 @AutoService(TaskFactory.class)
 public class ClosureTask extends TaskFactory {
-    private static final Path META_INF_EXTERNS = Paths.get("META-INF", "externs");
-    private static final Path META_INF_RESOURCES = Paths.get("META-INF", "resources");
+    private static final Path META_INF = Paths.get("META-INF");
+    /** servlet 3 and webjars convention */
+    private static final Path META_INF_RESOURCES = META_INF.resolve("resources");
+    /** optional directory to offer externs within a jar */
+    private static final Path META_INF_EXTERNS = META_INF.resolve("externs");
+
+    private static final Path PUBLIC = Paths.get("public");
 
     private static final PathMatcher JS_SOURCES = withSuffix(".js");
     private static final PathMatcher NATIVE_JS_SOURCES = withSuffix(".native.js");
     private static final PathMatcher EXTERNS_SOURCES = withSuffix(".externs.js");
 
-    private static final PathMatcher IN_META_INF = path -> path.iterator().next().toString().equals("META_INF");
+    private static final PathMatcher IN_META_INF = path -> path.startsWith(META_INF);
     private static final PathMatcher IN_META_INF_EXTERNS = path -> path.startsWith(META_INF_EXTERNS);
     private static final PathMatcher IN_META_INF_RESOURCES = path -> path.startsWith(META_INF_RESOURCES);
 
-    private static final PathMatcher IN_PUBLIC = path -> StreamSupport.stream(path.spliterator(), false).anyMatch(p -> p.toString().equals("public"));
+    private static final PathMatcher IN_PUBLIC = path -> StreamSupport.stream(path.spliterator(), false).anyMatch(PUBLIC::equals);
 
     /**
      * JS files that closure should use as type information
@@ -81,6 +86,34 @@ public class ClosureTask extends TaskFactory {
             return "Output to copy without transpiling or bundling";
         }
     };
+
+    /** Strips off any prefix and returns an absolute path describing where to copy the file */
+    public static void copiedOutputPath(Path outputDirectory, CachedPath fileToCopy) throws IOException {
+        Path sourcePath = fileToCopy.getSourcePath();
+        final Path outputPath;
+        if (IN_META_INF_RESOURCES.matches(sourcePath)) {
+            outputPath = META_INF_RESOURCES.relativize(sourcePath);
+        } else if (IN_PUBLIC.matches(sourcePath)) {
+            List<String> dir = new ArrayList<>();
+            boolean seenPublic = false;
+            for (Path path : sourcePath) {
+                if (!seenPublic) {
+                    if (path.equals(PUBLIC)) {
+                        seenPublic = true;
+                    }
+                    continue;
+                }
+                dir.add(path.toString());
+            }
+
+            outputPath = Paths.get(dir.remove(0), dir.toArray(new String[0]));
+        } else {
+            throw new IllegalStateException("Output file not in public/ or META-INF/resources/: " + fileToCopy);
+        }
+        Path outputFile = outputDirectory.resolve(outputPath);
+        Files.createDirectories(outputFile.getParent());
+        Files.copy(fileToCopy.getAbsolutePath(), outputFile);
+    }
 
     @Override
     public String getOutputType() {
@@ -221,9 +254,10 @@ public class ClosureTask extends TaskFactory {
                     Files.createDirectories(webappDirectory);
                 }
                 FileUtils.copyDirectory(taskContext.outputPath().toFile(), webappDirectory.toFile());
+                Path resourceOutputPath = webappDirectory.resolve(initialScriptFilename).getParent();
                 for (Input input : outputToCopy) {
                     for (CachedPath entry : input.getFilesAndHashes()) {
-                        Files.copy(entry.getAbsolutePath(), taskContext.outputPath().resolve(entry.getSourcePath()));
+                        copiedOutputPath(resourceOutputPath, entry);
                     }
                 }
             }

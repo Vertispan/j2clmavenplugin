@@ -51,8 +51,9 @@ public class BytecodeTask extends TaskFactory {
             Input existingUnpackedBytecode = input(project, OutputTypes.INPUT_SOURCES);
             return context -> {
                 for (CachedPath entry : existingUnpackedBytecode.getFilesAndHashes()) {
-                    Files.createDirectories(context.outputPath().resolve(entry.getSourcePath()).getParent());
-                    Files.copy(entry.getAbsolutePath(), context.outputPath().resolve(entry.getSourcePath()));
+                    Path outputFile = context.outputPath().resolve(entry.getSourcePath());
+                    Files.createDirectories(outputFile.getParent());
+                    Files.copy(entry.getAbsolutePath(), outputFile);
                 }
             };
         }

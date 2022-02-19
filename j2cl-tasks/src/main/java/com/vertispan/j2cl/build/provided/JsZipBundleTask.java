@@ -19,9 +19,12 @@ import java.util.List;
  */
 @AutoService(TaskFactory.class)
 public class JsZipBundleTask extends TaskFactory {
+    // While this is an internal task, it is still possible to provide an alternative implementation
+    public static final String JSZIP_BUNDLE_OUTPUT_TYPE = "jszipbundle";
+
     @Override
     public String getOutputType() {
-        return "jszipbundle";
+        return JSZIP_BUNDLE_OUTPUT_TYPE;
     }
 
     @Override
