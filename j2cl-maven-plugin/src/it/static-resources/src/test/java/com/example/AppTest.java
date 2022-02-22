@@ -13,15 +13,15 @@ import org.junit.Test;
  */
 @J2clTestInput(AppTest.class)
 public class AppTest {
-//    @Test(timeout = 1000)
+    @Test(timeout = 1000)
     public Promise<?> testPublicFile() {
         return App.getData("publicfile.js");
     }
-//    @Test(timeout = 1000)
+    @Test(timeout = 1000)
     public Promise<?> testMetaInfFile() {
         return App.getData("metainfresourcesfile.js");
     }
-//    @Test(timeout = 1000)
+    @Test(timeout = 1000)
     public Promise<?> testIgnoredFile() {
         // failure expected, we handle that in the .then() so that the test will only see success
         return App.getData("ignoredfile.js").then(text -> Promise.reject("failure expected"), fail -> {
