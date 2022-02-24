@@ -14,15 +14,56 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 @AutoService(TaskFactory.class)
 public class ClosureTask extends TaskFactory {
-    public static final PathMatcher JS_SOURCES = withSuffix(".js");
-    public static final PathMatcher NATIVE_JS_SOURCES = withSuffix(".native.js");
+    private static final Path META_INF = Paths.get("META-INF");
+    /** servlet 3 and webjars convention */
+    private static final Path META_INF_RESOURCES = META_INF.resolve("resources");
+    /** optional directory to offer externs within a jar */
+    private static final Path META_INF_EXTERNS = META_INF.resolve("externs");
+
+    private static final Path PUBLIC = Paths.get("public");
+
+    private static final PathMatcher JS_SOURCES = withSuffix(".js");
+    private static final PathMatcher NATIVE_JS_SOURCES = withSuffix(".native.js");
+    private static final PathMatcher EXTERNS_SOURCES = withSuffix(".externs.js");
+
+    private static final PathMatcher IN_META_INF = path -> path.startsWith(META_INF);
+    private static final PathMatcher IN_META_INF_EXTERNS = path -> path.startsWith(META_INF_EXTERNS);
+    private static final PathMatcher IN_META_INF_RESOURCES = path -> path.startsWith(META_INF_RESOURCES);
+
+    private static final PathMatcher IN_PUBLIC = path -> StreamSupport.stream(path.spliterator(), false).anyMatch(PUBLIC::equals);
+
+    /**
+     * JS files that closure should use as type information
+     */
+    public static final PathMatcher EXTERNS = new PathMatcher() {
+        @Override
+        public boolean matches(Path path) {
+            return IN_META_INF_EXTERNS.matches(path) || EXTERNS_SOURCES.matches(path);
+        }
+
+        @Override
+        public String toString() {
+            return "externs to pass to closure";
+        }
+    };
+
+    /**
+     * JS files that closure should accept as input to bundle/compile.
+     */
     public static final PathMatcher PLAIN_JS_SOURCES = new PathMatcher() {
         @Override
         public boolean matches(Path path) {
-            return JS_SOURCES.matches(path) && !NATIVE_JS_SOURCES.matches(path);
+            if (IN_META_INF.matches(path) && !IN_META_INF_EXTERNS.matches(path)) {
+                return false;
+            }
+            if (IN_PUBLIC.matches(path)) {
+                return false;
+            }
+            return JS_SOURCES.matches(path) && !NATIVE_JS_SOURCES.matches(path) && !EXTERNS.matches(path);
         }
 
         @Override
@@ -30,6 +71,50 @@ public class ClosureTask extends TaskFactory {
             return "Only non-native JS sources";
         }
     };
+
+    /**
+     * Files that should be copied to the final output directory.
+     */
+    public static final PathMatcher COPIED_OUTPUT = new PathMatcher() {
+        @Override
+        public boolean matches(Path path) {
+            return IN_PUBLIC.matches(path) || IN_META_INF_RESOURCES.matches(path);
+        }
+
+        @Override
+        public String toString() {
+            return "Output to copy without transpiling or bundling";
+        }
+    };
+
+    /** Strips off any prefix and returns an absolute path describing where to copy the file */
+    public static void copiedOutputPath(Path outputDirectory, CachedPath fileToCopy) throws IOException {
+        Path sourcePath = fileToCopy.getSourcePath();
+        final Path outputPath;
+        if (IN_META_INF_RESOURCES.matches(sourcePath)) {
+            outputPath = META_INF_RESOURCES.relativize(sourcePath);
+        } else if (IN_PUBLIC.matches(sourcePath)) {
+            List<String> dir = new ArrayList<>();
+            boolean seenPublic = false;
+            for (Path path : sourcePath) {
+                if (!seenPublic) {
+                    if (path.equals(PUBLIC)) {
+                        seenPublic = true;
+                    }
+                    continue;
+                }
+                dir.add(path.toString());
+            }
+
+            outputPath = Paths.get(dir.remove(0), dir.toArray(new String[0]));
+        } else {
+            throw new IllegalStateException("Output file not in public/ or META-INF/resources/: " + fileToCopy);
+        }
+        Path outputFile = outputDirectory.resolve(outputPath);
+        Files.createDirectories(outputFile.getParent());
+        Files.copy(fileToCopy.getAbsolutePath(), outputFile);
+    }
+
     @Override
     public String getOutputType() {
         return OutputTypes.OPTIMIZED_JS;
@@ -51,22 +136,27 @@ public class ClosureTask extends TaskFactory {
         // TODO filter to just JS and sourcemaps? probably not required unless we also get sources
         //      from the actual input source instead of copying it along each step
         List<Input> jsSources = Stream.concat(
-                Stream.of(
-                        input(project, OutputTypes.TRANSPILED_JS).filter(JS_SOURCES),
-                        // BYTECODE will contains original and generated js sources
-                        input(project, OutputTypes.BYTECODE).filter(PLAIN_JS_SOURCES)
-                ),
-                scope(project.getDependencies(), Dependency.Scope.RUNTIME)
-                .stream()
-                .flatMap(p -> {
-                    return Stream.of(
-                            input(p, OutputTypes.TRANSPILED_JS).filter(JS_SOURCES),
-                            // generated sources will include original input sources
-                            input(p, OutputTypes.BYTECODE).filter(PLAIN_JS_SOURCES)
-                    );
-                })
-        ).collect(Collectors.toList());
+                Stream.of(project),
+                scope(project.getDependencies(), Dependency.Scope.RUNTIME).stream()
+        )
+                .flatMap(p -> Stream.of(
+                        input(p, OutputTypes.TRANSPILED_JS),
+                        // Bytecode sources will include original input sources
+                        // as well as generated input when the jar was built
+                        input(p, OutputTypes.BYTECODE)
+                ))
+                // Only include the JS and externs
+                .map(i -> i.filter(PLAIN_JS_SOURCES, EXTERNS))
+                .collect(Collectors.toList());
 
+        List<Input> outputToCopy = Stream.concat(
+                Stream.of(project),
+                scope(project.getDependencies(), Dependency.Scope.RUNTIME).stream()
+        )
+                // Only need to consider the original inputs and generated sources,
+                // J2CL won't contribute this kind of sources
+                .map(p -> input(p, OutputTypes.BYTECODE).filter(COPIED_OUTPUT))
+                .collect(Collectors.toList());
 
         // grab configs we plan to use
         String compilationLevelConfig = config.getCompilationLevel();
@@ -164,6 +254,12 @@ public class ClosureTask extends TaskFactory {
                     Files.createDirectories(webappDirectory);
                 }
                 FileUtils.copyDirectory(taskContext.outputPath().toFile(), webappDirectory.toFile());
+                Path resourceOutputPath = webappDirectory.resolve(initialScriptFilename).getParent();
+                for (Input input : outputToCopy) {
+                    for (CachedPath entry : input.getFilesAndHashes()) {
+                        copiedOutputPath(resourceOutputPath, entry);
+                    }
+                }
             }
         };
     }

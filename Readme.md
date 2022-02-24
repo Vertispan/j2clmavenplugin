@@ -1,15 +1,19 @@
 J2CL Maven plugin
 =================
 
-This plugin includes the code original developed as
+This plugins compiles Java sources to optimized JavaScript using https://github.com/google/j2cl/ and
+https://github.com/google/closure-compiler/. All Java code in this project will be transpiled to JS, 
+and any source in dependencies will be transpiled as well, and all of that JS will then be optimized
+with the closure-compiler to produce small, efficient JavaScript.
 
-        com.vertispan.j2cl:build-tools
+Webjars that are included in the project's list of runtime dependencies will be made available in the
+compile output, placed relative to the initial script's output directory.
 
-built from here:
+Resources present in a `public/` directory within normal Java packages will also be copied to the
+output directory.
 
-    https://github.com/gitgabrio/j2cl-devmode-strawman
-
-------------------------
+All other JS found in Java packages will be assumed to be JavaScript that should be included in the
+main build output, and is assumed to be safe to compile with closure.
 
 # Example usage
 
@@ -23,20 +27,23 @@ tests](j2cl-maven-plugin/src/it/) used to verify various aspects of the project 
 
 The plugin has four goals
 
-1. `build`: executes a single compilation, typically to produce a JS application or library.
+1. `build`: executes a single compilation, typically to produce a JS application or library. Bound by 
+default to the `prepare-package` phase.
 
-2. `test`: compiles and executes j2cl-annotated tests, once.
+2. `test`: compiles and executes j2cl-annotated tests. Bound by default to the `test` phase.
 
 3. `watch`: monitor source directories, and when changes happen that affect any `build` or `test`, recompile the 
-required parts of the project. Tests are not (presently) run, but can be run manually by loading the html pages
-that exist for them.
+required parts of the project. While this can be run on an individual client project, it is designed to run
+on an entire reactor at once from the parent project, where it will notice changes from any project required by
+the actual client projects, and can be directed to generate output anywhere that the server will notice and
+serve it.
   
 <!--   * `watch-test`: only rebuild things that affect `test` executions, useful when iterating on tests and avoiding
     building the application itself
    * `watch-build`: only rebuild things that affect `build` executions, may save time if tests aren't currently
     being re-run               -->
   
-4. `clean`: cleans up all the plugin-specific directories
+4. `clean`: cleans up all the plugin-specific directories.
 
 
 ----

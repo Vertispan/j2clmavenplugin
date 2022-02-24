@@ -17,6 +17,10 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static com.vertispan.j2cl.build.provided.ClosureTask.COPIED_OUTPUT;
+import static com.vertispan.j2cl.build.provided.ClosureTask.copiedOutputPath;
+import static com.vertispan.j2cl.build.provided.JsZipBundleTask.JSZIP_BUNDLE_OUTPUT_TYPE;
+
 @AutoService(TaskFactory.class)
 public class BundleJarTask extends TaskFactory {
 
@@ -67,10 +71,19 @@ public class BundleJarTask extends TaskFactory {
         }
 
         //cheaty, but lets us cache
-        Input jszip = input(project, "jszipbundle");
+        Input jszip = input(project, JSZIP_BUNDLE_OUTPUT_TYPE);
 
         File initialScriptFile = config.getWebappDirectory().resolve(config.getInitialScriptFilename()).toFile();
         Map<String, Object> defines = new LinkedHashMap<>(config.getDefines());
+
+        List<Input> outputToCopy = Stream.concat(
+                        Stream.of(project),
+                        scope(project.getDependencies(), Dependency.Scope.RUNTIME).stream()
+                )
+                // Only need to consider the original inputs and generated sources,
+                // J2CL won't contribute this kind of sources
+                .map(p -> input(p, OutputTypes.BYTECODE).filter(COPIED_OUTPUT))
+                .collect(Collectors.toList());
 
         return new FinalOutputTask() {
             @Override
@@ -123,6 +136,11 @@ public class BundleJarTask extends TaskFactory {
                     ));
                 } catch (IOException e) {
                     throw new UncheckedIOException("Failed to write html import file", e);
+                }
+                for (Input input : outputToCopy) {
+                    for (CachedPath entry : input.getFilesAndHashes()) {
+                        copiedOutputPath(initialScriptFile.getParentFile().toPath(), entry);
+                    }
                 }
             }
         };

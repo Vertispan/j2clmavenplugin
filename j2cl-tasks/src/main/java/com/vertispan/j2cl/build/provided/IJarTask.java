@@ -4,6 +4,7 @@ import com.google.auto.service.AutoService;
 import com.vertispan.j2cl.build.task.*;
 
 import java.nio.file.Files;
+import java.nio.file.Path;
 
 /**
  * TODO implement using the ijar tool or the equivelent
@@ -34,8 +35,9 @@ public class IJarTask extends TaskFactory {
 
             // for now we're going to just copy the bytecode
             for (CachedPath path : myStrippedBytecode.getFilesAndHashes()) {
-                Files.createDirectories(context.outputPath().resolve(path.getSourcePath()).getParent());
-                Files.copy(path.getAbsolutePath(), context.outputPath().resolve(path.getSourcePath()));
+                Path outputFile = context.outputPath().resolve(path.getSourcePath());
+                Files.createDirectories(outputFile.getParent());
+                Files.copy(path.getAbsolutePath(), outputFile);
             }
         };
     }
