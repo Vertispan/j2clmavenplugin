@@ -15,6 +15,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class Closure {
@@ -53,6 +54,7 @@ public class Closure {
             List<String> entrypoints,
             Map<String, String> defines,
             Collection<String> externFiles,
+            Optional<String> translationsFile,
             PersistentInputStore persistentInputStore,
             boolean exportTestFunctions,
             boolean checkAssertions,
@@ -111,6 +113,11 @@ public class Closure {
             jscompArgs.add("--externs");
             jscompArgs.add(extern);
         }
+
+        translationsFile.ifPresent(file -> {
+            jscompArgs.add("--translations_file");
+            jscompArgs.add(file);
+        });
 
         jscompArgs.add("--compilation_level");
         jscompArgs.add(compilationLevel.name());

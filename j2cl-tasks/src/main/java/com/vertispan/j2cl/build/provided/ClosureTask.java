@@ -167,6 +167,7 @@ public class ClosureTask extends TaskFactory {
         CompilerOptions.LanguageMode languageOut = CompilerOptions.LanguageMode.fromString(config.getLanguageOut());
         //TODO probably kill this, or at least make it work like an import via another task so we detect changes
         Collection<String> externs = config.getExterns();
+        Optional<String> translationsfile = config.getTranslationsFile();
         boolean checkAssertions = config.getCheckAssertions();
         boolean rewritePolyfills = config.getRewritePolyfills();
         boolean sourcemapsEnabled = config.getSourcemapsEnabled();
@@ -232,6 +233,7 @@ public class ClosureTask extends TaskFactory {
                         entrypoint,
                         defines,
                         externs,
+                        translationsfile,
                         null,
                         true,//TODO have this be passed in,
                         checkAssertions,

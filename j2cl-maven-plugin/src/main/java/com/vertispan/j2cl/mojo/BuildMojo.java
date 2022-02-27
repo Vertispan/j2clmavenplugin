@@ -135,6 +135,12 @@ public class BuildMojo extends AbstractBuildMojo {
     protected boolean rewritePolyfills;
 
     /**
+     * Closure flag: "Source of translated messages. Currently only supports XTB."
+     */
+    @Parameter
+    protected String translationsFile;
+
+    /**
      * Closure flag: "Determines the set of builtin externs to load. Options: BROWSER, CUSTOM. Defaults to BROWSER."
      *
      * Presently we default to BROWSER, but are considering changing this to CUSTOM if we include externs files in
