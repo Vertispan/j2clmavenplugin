@@ -307,7 +307,7 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
             case Artifact.SCOPE_PROVIDED:
                 return Dependency.Scope.COMPILE;
             case Artifact.SCOPE_RUNTIME:
-                return Dependency.Scope.RUNTIME;
+                return Dependency.Scope.BOTH;
             // These two should already be removed by earlier filtering, throw anyway
             case Artifact.SCOPE_IMPORT:
             case Artifact.SCOPE_SYSTEM:
