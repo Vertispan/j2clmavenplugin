@@ -171,6 +171,9 @@
           <environmentVariables>
             <MAVEN_OPTS>-ea</MAVEN_OPTS>
           </environmentVariables>
+          <extraArtifacts>
+            <artifact>com.google.jsinterop:jsinterop-annotations:1.0.2</artifact>
+          </extraArtifacts>
         </configuration>
       </plugin>
 
