@@ -173,6 +173,7 @@
           </environmentVariables>
           <extraArtifacts>
             <artifact>com.google.jsinterop:jsinterop-annotations:1.0.2</artifact>
+            <artifact>com.google.jsinterop:jsinterop:1.0.2:pom</artifact>
           </extraArtifacts>
         </configuration>
       </plugin>
