@@ -4,6 +4,7 @@ import com.google.auto.service.AutoService;
 import com.google.javascript.jscomp.CompilationLevel;
 import com.google.javascript.jscomp.CompilerOptions;
 import com.google.javascript.jscomp.DependencyOptions;
+import com.vertispan.j2cl.build.BuildService;
 import com.vertispan.j2cl.build.task.*;
 import com.vertispan.j2cl.tools.Closure;
 import org.apache.commons.io.FileUtils;
@@ -133,7 +134,7 @@ public class ClosureTask extends TaskFactory {
     }
 
     @Override
-    public Task resolve(Project project, Config config) {
+    public Task resolve(Project project, Config config, BuildService buildService) {
         // collect current project JS sources and runtime deps JS sources
         // TODO filter to just JS and sourcemaps? probably not required unless we also get sources
         //      from the actual input source instead of copying it along each step
@@ -144,16 +145,16 @@ public class ClosureTask extends TaskFactory {
                                 .filter(p -> !p.isJsZip())
                 )
                 .flatMap(p -> Stream.of(
-                        input(p, OutputTypes.TRANSPILED_JS),
+                        input(p, OutputTypes.TRANSPILED_JS, buildService),
                         // Bytecode sources will include original input sources
                         // as well as generated input when the jar was built
-                        input(p, OutputTypes.BYTECODE)
+                        input(p, OutputTypes.BYTECODE, buildService)
                 ));
 
         Stream<Input> jsFromJsZips = scope(project.getDependencies(), Dependency.Scope.RUNTIME)
                 .stream()
                 .filter(Project::isJsZip)
-                .map(p -> input(p, OutputTypes.BYTECODE));
+                .map(p -> input(p, OutputTypes.BYTECODE, buildService));
 
         List<Input> jsSources = Stream.concat(jsFromJavaProjects, jsFromJsZips)
                 // Only include the JS and externs
@@ -166,7 +167,7 @@ public class ClosureTask extends TaskFactory {
         )
                 // Only need to consider the original inputs and generated sources,
                 // J2CL won't contribute this kind of sources
-                .map(p -> input(p, OutputTypes.BYTECODE).filter(COPIED_OUTPUT))
+                .map(p -> input(p, OutputTypes.BYTECODE, buildService).filter(COPIED_OUTPUT))
                 .collect(Collectors.toList());
 
         // grab configs we plan to use
@@ -184,7 +185,7 @@ public class ClosureTask extends TaskFactory {
                         Stream.of(project),
                         scope(project.getDependencies(), Dependency.Scope.RUNTIME).stream()
                 )
-                .map(p -> input(p, OutputTypes.BYTECODE))
+                .map(p -> input(p, OutputTypes.BYTECODE, buildService))
                 // Only include the .xtb
                 .map(i -> i.filter(XTB))
                 .collect(Collectors.toList());

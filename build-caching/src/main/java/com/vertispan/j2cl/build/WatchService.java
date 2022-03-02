@@ -2,6 +2,7 @@ package com.vertispan.j2cl.build;
 
 import com.vertispan.j2cl.build.task.BuildLog;
 import com.google.common.base.Splitter;
+import com.vertispan.j2cl.build.task.OutputTypes;
 import io.methvin.watcher.DirectoryChangeEvent;
 import io.methvin.watcher.DirectoryChangeListener;
 import io.methvin.watcher.DirectoryWatcher;
@@ -103,7 +104,8 @@ public class WatchService {
             File file;
             if ( Files.exists(filesDat) && ( file = filesDat.toFile()).length() > 0 ) {
                 try (BufferedReader lineScanner = new BufferedReader(new FileReader(file))) {
-                    readFiles(lineScanner, all, createdFiles,
+                    readFiles(project,
+                              lineScanner, all, createdFiles,
                               changedFiles, deletedFiles);
                 }
                 putAll = false;
@@ -118,13 +120,22 @@ public class WatchService {
         }
     }
 
-    public void readFiles(BufferedReader lineScanner,
+    public void readFiles(Project project,
+                          BufferedReader lineScanner,
                           Map<Path, DiskCache.CacheEntry> all,
                           Map<Path, DiskCache.CacheEntry> createdFiles,
                           Map<Path, DiskCache.CacheEntry> changedFiles,
                           Map<Path, DiskCache.CacheEntry> deletedFiles) {
 
         try {
+            // Most populate last successful task dir, or incremental will not work.
+            // Must iterate int he correct order.
+            String[] outputPaths = new String[] {OutputTypes.GENERATED_SOURCES, OutputTypes.STRIPPED_SOURCES, OutputTypes.STRIPPED_BYTECODE,
+                                                 OutputTypes.BYTECODE, OutputTypes.STRIPPED_BYTECODE_HEADERS, OutputTypes.TRANSPILED_JS};
+            for (String outputPath : outputPaths) {
+                String path     = lineScanner.readLine();
+                buildService.getDiskCache().lastSuccessfulTaskDir.put(new Input(project, outputPath), Paths.get(path));
+            }
 
             String line     = lineScanner.readLine();
             int    dirSize = Integer.valueOf(line);

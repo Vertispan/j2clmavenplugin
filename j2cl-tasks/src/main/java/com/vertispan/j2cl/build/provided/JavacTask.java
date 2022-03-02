@@ -4,7 +4,6 @@ import com.google.auto.service.AutoService;
 import com.google.j2cl.common.SourceUtils;
 import com.vertispan.j2cl.build.BuildService;
 import com.vertispan.j2cl.build.ChangedAcceptor;
-import com.vertispan.j2cl.build.DiskCache;
 import com.vertispan.j2cl.build.task.*;
 import com.vertispan.j2cl.tools.Javac;
 
@@ -39,6 +38,7 @@ public class JavacTask extends TaskFactory {
 
     @Override
     public Task resolve(Project project, Config config, BuildService buildService) {
+        boolean incremental = true;
         // emits only stripped bytecode, so we're not worried about anything other than .java files to compile and .class on the classpath
         Input ownSources = input(project, OutputTypes.STRIPPED_SOURCES, buildService).filter(JAVA_SOURCES);
 
@@ -64,6 +64,15 @@ public class JavacTask extends TaskFactory {
                     extraClasspath.stream()).collect(Collectors.toList());
 
             List<File> sourcePaths = ownSources.getParentPaths().stream().map(Path::toFile).collect(Collectors.toList());
+            if (incremental) {
+                Path bytecodePath = buildService.getDiskCache().getLastSuccessfulDirectory(new com.vertispan.j2cl.build.Input((com.vertispan.j2cl.build.Project) project,
+                                                                                                                              OutputTypes.STRIPPED_BYTECODE));
+
+                if (bytecodePath != null) {
+                    classpathDirs.add(bytecodePath.resolve("results").toFile());
+                }
+            }
+
             Javac javac = new Javac(context, null, sourcePaths, classpathDirs, context.outputPath().toFile(), bootstrapClasspath);
 
             // TODO convention for mapping to original file paths, provide FileInfo out of Inputs instead of Paths,

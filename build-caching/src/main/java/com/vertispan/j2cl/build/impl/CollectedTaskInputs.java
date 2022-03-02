@@ -56,7 +56,7 @@ public class CollectedTaskInputs {
         t.setTaskFactory(new UnpackJarTaskFactory());
         t.setTask(t.getTaskFactory().resolve(project, null, null));
         // create a fake input and give it a hash so that this unpack only runs if the jar changes
-        Input jarInput = new Input(project, "jar", null);
+        Input jarInput = new Input(project, "jar");
         try {
             jarInput.setCurrentContents(new TaskOutput(
                     Collections.singleton(new DiskCache.CacheEntry(jarPath.getFileName(), jarPath.getParent(), FileHasher.DEFAULT_FILE_HASHER.hash(jarPath)))));
@@ -69,7 +69,7 @@ public class CollectedTaskInputs {
     }
 
     public Input getAsInput() {
-        return new Input(project, taskFactory.getOutputType(), buildService);
+        return new Input(project, taskFactory.getOutputType());
     }
 
     public List<Input> getInputs() {

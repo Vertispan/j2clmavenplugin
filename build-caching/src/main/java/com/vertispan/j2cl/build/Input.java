@@ -24,12 +24,10 @@ public class Input implements com.vertispan.j2cl.build.task.Input {
     private final String outputType;
 
     private TaskOutput contents;
-    private BuildService buildService;
 
-    public Input(Project project, String outputType, BuildService buildService) {
+    public Input(Project project, String outputType) {
         this.project = project;
         this.outputType = outputType;
-        this.buildService = buildService;
     }
 
     public boolean hasContents() {

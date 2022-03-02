@@ -66,7 +66,7 @@ public class BuildMap {
      *
      * @param dir
      */
-    public void calculateChangeFiles(Path dir) {
+    public void build(Path dir) {
         buildAndProcessChangedFiles(dir);
         populateFilesToDelete();
     }

@@ -65,7 +65,7 @@ public class BuildService {
     }
 
     private void collectTasksFromProject(String taskName, Project project, PropertyTrackingConfig.ConfigValueProvider config, Map<Input, CollectedTaskInputs> collectedSoFar) {
-        Input newInput = new Input(project, taskName, this);
+        Input newInput = new Input(project, taskName);
         if (collectedSoFar.containsKey(newInput)) {
             // don't build a step twice
 //            return collectedSoFar.get(newInput);
@@ -277,11 +277,26 @@ public class BuildService {
         }
     }
 
-    public BuildMap createBuildMap(Project project, Path dir, Path filesDatPath,
-                                   Map<Project, Map<Path, DiskCache.CacheEntry>> createdFiles,
-                                   Map<Project, Map<Path, DiskCache.CacheEntry>> changedFiles,
-                                   Map<Project, Map<Path, DiskCache.CacheEntry>> deletedFiles) {
-        Map<Path, DiskCache.CacheEntry> cachedFiles = currentProjectSourceHash.get(project);
+    public BuildMap safeCreateBuildMap(Project project, Path dir,
+                                       Map<Project, Map<Path, DiskCache.CacheEntry>> createdFiles,
+                                       Map<Project, Map<Path, DiskCache.CacheEntry>> changedFiles,
+                                       Map<Project, Map<Path, DiskCache.CacheEntry>> deletedFiles) {
+        BuildMap buildMap = buildMaps.get(project);
+        if (buildMap == null) {
+            synchronized (buildMaps) {
+                buildMap = buildMaps.get(project);
+                if (buildMap == null) {
+                    buildMap = createBuildMap(project, dir, createdFiles, changedFiles, deletedFiles);
+                }
+            }
+        }
+
+        return buildMap;
+    }
+
+    private BuildMap createBuildMap(Project project, Path dir, Map<Project, Map<Path, DiskCache.CacheEntry>> createdFiles, Map<Project, Map<Path, DiskCache.CacheEntry>> changedFiles, Map<Project, Map<Path, DiskCache.CacheEntry>> deletedFiles) {
+        BuildMap                        buildMap;
+        Map<Path, DiskCache.CacheEntry> cachedFiles     = currentProjectSourceHash.get(project);
         Map<Path, DiskCache.CacheEntry> createdFilesMap = createdFiles.get(project);
         Map<Path, DiskCache.CacheEntry> changedFilesMap = changedFiles.get(project);
         Map<Path, DiskCache.CacheEntry> deletedFilesMap = deletedFiles.get(project);
@@ -292,50 +307,45 @@ public class BuildService {
 
         if (createdFilesMap != null) {
             createdFilesMap.values().forEach(e -> dirToProjectFiles.get(e.getAbsoluteParent().toString())
-                                                                         .getAdded().add(e.getSourcePath().toString()));
+                                                                   .getAdded().add(e.getSourcePath().toString()));
         }
 
         if (changedFilesMap != null) {
             changedFilesMap.values().forEach(e -> dirToProjectFiles.get(e.getAbsoluteParent().toString())
-                                                                         .getUpdated().add(e.getSourcePath().toString()));
+                                                                   .getUpdated().add(e.getSourcePath().toString()));
         }
 
         if (deletedFilesMap != null) {
             deletedFilesMap.values().forEach(e -> dirToProjectFiles.get(e.getAbsoluteParent().toString())
-                                                                         .getRemoved().add(e.getSourcePath().toString()));
+                                                                   .getRemoved().add(e.getSourcePath().toString()));
         }
 
-        BuildMap buildMap = new BuildMap(project, dirToProjectFiles);
+        buildMap = new BuildMap(project, dirToProjectFiles);
         buildMaps.put(project, buildMap);
-        System.out.println("BuildMap: " + filesDatPath);
+        System.out.println("BuildMap: " + project.getKey());
 
         try {
-            if (Files.exists(filesDatPath)) {
-                // previous execution exists, so process .dat files
-                // we don't know what this module will link to, so all classes need to be cloned.
-                for (com.vertispan.j2cl.build.task.Dependency dep : project.getDependencies()) {
-                    BuildMap depBuildMap = buildMaps.get(dep.getProject());
-                    Input input = new Input((Project) dep.getProject(), OutputTypes.TRANSPILED_JS, this);
-                    Path path = diskCache.getLastSuccessfulDirectory(input);
-                    if (depBuildMap == null && path != null) {
-                        Path depProjPath = diskCache.cacheDir.toPath().resolve(dep.getProject().getKey().replaceAll("[^\\-_a-zA-Z0-9.]", "-"));
-                        Path depFilesDotDat = depProjPath.resolve("files.dat");
-                        depBuildMap = createBuildMap((Project) dep.getProject(), path,
-                                                     depFilesDotDat, createdFiles, changedFiles, deletedFiles);
-                    }
+            // previous execution exists, so process .dat files
+            // we don't know what this module will link to, so all classes need to be cloned.
+            for (com.vertispan.j2cl.build.task.Dependency dep : project.getDependencies()) {
+                BuildMap depBuildMap = buildMaps.get(dep.getProject());
+                Input input = new Input((Project) dep.getProject(), OutputTypes.TRANSPILED_JS);
+                Path path = diskCache.getLastSuccessfulDirectory(input);
+                if (depBuildMap == null && path != null) {
+                    depBuildMap = safeCreateBuildMap((Project) dep.getProject(), path,
+                                                     createdFiles, changedFiles, deletedFiles);
+                }
 
-                    // Dep projects not in the sources map, will not have BuildMaps
-                    if (depBuildMap != null) {
-                        depBuildMap.cloneToTargetBuildMap(buildMap);
-                    }
+                // Dep projects not in the sources map, will not have BuildMaps
+                if (depBuildMap != null) {
+                    depBuildMap.cloneToTargetBuildMap(buildMap);
                 }
             }
 
-            buildMap.calculateChangeFiles(dir);
+            buildMap.build(dir);
         } catch (Exception e) {
             e.printStackTrace();
         }
-
         return buildMap;
     }
 
@@ -345,7 +355,8 @@ public class BuildService {
             dirToAll.put(s, new HashSet<>());
         });
 
-        cachedFiles.values().stream().forEach(e ->{
+        // do not include folders.
+        cachedFiles.values().stream().filter(entry -> !Files.isDirectory(entry.getAbsolutePath())).forEach(e ->{
             dirToAll.get(e.getAbsoluteParent().toString()).add(e.getSourcePath().toString());
         });
 
@@ -373,12 +384,10 @@ public class BuildService {
                 // null check avoids re-entrance, as createBuildMap is recursive
                 // and the same dep can be revisited.
                 if ( buildMaps.get(p) == null) {
-                    Input input = new Input(p, OutputTypes.TRANSPILED_JS, this);
+                    Input input = new Input(p, OutputTypes.TRANSPILED_JS);
                     if (diskCache.lastSuccessfulTaskDir.containsKey(input)) {
-                        Path projPath = diskCache.cacheDir.toPath().resolve(p.getKey().replaceAll("[^\\-_a-zA-Z0-9.]", "-"));
-                        Path filesDotDat = projPath.resolve("files.dat");
-                        createBuildMap(p, diskCache.getLastSuccessfulDirectory(input),
-                                       filesDotDat, createdFiles, changedFiles, deletedFiles);
+                        safeCreateBuildMap(p, diskCache.getLastSuccessfulDirectory(input),
+                                           createdFiles, changedFiles, deletedFiles);
                     }
                 }
             }
@@ -386,7 +395,7 @@ public class BuildService {
     }
 
     public void copyAndDeleteFiles(Project project, String outputType, Path path) {
-        Path lastPath = diskCache.lastSuccessfulTaskDir.get(new Input(project, outputType, this));
+        Path lastPath = diskCache.lastSuccessfulTaskDir.get(new Input(project, outputType));
 
         if (lastPath != null) {
             copyFolder(lastPath.resolve("results").toFile(),
@@ -503,33 +512,28 @@ public class BuildService {
     }
 
     public void writeFileMetaData(Project project) {
-        BuildMap buildMap = buildMaps.get(project);
         Path projPath = diskCache.cacheDir.toPath().resolve(project.getKey().replaceAll("[^\\-_a-zA-Z0-9.]", "-"));
         Path filesDat = projPath.resolve("files.dat");
 
-        if (buildMap == null) {
-            // on a new build, where no previous output existed,
+        try(Writer out = Files.newBufferedWriter(filesDat, Charset.forName("UTF-8"))) {
+            // The paths for the last outputs need to be preserved, for restart.
+            String[] outputPaths = new String[] { OutputTypes.GENERATED_SOURCES, OutputTypes.STRIPPED_SOURCES, OutputTypes.STRIPPED_BYTECODE,
+                                                  OutputTypes.BYTECODE, OutputTypes.STRIPPED_BYTECODE_HEADERS, OutputTypes.TRANSPILED_JS};
+            for (String outputPath : outputPaths) {
+                Path path = diskCache.lastSuccessfulTaskDir.get(new Input(project, outputPath));
+                out.append(path + System.lineSeparator());
+            }
 
-            Path filesDatPath = Paths.get(projPath.toAbsolutePath().toString(), "files.dat");
-            Map<Path, DiskCache.CacheEntry> cachedFiles = currentProjectSourceHash.get(project);
-
+            Map<Path, DiskCache.CacheEntry> cachedFiles     = currentProjectSourceHash.get(project);
             Map<String, ProjectFiles> dirToProjectFiles = new HashMap<>();
+
             createDirToProjectFiles(project, cachedFiles, dirToProjectFiles);
 
-            buildMap = new BuildMap(project, dirToProjectFiles);
-            buildMaps.put(project, buildMap);
-        }
-
-        try(Writer out = Files.newBufferedWriter(filesDat, Charset.forName("UTF-8"))) {
-            Map<String, ProjectFiles> dirToprojectFiles = buildMap.getDirToprojectFiles();
-
-            out.append(dirToprojectFiles.size() + System.lineSeparator());
-
-            List<String> dirs = new ArrayList(dirToprojectFiles.keySet());
-
+            out.append(dirToProjectFiles.size() + System.lineSeparator());
+            List<String> dirs = new ArrayList(dirToProjectFiles.keySet());
             Collections.sort(dirs);
             for (String dir : dirs) {
-                List<String> files = new ArrayList(dirToprojectFiles.get(dir).getAll());
+                List<String> files = new ArrayList(dirToProjectFiles.get(dir).getAll());
                 Collections.sort(files);
                 Path base = Paths.get(dir);
                 out.append(dir + System.lineSeparator());

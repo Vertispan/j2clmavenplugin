@@ -4,7 +4,6 @@ import com.google.auto.service.AutoService;
 import com.google.j2cl.common.SourceUtils;
 import com.vertispan.j2cl.build.BuildService;
 import com.vertispan.j2cl.build.ChangedAcceptor;
-import com.vertispan.j2cl.build.DiskCache;
 import com.vertispan.j2cl.build.task.*;
 import com.vertispan.j2cl.tools.J2cl;
 
@@ -71,6 +70,14 @@ public class J2clTask extends TaskFactory {
             )
                     .collect(Collectors.toList());
 
+            if (incremental) {
+                Path bytecodePath = buildService.getDiskCache().getLastSuccessfulDirectory(new com.vertispan.j2cl.build.Input((com.vertispan.j2cl.build.Project) project,
+                                                                                                                              OutputTypes.BYTECODE));
+
+                if (bytecodePath != null) {
+                    classpathDirs.add(bytecodePath.resolve("results").toFile());
+                }
+            }
             J2cl j2cl = new J2cl(classpathDirs, bootstrapClasspath, context.outputPath().toFile(), context);
 
             // TODO convention for mapping to original file paths, provide FileInfo out of Inputs instead of Paths,

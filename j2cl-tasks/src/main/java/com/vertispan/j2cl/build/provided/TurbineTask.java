@@ -6,6 +6,7 @@ import com.google.j2cl.common.SourceUtils;
 import com.google.turbine.diag.TurbineError;
 import com.google.turbine.main.Main;
 import com.google.turbine.options.TurbineOptions;
+import com.vertispan.j2cl.build.BuildService;
 import com.vertispan.j2cl.build.task.*;
 
 import javax.lang.model.SourceVersion;
@@ -40,19 +41,19 @@ public class TurbineTask extends JavacTask {
     }
 
     @Override
-    public Task resolve(Project project, Config config) {
+    public Task resolve(Project project, Config config, BuildService buildService) {
         int version = SourceVersion.latestSupported().ordinal();
         if(version == 8) {
-            return super.resolve(project, config);
+            return super.resolve(project, config, buildService);
         }
 
         // emits only stripped bytecode, so we're not worried about anything other than .java files to compile and .class on the classpath
-        Input ownSources = input(project, OutputTypes.STRIPPED_SOURCES).filter(JAVA_SOURCES);
+        Input ownSources = input(project, OutputTypes.STRIPPED_SOURCES, buildService).filter(JAVA_SOURCES);
 
         List<File> extraClasspath = config.getExtraClasspath();
 
         List<Input> compileClasspath = scope(project.getDependencies(), Dependency.Scope.COMPILE).stream()
-                .map(p -> input(p, OutputTypes.STRIPPED_BYTECODE_HEADERS))
+                .map(p -> input(p, OutputTypes.STRIPPED_BYTECODE_HEADERS, buildService))
                 .map(input -> input.filter(JAVA_BYTECODE))
                 .collect(Collectors.toList());
 

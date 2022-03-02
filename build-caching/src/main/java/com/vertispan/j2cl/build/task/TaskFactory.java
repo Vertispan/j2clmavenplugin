@@ -43,7 +43,7 @@ public abstract class TaskFactory {
         return input(dependency.getProject(), outputType, buildService);
     }
     protected Input input(Project dependencyProject, String outputType, BuildService buildService) {
-        com.vertispan.j2cl.build.Input i = new com.vertispan.j2cl.build.Input((com.vertispan.j2cl.build.Project) dependencyProject, outputType, buildService);
+        com.vertispan.j2cl.build.Input i = new com.vertispan.j2cl.build.Input((com.vertispan.j2cl.build.Project) dependencyProject, outputType);
         inputs.add(i);
         return i;
     }
