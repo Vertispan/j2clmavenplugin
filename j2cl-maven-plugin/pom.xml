@@ -14,6 +14,13 @@
 
   <name>J2CL Maven Plugin</name>
 
+  <distributionManagement>
+    <site>
+      <id>github-pages</id>
+      <url>scm:git:git@github.com:vertispan/j2clmavenplugin.git</url>
+    </site>
+  </distributionManagement>
+
   <dependencies>
     <!-- Plugin dependencies -->
     <dependency>
