@@ -2,6 +2,10 @@ defaults: &defaults
     working_directory: ~/repo
     docker:
       - image: circleci/openjdk:8-jdk-stretch
+    filters:
+      branches:
+        only:
+          - main
     environment:
       MAVEN_OPTS: -Xmx3200m
       _JAVA_OPTIONS: "-Xms1g -Xmx1g"
