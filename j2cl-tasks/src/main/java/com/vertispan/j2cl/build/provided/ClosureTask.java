@@ -112,7 +112,7 @@ public class ClosureTask extends TaskFactory {
         }
         Path outputFile = outputDirectory.resolve(outputPath);
         Files.createDirectories(outputFile.getParent());
-        Files.copy(fileToCopy.getAbsolutePath(), outputFile);
+        Files.copy(fileToCopy.getAbsolutePath(), outputFile, StandardCopyOption.REPLACE_EXISTING);
     }
 
     @Override
