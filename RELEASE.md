@@ -47,6 +47,13 @@ git push upstream vx.y.z release/x.y
 
 ## Generating site documentation
 
+Presently we are only interested in deploying the documentation for j2cl-maven-plugin itself. First, cd into that 
+directory:
+
+```
+cd j2cl-maven-plugin
+```
+
 Build the project, including its documentation
 
 ```

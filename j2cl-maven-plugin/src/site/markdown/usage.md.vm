@@ -20,8 +20,8 @@ have tests or produce runnable JavaScript:
     <build>
         <plugins>
             <plugin>
-                <groupId>com.vertispan.j2cl</groupId>
-                <artifactId>j2cl-maven-plugin</artifactId>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>${project.artifactId}</artifactId>
                 <version>${project.version}</version>
                 <executions>
                     <execution>
@@ -49,18 +49,18 @@ configuration property can be set.
 To run tests, add an execution for the `test` goal. The configuration settings above are named the same for `test` and
 `build`, so if they are customized, each should be declared in its own execution:
 ```
-                <executions>
-                    <execution>
-                        <id>test-js</id>
-                        <goals>
-                            <goal>test</goal>
-                        </goals>
-                        <configuration>
-                            <!-- htmlunit requires output transpiled down to remove es2015 class -->
-                            <compilationLevel>ADVANCED</compilationLevel>
-                        </configuration>
-                    </execution>
-                </executions>
+    <executions>
+        <execution>
+            <id>test-js</id>
+            <goals>
+                <goal>test</goal>
+            </goals>
+            <configuration>
+                <!-- htmlunit requires output transpiled down to remove es2015 class -->
+                <compilationLevel>ADVANCED</compilationLevel>
+            </configuration>
+        </execution>
+    </executions>
 
 ```
 
@@ -77,16 +77,32 @@ So that the `<webappDirectory>` for `j2cl:watch` does not become the default for
 `<inherited>false</inherited>`.
 
 ```
-            <plugin>
-                <groupId>com.vertispan.j2cl</groupId>
-                <artifactId>j2cl-maven-plugin</artifactId>
-                <inherited>false</inherited>
-                <configuration>
-                    <webappDirectory>${project.build.directory}/j2cl-watch</webappDirectory>
-                </configuration>
-            </plugin>
+    <plugin>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>${project.artifactId}</artifactId>
+        <version>${project.version}</version>
+        <inherited>false</inherited>
+        <configuration>
+            <webappDirectory>\${project.build.directory}/j2cl-watch</webappDirectory>
+        </configuration>
+    </plugin>
 ```
 
 Of course, if you run `j2cl:watch` in the client project itself and don't take advantage of rebuilding other reactor
 projects as they are changed, additional configuration is unnecessary - but if a different webapp directory is desired, 
 the system property `j2cl.webappDirectory` can be set (such as `mvn j2cl:watch -Dj2cl.webappDirectory=path/to/server`).
+
+Finally, consider placing the plugin itself in the parent pom's `<pluginManagement>` section, so that the version is
+only set in one place and any project-wide conventions can be set once. Then the version can be removed from all other
+declarations (including the examples above).
+```
+    <pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>${project.artifactId}</artifactId>
+                <version>${project.version}</version>
+            </plugin>
+        </plugins>
+    </pluginManagement>
+```
