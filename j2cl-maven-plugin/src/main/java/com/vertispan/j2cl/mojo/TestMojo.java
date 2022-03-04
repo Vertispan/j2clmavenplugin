@@ -76,6 +76,12 @@ import java.util.logging.Level;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+/**
+ * Discovers any tests referenced by {@code @J2clTestInput}, compiles them to JavaScript, and runs them in the configured
+ * browser. Presently this defaults to using optimizationLevel=BUNDLE_JAR and webdriver=HTMLUNIT, though these are
+ * actually incompatible (HtmlUnit is not compatible with the es6 "class" keyword, and BUNDLE_JAR avoids transpiling
+ * to es3, so a project using this goal must change one or the other to get started.
+ */
 @Mojo(name = "test", requiresDependencyResolution = ResolutionScope.TEST, defaultPhase = LifecyclePhase.TEST)
 public class TestMojo extends AbstractBuildMojo {
     /**
@@ -95,12 +101,24 @@ public class TestMojo extends AbstractBuildMojo {
     @Parameter(defaultValue = "${project.artifactId}/test.js", required = true)
     protected String initialScriptFilename;
 
+    /**
+     * The output directory for this goal. Note that this is used in conjunction with {@link #initialScriptFilename}
+     * so that more than one goal or even project can share the same webappDirectory, but have their own sub-directory
+     * and output file.
+     */
     @Parameter(defaultValue = "${project.build.directory}/${project.build.finalName}-test", required = true)
     protected String webappDirectory;
 
+    /**
+     * @deprecated Will be removed in 0.21
+     */
+    @Deprecated
     @Parameter
     protected Set<String> externs = new TreeSet<>();
 
+    /**
+     * Not presently used, added to match conventions of other maven test plugins.
+     */
     @Parameter
     protected List<String> tests;
 
@@ -144,6 +162,16 @@ public class TestMojo extends AbstractBuildMojo {
     @Parameter(defaultValue = "ECMASCRIPT5", property = "languageOut")
     protected String languageOut;
 
+    /**
+     * Closure flag: "Override the value of a variable annotated @define. The format is <name>[=<val>], where <name> is
+     * the name of a @define variable and <val> is a boolean, number, or a single-quoted string that contains no single
+     * quotes. If [=<val>] is omitted, the variable is marked true"
+     * <p></p>
+     * In this plugin the format is to provided tags for each define key, where the text contents will represent the
+     * value.
+     * <p></p>
+     * In the context of J2CL and Java, this can be used to define values for system properties.
+     */
     @Parameter
     protected Map<String, String> defines = new TreeMap<>();
 
@@ -171,28 +199,47 @@ public class TestMojo extends AbstractBuildMojo {
     @Parameter(defaultValue = "BROWSER")
     protected String env;
 
-    @Parameter( property = "skipTests", defaultValue = "false" )
+    /**
+     * If set to true, tests will not be run, but will still be compiled to JavaScript.
+     */
+    @Parameter(property = "skipTests", defaultValue = "false")
     protected boolean skipTests;
 
-    @Parameter( property = "maven.test.skip", defaultValue = "false" )
+    /**
+     * If set to true, tests will not be compiled or run.
+     */
+    @Parameter(property = "maven.test.skip", defaultValue = "false")
     protected boolean skip;
 
+    /**
+     * Not presently used, added to match conventions of other maven test plugins.
+     */
     @Parameter(defaultValue = "**/Test*.java,**/*Test.java, **/GwtTest*.java")//TODO **/Test*.js
     private List<String> includes;
 
+    /**
+     * Not presently used, added to match conventions of other maven test plugins.
+     */
     //TODO **/*_AdapterSuite.js
     @Parameter
     private List<String> excludes;
 
-    //TODO make this more flexible
+    /**
+     * Currently can be "htmlunit" or "chrome" to control how to run tests - this will be rewritten as part of 0.21.
+     */
     @Parameter(defaultValue = "htmlunit")
     protected String webdriver;
 
-    // exists only as long as entrypoint does, expect this to be removed soon
+    /**
+     * @deprecated Will be removed in 0.21
+     */
     @Deprecated
     @Parameter(defaultValue = "SORT_ONLY")
     protected String dependencyMode;
 
+    /**
+     * True to enable sourcemaps to be built into the project output.
+     */
     @Parameter(defaultValue = "false")
     protected boolean enableSourcemaps;
 
@@ -353,6 +400,10 @@ public class TestMojo extends AbstractBuildMojo {
                 }
                 if (!l.isSuccess()) {
                     throw new MojoFailureException("Error building test, see log for details");
+                }
+
+                if (skipTests) {
+                    continue;
                 }
 
                 getLog().info("Test started: " + testClass);

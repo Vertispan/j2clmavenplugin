@@ -39,96 +39,36 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
 /**
- * <p>
  * Transpiles this project and all of its dependencies, then combines them all into a single JS
  * executable.
- * </p>
- * <p>
- *     Results are cached based on their sources and the soruces of their dependencies, and the final
- *     output is copied to the specified location by the build configuration. For the project this goal
- *     is executed on, it will have its annotation processors run, then strip {@code @GwtIncompatible}
- *     from all sources. These stripped sources then will be transpiled with j2cl, then optimized with
- *     the Closure Compiler. Dependencies on the other hand, even ones in the current reactor (unlike
- *     with the watch goal) will be built from their artifact, so sources should be included in some
- *     form.
- * </p>
- * <p>
- *     The output defaults to assume that output should be generated into the same directory that would
- *     be used if a war were being generated, through the {@link BuildMojo#webappDirectory} parameter.
- *     Then, in there, the {@link BuildMojo#initialScriptFilename} specifies the path to the initial
- *     JS output file. This defaults to the current project's artifactId as a new directory, then inside
- *     of there the main js file is named for the artifactId again, with a ".js" suffix. This is to keep
- *     other generated output (split points, resources, sourcemaps) from cluttering up the main war.
- *     Unfortunately, it also requires that the HTML page which loads the script start in that directory
- *     in order for Chrome's sourcemap implementation to work correctly.
- * </p>
- * <p>
- *     DEPRECATED: Entrypoints can be specified by their JS name, indicating where the compiler should start when
- *     pruning and optimizing the output. This should either be a plain JS/Closure module, or should be a
- *     Java class with a matching .native.js to instantiate the class on startup. This feature will be removed
- *     soon, but may support being re-added through extra closure-compiler flags.
- * </p>
- * <p>
- *     Closure defines (or J2cl/GWT System Properties) can be provided as well. If plugin configuration
- *     doesn't provide them, then defaults are set following <a href="https://github.com/google/j2cl/blob/master/docs/best-practices.md#closure-compiler-flags">
- *     J2cl's best practices</a>, which as of writing is just setting `goog.DEBUG` to `false. Internally,
- *     `jre.checkedMode` will be set to DISABLED when this is done, but it can be overridden. Here are
- *     some other defines that might make sense to be configured to further reduce output size, but please
- *     be sure to check documentation before using them to understand what effects they have.
- * </p>
- * <ul>
- *     <li>
- *         jre.checkedMode - this can be ENABLED or DISABLED, defaults to DISABLED when goog.DEBUG is false,
- *         or ENABLED when goog.DEBUG is true. This has many impacts inside of GWT's JRE emulation.
- *     </li>
- *     <li>
- *         jre.checks.checkLevel - this can be NORMAL, OPTIMIZED, and MINIMAL, and defaults to NORMAL.
- *         Within the JRE emulation, this is then used to decide how many checks to perform at runtime.
- *         Reducing this level may make some code faster or slightly smaller, but at the risk of some
- *         expected JRE exceptions no longer being thrown. Consult GWT's JRE emulation implementation
- *         or J2CL's best practices link above to wee what specific effects this may have.
- *     </li>
- *     <li>
- *         jsinterop.checks - This can be DISABLED or ENABLED. If ENABLED, some checks in jsinterop-base
- *         will result in ClassCastExceptions if a type isn't what is expected, while if set to DISABLED,
- *         those errors will be an AssertionError instead if jre.checked is enabled, or no failure at all
- *         if it is disabled.
- *     </li>
- * </ul>
- * <p>
- *     Some other links other defines that are set within J2CL and jsinterop:
- * </p>
- * <ul>
- *     <li>https://github.com/google/j2cl/blob/fb66a0d/jre/java/java/lang/jre.js</li>
- *     <li>https://github.com/google/jsinterop-base/blob/18973cb/java/jsinterop/base/jsinterop.js#L25-L28</li>
- * </ul>
  */
 @Mojo(name = "build", requiresDependencyResolution = ResolutionScope.COMPILE_PLUS_RUNTIME, defaultPhase = LifecyclePhase.PREPARE_PACKAGE)
 public class BuildMojo extends AbstractBuildMojo {
 
     /**
-     * The scope to use when picking dependencies to pass to the Closure Compiler.
-     * <p>The scope should be one of the scopes defined by org.apache.maven.artifact.Artifact. This includes the following:
-     * <ul>
-     * <li><i>compile</i> - system, provided, compile
-     * <li><i>runtime</i> - compile, runtime
-     * <li><i>compile+runtime</i> - system, provided, compile, runtime
-     * <li><i>runtime+system</i> - system, compile, runtime
-     * <li><i>test</i> - system, provided, compile, runtime, test
-     * </ul>
+     * The path within {@link #webappDirectory} to write the JavaScript file generated by this goal.
      */
-    @Parameter(defaultValue = Artifact.SCOPE_RUNTIME, required = true)
-    protected String classpathScope;
-
     @Parameter(defaultValue = "${project.artifactId}/${project.artifactId}.js", required = true)
     protected String initialScriptFilename;
 
+    /**
+     * The output directory for this goal. Note that this is used in conjunction with {@link #initialScriptFilename}
+     * so that more than one goal or even project can share the same webappDirectory, but have their own sub-directory
+     * and output file.
+     */
     @Parameter(defaultValue = "${project.build.directory}/${project.build.finalName}", required = true)
     protected String webappDirectory;
 
+    /**
+     * @deprecated Will be removed in 0.21
+     */
     @Parameter
+    @Deprecated
     protected Set<String> externs = new TreeSet<>();
 
+    /**
+     * @deprecated Will be removed in 0.21
+     */
     @Deprecated
     @Parameter
     protected List<String> entrypoint = new ArrayList<>();
@@ -173,6 +113,16 @@ public class BuildMojo extends AbstractBuildMojo {
     @Parameter(defaultValue = "ECMASCRIPT5", property = "languageOut")
     protected String languageOut;
 
+    /**
+     * Closure flag: "Override the value of a variable annotated @define. The format is <name>[=<val>], where <name> is
+     * the name of a @define variable and <val> is a boolean, number, or a single-quoted string that contains no single
+     * quotes. If [=<val>] is omitted, the variable is marked true"
+     * <p></p>
+     * In this plugin the format is to provided tags for each define key, where the text contents will represent the
+     * value.
+     * <p></p>
+     * In the context of J2CL and Java, this can be used to define values for system properties.
+     */
     @Parameter
     protected Map<String, String> defines = new TreeMap<>();
 
@@ -200,10 +150,16 @@ public class BuildMojo extends AbstractBuildMojo {
     @Parameter(defaultValue = "false")
     protected boolean checkAssertions;
 
+    /**
+     * @deprecated Will be removed in 0.21
+     */
     @Deprecated
     @Parameter(defaultValue = "SORT_ONLY")
     protected String dependencyMode;
 
+    /**
+     * True to enable sourcemaps to be built into the project output.
+     */
     @Parameter(defaultValue = "false")
     protected boolean enableSourcemaps;
 

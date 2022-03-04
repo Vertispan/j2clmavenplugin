@@ -1,0 +1,23 @@
+<project>
+    <body>
+        <menu name="Overview">
+            <item name="Introduction" href="index.html"/>
+            <item name="Goals" href="plugin-info.html"/>
+            <item name="Usage" href="usage.html"/>
+<!--            <item name="FAQ" href="faq.html"/>-->
+<!--            <item name="Release Notes" href="release-notes.html"/>-->
+        </menu>
+
+<!--        <menu name="Articles">-->
+<!--            <item name="Migrating from GWT 2.x" href="migrating-from-gwt2.html" />-->
+<!--            <item name="Sharing code between the JVM and JS" href="sharing-code.html" />-->
+<!--            <item name="Using System Properties in J2CL Java" href="system-properties.html" />-->
+<!--            <item name="J2CL's JsInterop support" href="jsinterop.md" />-->
+<!--        </menu>-->
+
+<!--        <menu name="Examples">-->
+<!--            <item name="description1" href="examples/example1.html"/>-->
+<!--            <item name="description2" href="examples/example2.html"/>-->
+<!--        </menu>-->
+    </body>
+</project>

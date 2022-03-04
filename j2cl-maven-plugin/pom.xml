@@ -14,6 +14,13 @@
 
   <name>J2CL Maven Plugin</name>
 
+  <distributionManagement>
+    <site>
+      <id>github-pages</id>
+      <url>scm:git:git@github.com:vertispan/j2clmavenplugin.git</url>
+    </site>
+  </distributionManagement>
+
   <dependencies>
     <!-- Plugin dependencies -->
     <dependency>
@@ -153,7 +160,14 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-site-plugin</artifactId>
-        <version>3.7.1</version>
+        <version>3.11.0</version>
+        <dependencies>
+          <dependency>
+            <groupId>org.apache.maven.doxia</groupId>
+            <artifactId>doxia-module-markdown</artifactId>
+            <version>1.11.1</version>
+          </dependency>
+        </dependencies>
       </plugin>
     </plugins>
   </build>
@@ -163,12 +177,12 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-plugin-plugin</artifactId>
-        <version>3.5</version>
+        <version>3.6.2</version>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-project-info-reports-plugin</artifactId>
-        <version>3.0.0</version>
+        <version>3.1.2</version>
         <configuration>
           <skip>true</skip>
         </configuration>

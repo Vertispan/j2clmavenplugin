@@ -39,13 +39,22 @@ import java.util.stream.Collectors;
  * Attempts to do the setup for various test and build goals declared in the current project or in child projects,
  * but also allows the configuration for this goal to further customize them. For example, this goal will be
  * configured to use a particular compilation level, or directory to copy output to.
+ *
+ * If run in a parent pom, the {@link #webappDirectory} configuration must be set.
  */
 @Mojo(name = "watch", requiresDependencyResolution = ResolutionScope.TEST, aggregator = true)
 public class WatchMojo extends AbstractBuildMojo {
 
+    /**
+     * The output directory for this goal. Note that this is used in conjunction with the {@code initialScriptFilename}
+     * for each execution run by this so that all are built to the same location but might have their own subdirectories
+     * and individual JavaScript output files.
+     */
     @Parameter(defaultValue = "${j2cl.webappDirectory}")
-    protected String webappDirectory;// technically required, but we have logic to test this in execute()
+    // technically required, but we have logic to test this in execute()
+    protected String webappDirectory;
 
+    // if webappDirectory is not set, but we're in a non-reactor build, we read the default from here
     @Parameter(defaultValue = "${project.build.directory}/${project.build.finalName}", readonly = true)
     protected String defaultWebappDirectory;
 
@@ -113,9 +122,15 @@ public class WatchMojo extends AbstractBuildMojo {
     @Parameter(defaultValue = "BROWSER")
     protected String env;
 
-    @Parameter(defaultValue = "false")
+    /**
+     * True to enable sourcemaps to be built into the project output.
+     */
+    @Parameter(defaultValue = "true")
     protected boolean enableSourcemaps;
 
+    /**
+     * @deprecated Will be removed in 0.21
+     */
     @Deprecated
     @Parameter(defaultValue = "SORT_ONLY")
     protected String dependencyMode;
