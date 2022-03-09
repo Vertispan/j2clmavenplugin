@@ -29,8 +29,8 @@
     <maven.gpg.plugin.version>1.6</maven.gpg.plugin.version>
 
     <!-- Builder dependencies versions -->
-    <j2cl.version>0.10-SNAPSHOT</j2cl.version>
-    <closure.compiler.unshaded.version>0.3-SNAPSHOT</closure.compiler.unshaded.version>
+    <j2cl.version>0.10.0-3c97afeac</j2cl.version>
+    <closure.compiler.unshaded.version>v20210808-1</closure.compiler.unshaded.version>
     <commons.codec.version>1.11</commons.codec.version>
     <commons.io.version>2.7</commons.io.version>
 
