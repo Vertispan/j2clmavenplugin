@@ -48,6 +48,15 @@
       <email>info@nalu-solutions.de</email>
       <organization>Nalu Solutions GmbH</organization>
     </developer>
+    <developer>
+      <name>Dmitrii Tikhomirov</name>
+      <email>chani.liet@gmail.com</email>
+      <organization>Red Hat, Inc.</organization>
+    </developer>
+    <developer>
+      <name>Miroslav Pokorny</name>
+      <email>miroslav.pokorny@gmail.com</email>
+    </developer>
   </developers>
 
   <issueManagement>
