@@ -163,9 +163,10 @@ public class TestMojo extends AbstractBuildMojo {
     protected String languageOut;
 
     /**
-     * Closure flag: "Override the value of a variable annotated @define. The format is <name>[=<val>], where <name> is
-     * the name of a @define variable and <val> is a boolean, number, or a single-quoted string that contains no single
-     * quotes. If [=<val>] is omitted, the variable is marked true"
+     * Closure flag: "Override the value of a variable annotated {@code @define}. The format is
+     * {@code &lt;name&gt;[=&lt;val&gt;]}, where {@code &lt;name&gt;} is the name of a {@code @define}
+     * variable and {@code &lt;val&gt;} is a boolean, number, or a single-quoted string that contains
+     * no single quotes. If {@code [=&lt;val&gt;]} is omitted, the variable is marked true"
      * <p></p>
      * In this plugin the format is to provided tags for each define key, where the text contents will represent the
      * value.
