@@ -8,7 +8,8 @@
     <artifactId>j2cl-tools</artifactId>
     <version>0.19-SNAPSHOT</version>
   </parent>
-  <artifactId>j2cl-maven-archetypes</artifactId>
+  <groupId>com.vertispan.j2cl.archetypes</groupId>
+  <artifactId>j2cl-archetypes-parent</artifactId>
   <packaging>pom</packaging>
 
   <name>J2CL Maven Archetypes</name>
@@ -51,7 +52,7 @@
   </build>
 
   <modules>
-    <module>simple-project</module>
-    <module>j2cl-servlet-project</module>
+    <module>j2cl-archetype-simple</module>
+    <module>j2cl-archetype-servlet</module>
   </modules>
 </project>

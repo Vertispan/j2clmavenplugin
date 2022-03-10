@@ -1,4 +1,4 @@
-# `j2cl-servlet-project`
+# `j2cl-archetype-servlet`
 
 Creates two Java modules, one for the server, and one for the client. The server module uses Jakarta
 servlets to host some http static content and offer some services, and the client module provides a

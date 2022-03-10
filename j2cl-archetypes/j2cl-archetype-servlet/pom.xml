@@ -4,15 +4,15 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>com.vertispan.j2cl</groupId>
-        <artifactId>j2cl-maven-archetypes</artifactId>
+        <groupId>com.vertispan.j2cl.archetypes</groupId>
+        <artifactId>j2cl-archetypes-parent</artifactId>
         <version>0.19-SNAPSHOT</version>
     </parent>
-    <artifactId>j2cl-servlet-project</artifactId>
+    <artifactId>j2cl-archetype-servlet</artifactId>
     <packaging>maven-archetype</packaging>
 
     <name>J2CL+Servlet Project</name>
-    <description>Example reactor project with Jakarta Servlets</description>
+    <description>Example reactor project with Java Servlets</description>
     <build>
         <resources>
             <resource>

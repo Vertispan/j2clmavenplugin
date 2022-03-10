@@ -5,14 +5,14 @@ use for naming some classes in the generated projects.
 
 To create a project interactively, use:
 ```
-mvn archetype:generate -DarchetypeGroupId=com.vertispan.j2cl \
+mvn archetype:generate -DarchetypeGroupId=com.vertispan.j2cl.archetypes \
 -DarchetypeArtifactId=<archetype-name> \
 -DarchetypeVersion=0.19-SNAPSHOT
 ```
 
 To specify these four variables, add them as system properties:
 ```
-mvn archetype:generate -DarchetypeGroupId=com.vertispan.j2cl \
+mvn archetype:generate -DarchetypeGroupId=com.vertispan.j2cl.archetypes \
 -DarchetypeArtifactId=<archetype-name> \
 -DarchetypeVersion=0.19-SNAPSHOT \
 -DgroupId=my.project.group.id \
@@ -26,7 +26,7 @@ to replace `<archetype-name>` with the name of the archetype:
 ```
 mvn org.apache.maven.plugins:maven-dependency-plugin:get \
 -DrepoUrl=https://repo.vertispan.com/j2cl/ \
--Dartifact=com.vertispan.j2cl:<archetype-name>:0.19-SNAPSHOT
+-Dartifact=com.vertispan.j2cl.archetypes:<archetype-name>:0.19-SNAPSHOT
 ```
 
 # `simple-project`
