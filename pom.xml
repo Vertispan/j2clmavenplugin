@@ -10,7 +10,65 @@
   <packaging>pom</packaging>
 
   <name>J2CL Build Tools</name>
-  <description>Collection of tools to make it easier to create J2CL build systems</description>
+  <description>
+    Collection of tools to make it easier to create J2CL build systems.
+    The first purpose of this set of tooling is to produce a maven plugin
+    capable of efficiently building J2CL projects, but the tools are
+    intended to be reused outside of maven.
+  </description>
+  <url>https://vertispan.github.io/j2clmavenplugin/</url>
+  <inceptionYear>2018</inceptionYear>
+
+  <licenses>
+    <license>
+      <name>The Apache License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <name>Gabriele Cardosi</name>
+    </developer>
+    <developer>
+      <name>Colin Alworth</name>
+      <email>colin@vertispan.com</email>
+      <organization>Vertispan LLC</organization>
+      <organizationUrl>https://www.vertispan.com/</organizationUrl>
+    </developer>
+    <developer>
+      <name>Justin Hickman</name>
+      <email>justin@vertispan.com</email>
+      <organization>Vertispan LLC</organization>
+      <organizationUrl>https://www.vertispan.com/</organizationUrl>
+    </developer>
+    <developer>
+      <name>Frank Hossfeld</name>
+      <email>info@nalu-solutions.de</email>
+      <organization>Nalu Solutions GmbH</organization>
+    </developer>
+    <developer>
+      <name>Dmitrii Tikhomirov</name>
+      <email>chani.liet@gmail.com</email>
+      <organization>Red Hat, Inc.</organization>
+    </developer>
+    <developer>
+      <name>Miroslav Pokorny</name>
+      <email>miroslav.pokorny@gmail.com</email>
+    </developer>
+  </developers>
+
+  <issueManagement>
+    <url>https://github.com/vertispan/j2clmavenplugin/issues</url>
+    <system>GitHub Issues</system>
+  </issueManagement>
+
+  <scm>
+    <connection>scm:git:https://github.com/vertispan/j2clmavenplugin.git</connection>
+    <developerConnection>scm:git:git@github.com:vertispan/j2clmavenplugin.git</developerConnection>
+    <url>https://github.com/vertispan/j2clmavenplugin</url>
+  </scm>
 
   <modules>
     <module>build-caching</module>
@@ -298,9 +356,9 @@
 
   <distributionManagement>
     <repository>
-      <id>vertispan-releases</id>
-      <name>Vertispan hosted artifacts-releases</name>
-      <url>https://repo.vertispan.com/j2cl</url>
+      <id>ossrh</id>
+      <name>Sonatype staging repository for Maven Central</name>
+      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
     </repository>
     <snapshotRepository>
       <id>vertispan-snapshots</id>

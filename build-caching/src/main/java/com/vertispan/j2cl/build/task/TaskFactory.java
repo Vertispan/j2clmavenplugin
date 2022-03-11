@@ -56,12 +56,13 @@ public abstract class TaskFactory {
     }
 
     /**
-     * @todo consider removing this, just assume that the name in the registry is enough to know what it is for?
+     * @return the output type that this task factory can emit
      */
+    // TODO Consider removing this, just assume that the name in the registry is enough to know what it is for?
     public abstract String getOutputType();
 
     /**
-     * The name to look for in configuration to specify an implementation
+     * @return The name to look for in configuration to specify an implementation
      */
     public abstract String getTaskName();
 
