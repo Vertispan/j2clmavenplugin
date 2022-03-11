@@ -29,7 +29,7 @@ Do not push these yet.
 
 Next, deploy to Sonatype staging
 ```
-mvn deploy
+mvn deploy -Prelease
 ```
 
 Log in to sonatype and close the staging repo, but do not yet release it.
@@ -44,6 +44,9 @@ Finally, push the release branch and tag it
 ```
 git push upstream vx.y.z release/x.y
 ```
+
+To continue development, create a pull request to likewise change the versions of the poms in the project to the next
+anticipated release, and update any version references to point to this release.
 
 ## Generating site documentation
 
