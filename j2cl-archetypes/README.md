@@ -7,14 +7,14 @@ To create a project interactively, use:
 ```
 mvn archetype:generate -DarchetypeGroupId=com.vertispan.j2cl.archetypes \
 -DarchetypeArtifactId=<archetype-name> \
--DarchetypeVersion=0.19-SNAPSHOT
+-DarchetypeVersion=0.19
 ```
 
 To specify these four variables, add them as system properties:
 ```
 mvn archetype:generate -DarchetypeGroupId=com.vertispan.j2cl.archetypes \
 -DarchetypeArtifactId=<archetype-name> \
--DarchetypeVersion=0.19-SNAPSHOT \
+-DarchetypeVersion=0.19 \
 -DgroupId=my.project.group.id \
 -DartifactId=myapp \
 -Dversion=1.0-SNAPSHOT \
@@ -26,16 +26,16 @@ to replace `<archetype-name>` with the name of the archetype:
 ```
 mvn org.apache.maven.plugins:maven-dependency-plugin:get \
 -DrepoUrl=https://repo.vertispan.com/j2cl/ \
--Dartifact=com.vertispan.j2cl.archetypes:<archetype-name>:0.19-SNAPSHOT
+-Dartifact=com.vertispan.j2cl.archetypes:<archetype-name>:0.19
 ```
 
-# `simple-project`
+# [`j2cl-archetype-simple`](j2cl-archetype-simple)
 
 This project is a simple html page, with a css file, and a single Java class. It is _not_ a good 
 example of how to set up a client/server project, but serves only to show how to make very simple
 standalone samples.
 
-# `j2cl-servlet-project`
+# [`j2cl-archetype-servlet`](j2cl-archetype-servlet)
 
 Creates two Java modules, one for the server, and one for the client. The server module uses Jakarta
 servlets to host some http static content and offer some services, and the client module provides a
