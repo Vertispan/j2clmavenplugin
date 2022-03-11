@@ -45,6 +45,9 @@ Finally, push the release branch and tag it
 git push upstream vx.y.z release/x.y
 ```
 
+To continue development, create a pull request to likewise change the versions of the poms in the project to the next
+anticipated release, and update any version references to point to this release.
+
 ## Generating site documentation
 
 Presently we are only interested in deploying the documentation for j2cl-maven-plugin itself. First, cd into that 
