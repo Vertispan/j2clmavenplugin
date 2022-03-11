@@ -1,4 +1,4 @@
-# `simple-project`
+# `j2cl-archetype-simple`
 
 This project is a simple html page, with a css file, and a single Java class. It is _not_ a good
 example of how to set up a client/server project, but serves only to show how to make very simple
