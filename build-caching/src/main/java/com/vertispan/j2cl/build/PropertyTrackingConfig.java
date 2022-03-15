@@ -142,12 +142,12 @@ public class PropertyTrackingConfig implements Config {
     }
 
     @Override
-    public Optional<String> getTranslationsFile() {
+    public Optional<File> getTranslationsFile() {
         ConfigValueProvider.ConfigNode node = config.findNode("translationsFile");
         if (node == null) {
             return Optional.empty();
         }
-        return Optional.of(node.readString());
+        return Optional.of(useFileConfig(node));
     }
 
     @Override

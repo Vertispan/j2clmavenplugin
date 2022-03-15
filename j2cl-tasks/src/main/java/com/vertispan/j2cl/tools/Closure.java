@@ -54,7 +54,7 @@ public class Closure {
             List<String> entrypoints,
             Map<String, String> defines,
             Collection<String> externFiles,
-            Optional<String> translationsFile,
+            Optional<File> translationsFile,
             PersistentInputStore persistentInputStore,
             boolean exportTestFunctions,
             boolean checkAssertions,
@@ -116,7 +116,7 @@ public class Closure {
 
         translationsFile.ifPresent(file -> {
             jscompArgs.add("--translations_file");
-            jscompArgs.add(file);
+            jscompArgs.add(file.getAbsolutePath());
         });
 
         jscompArgs.add("--compilation_level");

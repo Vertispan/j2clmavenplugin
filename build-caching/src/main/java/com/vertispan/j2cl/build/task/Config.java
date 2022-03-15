@@ -24,7 +24,7 @@ public interface Config {
 
     Collection<String> getExterns();
 
-    Optional<String> getTranslationsFile();
+    Optional<File> getTranslationsFile();
 
     boolean getCheckAssertions();
 
