@@ -43,12 +43,31 @@ public class Xpp3DomConfigValueProvider implements PropertyTrackingConfig.Config
         }
     }
 
-    private File getFileWithMavenCoords(String coords) throws ArtifactResolutionException {
+    /**
+     * @param coords a string to try to parse and resolve as maven coordinates
+     * @return an Optional containing a file if resolution was possible, otherwise empty,
+     *         with no distinction between if the coords were not valid or the artifact
+     *         was not found.
+     */
+    private Optional<File> getFileWithMavenCoords(String coords) {
+        final DefaultArtifact artifact;
+        try {
+            artifact = new DefaultArtifact(coords);
+        } catch (IllegalArgumentException e) {
+            // The coords offered weren't really coords
+            return Optional.empty();
+        }
         ArtifactRequest request = new ArtifactRequest()
                 .setRepositories(repositories)
-                .setArtifact(new DefaultArtifact(coords));
+                .setArtifact(artifact);
 
-        return repoSystem.resolveArtifact(repoSession, request).getArtifact().getFile();
+        try {
+            return Optional.ofNullable(repoSystem.resolveArtifact(repoSession, request).getArtifact())
+                    .flatMap(a -> Optional.ofNullable(a.getFile()));
+        } catch (ArtifactResolutionException e) {
+            // The artifact couldn't be found - maybe the "coords" are actually a path?
+            return Optional.empty();
+        }
     }
 
     class Xpp3DomConfigNode extends AbstractConfigNode {
@@ -70,17 +89,21 @@ public class Xpp3DomConfigValueProvider implements PropertyTrackingConfig.Config
         public File readFile() {
             String pathOrCoords = readString();
             if (pathOrCoords == null) {
+                // no value provided, so it makes sense to return null
                 return null;
             }
-            File f;
+
             // try to resolve as maven coords first
-            try {
-                f = getFileWithMavenCoords(pathOrCoords);
-            } catch (ArtifactResolutionException e) {
-                // handle as a file instead
-                f = new File(pathOrCoords);
+            File f = getFileWithMavenCoords(pathOrCoords)
+                    // or else handle as if the path is for a file
+                    .orElse(new File(pathOrCoords));
+
+            if (!f.exists()) {
+                // a value was provided, but we can't make sense of it, throw so
+                // the user knows something is wrong
+                throw new IllegalStateException("Can't treat this string as a Maven artifact or file path - if it is a Maven coordinate, can it be resolved with dependency:get, if it is a path, is it absolute? " + node);
             }
-            log.debug(getPath() + " => " + f.getAbsolutePath());
+
             return f;
         }
 
