@@ -108,6 +108,23 @@
       <artifactId>junit</artifactId>
       <scope>test</scope>
     </dependency>
+    <!--
+    As long as we are supporting a baseline of such an old maven version, we need to also
+    use this discontinued API instead of the maven resolver, or we get nosuchmethod errors
+    -->
+    <dependency>
+      <groupId>org.eclipse.aether</groupId>
+      <artifactId>aether-connector-basic</artifactId>
+      <version>1.0.2.v20150114</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.aether</groupId>
+      <artifactId>aether-transport-http</artifactId>
+      <version>1.0.2.v20150114</version>
+      <scope>test</scope>
+    </dependency>
+
   </dependencies>
 
   <build>

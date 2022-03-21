@@ -142,7 +142,7 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
         try {
             return repoSystem.resolveArtifact(repoSession, request).getArtifact().getFile();
         } catch (ArtifactResolutionException e) {
-            throw new MojoExecutionException("Failed to find artifact" + coords, e);
+            throw new MojoExecutionException("Failed to find artifact " + coords, e);
         }
     }
 
