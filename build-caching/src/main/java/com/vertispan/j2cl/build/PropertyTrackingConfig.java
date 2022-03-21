@@ -147,12 +147,7 @@ public class PropertyTrackingConfig implements Config {
         if (node == null) {
             return Optional.empty();
         }
-
-        try {
-            return Optional.of(new File(node.readString()).getCanonicalFile());
-        } catch (IOException e) {
-            throw new IllegalStateException("Wrong translationsFile location: " + node.readString());
-        }
+        return Optional.of(useFileConfig(node));
     }
 
     @Override

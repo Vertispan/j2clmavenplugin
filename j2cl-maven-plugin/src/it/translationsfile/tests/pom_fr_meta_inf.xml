@@ -4,17 +4,11 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>translation.test</groupId>
-  <artifactId>fr</artifactId>
-  <packaging>war</packaging>
+  <artifactId>fr_meta_inf</artifactId>
+  <packaging>jar</packaging>
   <version>1.0</version>
 
   <dependencies>
-    <dependency>
-      <groupId>com.google.elemental2</groupId>
-      <artifactId>elemental2-dom</artifactId>
-      <version>1.1.0</version>
-    </dependency>
-
     <dependency>
       <groupId>com.google.jsinterop</groupId>
       <artifactId>base</artifactId>
@@ -86,7 +80,7 @@
           </execution>
         </executions>
         <configuration>
-          <translationsFile>${project.basedir}/MyTranslationBundle_fr.xtb</translationsFile>
+          <translationsFile>${project.basedir}/src/main/resources/META-INF/MyTranslationBundle_fr.xtb</translationsFile>
           <defines>
             <goog.LOCALE>cz</goog.LOCALE>
             <holder.value>Je suppose qu'il s'est passé quelque chose !</holder.value>

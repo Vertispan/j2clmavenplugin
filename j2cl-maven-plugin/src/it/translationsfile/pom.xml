@@ -8,9 +8,12 @@
   <packaging>pom</packaging>
 
   <modules>
-    <module>pom_default.xml</module>
-    <module>pom_cz.xml</module>
-    <module>pom_fr.xml</module>
+    <module>tests/pom_default.xml</module>
+    <module>tests/pom_cz.xml</module>
+    <module>tests/pom_fr.xml</module>
+    <module>tests/pom_de_in_java_package.xml</module>
+    <module>tests/pom_cz_in_resource.xml</module>
+    <module>tests/pom_fr_meta_inf.xml</module>
   </modules>
 
 </project>

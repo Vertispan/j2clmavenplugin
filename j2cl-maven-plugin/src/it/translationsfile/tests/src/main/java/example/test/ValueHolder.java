@@ -1,4 +1,4 @@
-package org.treblereel.test;
+package example.test;
 
 public class ValueHolder {
 
