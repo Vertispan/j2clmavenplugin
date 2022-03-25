@@ -144,10 +144,7 @@ public class PropertyTrackingConfig implements Config {
     @Override
     public Optional<File> getTranslationsFile() {
         ConfigValueProvider.ConfigNode node = config.findNode("translationsFile");
-        if (node == null) {
-            return Optional.empty();
-        }
-        return Optional.of(useFileConfig(node));
+        return Optional.ofNullable(node).map(this::useFileConfig);
     }
 
     @Override
