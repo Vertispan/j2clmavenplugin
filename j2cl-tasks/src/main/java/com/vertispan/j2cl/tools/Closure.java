@@ -119,7 +119,7 @@ public class Closure {
                 jscompArgs.add("--translations_file");
                 jscompArgs.add(file.getAbsolutePath());
             } else {
-                log.error("translationsFile only works in the ADVANCED optimization level, in other levels the default messages values will be used");
+                log.warn("translationsFile only works in the ADVANCED optimization level, in other levels the default messages values will be used");
             }
         });
 

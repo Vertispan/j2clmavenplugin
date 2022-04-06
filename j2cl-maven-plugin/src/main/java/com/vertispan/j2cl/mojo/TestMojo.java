@@ -244,6 +244,9 @@ public class TestMojo extends AbstractBuildMojo {
     @Parameter(defaultValue = "false")
     protected boolean enableSourcemaps;
 
+    @Parameter
+    protected String translationsFile;
+
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         if (skip) {
