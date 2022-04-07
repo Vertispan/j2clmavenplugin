@@ -70,6 +70,11 @@
                         <goals>
                             <goal>build</goal>
                         </goals>
+                        <configuration>
+                            <taskMappings>
+                                <stripped_bytecode_headers>turbine</stripped_bytecode_headers>
+                            </taskMappings>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
