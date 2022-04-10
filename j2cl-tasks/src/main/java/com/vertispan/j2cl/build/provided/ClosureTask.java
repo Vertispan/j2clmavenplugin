@@ -234,7 +234,6 @@ public class ClosureTask extends TaskFactory {
                         defines,
                         externs,
                         translationsfile,
-                        null,
                         true,//TODO have this be passed in,
                         checkAssertions,
                         rewritePolyfills,

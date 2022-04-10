@@ -56,7 +56,6 @@ public class JsZipBundleTask extends TaskFactory {
                     Collections.emptyMap(),
                     Collections.emptyList(),
                     Optional.empty(),
-                    null,
                     true,
                     true,
                     false,
