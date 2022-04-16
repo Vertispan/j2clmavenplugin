@@ -35,16 +35,16 @@ jobs:
 
     strategy:
       matrix:
-        mvn: ['3.8.4', '3.6.3', '3.5.4', '3.3.9', '3.2.5']
+        mvn: ['3.8.5', '3.6.3', '3.5.4', '3.3.9', '3.2.5']
         java: ['11']
         include: # Confirm that old java works in the oldest maven, and that newest maven supports 8-current
           - mvn: '3.2.5'
             java: '8'
-          - mvn: '3.8.4'
+          - mvn: '3.8.5'
             java: '8'
-          - mvn: '3.8.4'
+          - mvn: '3.8.5'
             java: '17'
-          - mvn: '3.8.4'
+          - mvn: '3.8.5'
             java: '18'
     steps:
       - name: Checkout
@@ -65,7 +65,7 @@ jobs:
         uses: actions/upload-artifact@v2
         if: always()
         with:
-          name: test-results-mvn-v${{ matrix.mvn }}
+          name: test-results-mvn-v${{ matrix.mvn }}-jvm${{ matrix.java }}
           path: |
             j2cl-maven-plugin/target/it-tests/*/build.log
             */target/surefire-reports/
