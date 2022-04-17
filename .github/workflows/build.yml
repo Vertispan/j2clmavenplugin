@@ -34,7 +34,6 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
-      fail-fast: false
       matrix:
         mvn: ['3.8.5', '3.6.3', '3.5.4', '3.3.9', '3.2.5']
         java: ['11']
@@ -43,10 +42,11 @@ jobs:
             java: '8'
           - mvn: '3.8.5'
             java: '8'
-          - mvn: '3.8.5'
-            java: '17'
-          - mvn: '3.8.5'
-            java: '18'
+            #TODO j2clmavenplugin#159 - re-enable this when the integration tests run cleanly in Java 17+
+#          - mvn: '3.8.5'
+#            java: '17'
+#          - mvn: '3.8.5'
+#            java: '18'
     steps:
       - name: Checkout
         uses: actions/checkout@v2
