@@ -244,6 +244,9 @@ public class TestMojo extends AbstractBuildMojo {
     @Parameter(defaultValue = "false")
     protected boolean enableSourcemaps;
 
+    /**
+     * Closure flag: "Source of translated messages. Currently only supports XTB."
+     */
     @Parameter
     protected String translationsFile;
 

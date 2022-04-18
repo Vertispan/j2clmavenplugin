@@ -12,6 +12,7 @@ import com.vertispan.j2cl.tools.Closure;
 import java.io.File;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Special task that takes all jszips and makes a single bundle file from them. Might not be necessary, if we
@@ -54,7 +55,7 @@ public class JsZipBundleTask extends TaskFactory {
                     Collections.emptyList(),
                     Collections.emptyMap(),
                     Collections.emptyList(),
-                    config.getTranslationsFile(),
+                    Optional.empty(),
                     null,
                     true,
                     true,
