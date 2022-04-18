@@ -35,14 +35,25 @@ jobs:
 
     strategy:
       matrix:
-        mvn: ['3.8.4', '3.6.3', '3.5.4', '3.3.9', '3.2.5']
+        mvn: ['3.8.5', '3.6.3', '3.5.4', '3.3.9', '3.2.5']
+        java: ['11']
+        include: # Confirm that old java works in the oldest maven, and that newest maven supports 8-current
+          - mvn: '3.2.5'
+            java: '8'
+          - mvn: '3.8.5'
+            java: '8'
+            #TODO j2clmavenplugin#159 - re-enable this when the integration tests run cleanly in Java 17+
+#          - mvn: '3.8.5'
+#            java: '17'
+#          - mvn: '3.8.5'
+#            java: '18'
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Set up Java 11
+      - name: Set up Java ${{ matrix.java }}
         uses: actions/setup-java@v2
         with:
-          java-version: '11'
+          java-version: ${{ matrix.java }}
           distribution: 'temurin'
       - name: Set up maven wrapper for specified version
         run: |
@@ -55,7 +66,7 @@ jobs:
         uses: actions/upload-artifact@v2
         if: always()
         with:
-          name: test-results-mvn-v${{ matrix.mvn }}
+          name: test-results-mvn-v${{ matrix.mvn }}-jvm${{ matrix.java }}
           path: |
             j2cl-maven-plugin/target/it-tests/*/build.log
             */target/surefire-reports/
