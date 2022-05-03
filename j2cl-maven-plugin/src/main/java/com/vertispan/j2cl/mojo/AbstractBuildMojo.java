@@ -266,6 +266,7 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
             // construct a dependency node for this, and attach it to the new project
             Dependency dep = new Dependency();
             dep.setProject(child);
+            dep.setJar(mavenDependency.getFile());
             dep.setScope(translateScope(mavenDependency.getScope()));
             dependencies.add(dep);
         }

@@ -66,6 +66,12 @@
     <dependency>
       <groupId>org.seleniumhq.selenium</groupId>
       <artifactId>selenium-support</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>com.google.guava</groupId>
+          <artifactId>guava</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.seleniumhq.selenium</groupId>

@@ -105,6 +105,8 @@
     <error.prone.annotations.version>2.1.3</error.prone.annotations.version>
     <jsr305.version>3.0.2</jsr305.version>
     <commons.lang3.version>3.8.1</commons.lang3.version>
+    <commons.compress.version>1.21</commons.compress.version>
+    <google.turbine.version>HEAD-SNAPSHOT</google.turbine.version>
     <slf4j.api.version>1.7.5</slf4j.api.version>
 
     <!-- Test goal -->
@@ -252,6 +254,18 @@
         <groupId>org.apache.commons</groupId>
         <artifactId>commons-lang3</artifactId>
         <version>${commons.lang3.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-compress</artifactId>
+        <version>${commons.compress.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>com.google.turbine</groupId>
+        <artifactId>turbine</artifactId>
+        <version>${google.turbine.version}</version>
       </dependency>
 
       <dependency>

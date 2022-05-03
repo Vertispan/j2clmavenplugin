@@ -25,6 +25,10 @@
                     <groupId>com.google.javascript</groupId>
                     <artifactId>closure-compiler-unshaded</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>com.google.protobuf</groupId>
+                    <artifactId>protobuf-java</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
@@ -49,6 +53,17 @@
             <version>${j2cl.version}</version>
         </dependency>
 
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-compress</artifactId>
+        </dependency>
+
+
         <!-- closure compiler dependencies -->
         <dependency>
             <groupId>com.vertispan.javascript</groupId>
@@ -63,11 +78,6 @@
             <artifactId>commons-io</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-        </dependency>
-
         <!-- register tasks for factory -->
         <dependency>
             <groupId>com.google.auto.service</groupId>
@@ -80,6 +90,11 @@
             <groupId>com.vertispan.j2cl</groupId>
             <artifactId>build-caching</artifactId>
             <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.google.turbine</groupId>
+            <artifactId>turbine</artifactId>
         </dependency>
 
         <!-- Test -->
