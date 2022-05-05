@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>translation.test</groupId>
+  <artifactId>executions</artifactId>
+  <packaging>jar</packaging>
+  <version>1.0</version>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.google.jsinterop</groupId>
+      <artifactId>base</artifactId>
+      <version>1.0.0</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.vertispan.j2cl</groupId>
+      <artifactId>junit-annotations</artifactId>
+      <version>@j2cl.version@</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>com.vertispan.j2cl</groupId>
+      <artifactId>junit-emul</artifactId>
+      <version>@j2cl.version@</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>com.vertispan.j2cl</groupId>
+      <artifactId>junit-emul</artifactId>
+      <version>@j2cl.version@</version>
+      <classifier>sources</classifier>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.6.1</version>
+        <configuration>
+          <source>1.8</source>
+          <target>1.8</target>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>@project.groupId@</groupId>
+        <artifactId>@project.artifactId@</artifactId>
+        <version>@project.version@</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>build</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>test-js-cz</id>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <configuration>
+              <translationsFile>${project.basedir}/MyTranslationBundle_cz.xtb</translationsFile>
+              <initialScriptFilename>test-js-cz.js</initialScriptFilename>
+              <defines>
+                <goog.LOCALE>cz</goog.LOCALE>
+                <holder.value>Asi se něco stalo!</holder.value>
+              </defines>
+            </configuration>
+          </execution>
+          <execution>
+            <id>test-js-fr</id>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <configuration>
+              <!-- In order to use htmlunit, we must compile to remove es6 classes -->
+              <initialScriptFilename>test-js-fr.js</initialScriptFilename>
+              <translationsFile>${project.basedir}/MyTranslationBundle_fr.xtb</translationsFile>
+              <defines>
+                <goog.LOCALE>cz</goog.LOCALE>
+                <holder.value>Je suppose qu'il s'est passé quelque chose !</holder.value>
+              </defines>
+            </configuration>
+          </execution>
+          <execution>
+            <id>test-js-de_in_java_package</id>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <configuration>
+              <!-- In order to use htmlunit, we must compile to remove es6 classes -->
+              <initialScriptFilename>test-js-de_in_java_package.js</initialScriptFilename>
+              <translationsFile>${project.basedir}/src/main/java/example/test/MyTranslationBundle_de.xtb</translationsFile>
+              <defines>
+                <goog.LOCALE>de</goog.LOCALE>
+                <holder.value>Ich schätze, es ist etwas passiert!</holder.value>
+              </defines>
+            </configuration>
+          </execution>
+          <execution>
+            <id>test-js-default</id>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <configuration>
+              <!-- In order to use htmlunit, we must compile to remove es6 classes -->
+              <initialScriptFilename>test-js-default.js</initialScriptFilename>
+              <defines>
+                <holder.value>I guess something happened!</holder.value>
+              </defines>
+            </configuration>
+          </execution>
+        </executions>
+        <configuration>
+          <compilationLevel>ADVANCED</compilationLevel>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

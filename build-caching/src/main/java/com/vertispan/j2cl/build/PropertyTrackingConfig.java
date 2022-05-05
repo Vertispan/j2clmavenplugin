@@ -142,6 +142,12 @@ public class PropertyTrackingConfig implements Config {
     }
 
     @Override
+    public Optional<File> getTranslationsFile() {
+        ConfigValueProvider.ConfigNode node = config.findNode("translationsFile");
+        return Optional.ofNullable(node).map(this::useFileConfig);
+    }
+
+    @Override
     public boolean getCheckAssertions() {
         return Boolean.parseBoolean(getString("checkAssertions"));
     }

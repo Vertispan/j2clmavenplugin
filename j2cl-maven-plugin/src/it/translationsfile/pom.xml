@@ -1,0 +1,20 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>translation-files</groupId>
+  <artifactId>parent</artifactId>
+  <version>1.0</version>
+  <packaging>pom</packaging>
+
+  <modules>
+    <module>tests/pom_default.xml</module>
+    <module>tests/pom_cz.xml</module>
+    <module>tests/pom_fr.xml</module>
+    <module>tests/pom_de_in_java_package.xml</module>
+    <module>tests/pom_cz_in_resource.xml</module>
+    <module>tests/pom_fr_meta_inf.xml</module>
+    <module>tests/pom_executions.xml</module>
+  </modules>
+
+</project>
