@@ -55,7 +55,6 @@ public class Closure {
             Map<String, String> defines,
             Collection<String> externFiles,
             Optional<File> translationsFile,
-            PersistentInputStore persistentInputStore,
             boolean exportTestFunctions,
             boolean checkAssertions,
             boolean rewritePolyfills,
@@ -66,7 +65,6 @@ public class Closure {
         List<String> jscompArgs = new ArrayList<>();
 
         Compiler jsCompiler = new Compiler(System.err);
-//        jsCompiler.setPersistentInputStore(persistentInputStore);
 
         // List the parent directories of each input so that module resolution works as expected
         jsInputs.keySet().forEach(parentPath -> {
@@ -187,21 +185,12 @@ public class Closure {
             return false;
         }
 
-        //TODO historically we didnt populate the persistent input store until this point, so put it here
-        //     if we restore it
+        jscompRunner.run();
 
-        try {
-            jscompRunner.run();
-
-            if (jscompRunner.hasErrors() || jscompRunner.exitCode != 0) {
-                return false;
-            }
-        } finally {
-            if (jsCompiler.getModules() != null) {
-                // clear out the compiler input for the next go-around
-                jsCompiler.resetCompilerInput();
-            }
+        if (jscompRunner.hasErrors() || jscompRunner.exitCode != 0) {
+            return false;
         }
+
         return true;
     }
 

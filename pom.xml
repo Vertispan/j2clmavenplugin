@@ -88,7 +88,7 @@
 
     <!-- Builder dependencies versions -->
     <j2cl.version>0.10.0-3c97afeac</j2cl.version>
-    <closure.compiler.unshaded.version>v20210808-1</closure.compiler.unshaded.version>
+    <closure.compiler.unshaded.version>v20220502-1</closure.compiler.unshaded.version>
     <commons.codec.version>1.11</commons.codec.version>
     <commons.io.version>2.7</commons.io.version>
 
@@ -101,7 +101,7 @@
     <plexus.utils.version>3.1.0</plexus.utils.version>
     <plexus.classworlds.version>2.5.2</plexus.classworlds.version>
     <plexus.interpolation.version>1.25</plexus.interpolation.version>
-    <guava.version>30.0-jre</guava.version>
+    <guava.version>31.1-jre</guava.version>
     <error.prone.annotations.version>2.1.3</error.prone.annotations.version>
     <jsr305.version>3.0.2</jsr305.version>
     <commons.lang3.version>3.8.1</commons.lang3.version>
@@ -194,29 +194,30 @@
       </dependency>
 
       <dependency>
-        <groupId>com.vertispan.javascript</groupId>
-        <artifactId>closure-compiler-unshaded</artifactId>
-        <version>${closure.compiler.unshaded.version}</version>
+        <groupId>com.vertispan.j2cl</groupId>
+        <artifactId>backend-libraryinfo</artifactId>
+        <version>${j2cl.version}</version>
         <exclusions>
-          <exclusion>
-            <groupId>com.google.jsinterop</groupId>
-            <artifactId>jsinterop-annotations</artifactId>
-          </exclusion>
           <exclusion>
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java</artifactId>
           </exclusion>
           <exclusion>
-            <groupId>args4j</groupId>
-            <artifactId>args4j</artifactId>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java-util</artifactId>
           </exclusion>
+        </exclusions>
+      </dependency>
+
+
+      <dependency>
+        <groupId>com.vertispan.javascript</groupId>
+        <artifactId>closure-compiler-unshaded</artifactId>
+        <version>${closure.compiler.unshaded.version}</version>
+        <exclusions>
           <exclusion>
-            <groupId>com.google.jsinterop</groupId>
-            <artifactId>base</artifactId>
-          </exclusion>
-          <exclusion>
-            <groupId>com.google.elemental2</groupId>
-            <artifactId>*</artifactId>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
           </exclusion>
         </exclusions>
       </dependency>

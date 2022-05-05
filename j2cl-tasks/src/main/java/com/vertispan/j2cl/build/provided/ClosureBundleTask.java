@@ -98,7 +98,6 @@ public class ClosureBundleTask extends TaskFactory {
                     Collections.emptyMap(),
                     Collections.emptyList(),//TODO actually pass these in when we can restrict and cache them sanely
                     Optional.empty(),
-                    null,
                     true,//TODO have this be passed in,
                     true,//default to true, will have no effect anyway
                     false,
