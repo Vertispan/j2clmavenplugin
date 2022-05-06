@@ -4,6 +4,7 @@ import com.google.auto.service.AutoService;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableList;
 import com.google.j2cl.common.SourceUtils;
+import com.google.turbine.diag.TurbineError;
 import com.google.turbine.main.Main;
 import com.google.turbine.options.LanguageVersion;
 import com.google.turbine.options.TurbineOptions;
@@ -27,6 +28,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -34,6 +36,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static com.vertispan.j2cl.build.provided.JavacTask.JAVA_BYTECODE;
 
 @AutoService(TaskFactory.class)
 public class TurbineTask extends TaskFactory {
@@ -62,13 +65,18 @@ public class TurbineTask extends TaskFactory {
 
         List<File> extraClasspath = config.getExtraClasspath();
 
-        Set<String> deps = Stream.concat(extraClasspath.stream().map(File::toString),
-                        project.getDependencies().stream()
-                                .map(Dependency::getJar)
-                                .map(File::toString))
-                .collect(Collectors.toSet());
+        List<Input> compileClasspath = scope(project.getDependencies(), Dependency.Scope.COMPILE).stream()
+                .map(p -> input(p, OutputTypes.STRIPPED_BYTECODE_HEADERS))
+                .map(input -> input.filter(JAVA_BYTECODE))
+                .collect(Collectors.toList());
 
         return context -> {
+
+            Set<String> deps = Stream.concat(extraClasspath.stream().map(File::toString),
+                            compileClasspath.stream().map(Input::getParentPaths).flatMap(Collection::stream).map(Path::toFile)
+                                    .map(File::toString)
+                                    .map(path -> path + "/output.jar"))
+                    .collect(Collectors.toSet());
 
             File resultFolder = context.outputPath().toFile();
             File output = new File(resultFolder, "output.jar");
@@ -79,15 +87,22 @@ public class TurbineTask extends TaskFactory {
                     .map(SourceUtils.FileInfo::sourcePath)
                     .collect(Collectors.toList());
 
-            Main.Result result =  Main.compile(
-                    optionsWithBootclasspath()
-                            .setSources(ImmutableList.copyOf(sources))
-                            .setOutput(output.toString())
-                            .setClassPath(ImmutableList.copyOf(deps))
-                            .build());
+            try {
+                Main.Result result = Main.compile(
+                        optionsWithBootclasspath()
+                                .setSources(ImmutableList.copyOf(sources))
+                                .setOutput(output.toString())
+                                .setClassPath(ImmutableList.copyOf(deps))
+                                //TODO take a look at ReducedClasspathMode
+                                //.setReducedClasspathMode(TurbineOptions.ReducedClasspathMode.JAVABUILDER_REDUCED)
+                                .build());
 
-            System.out.println("turbine finished: " + result);
-            extractJar(output.toString(), resultFolder.toString());
+                System.out.println("turbine finished: " + result);
+                extractJar(output.toString(), resultFolder.toString());
+            } catch (TurbineError e) {
+                //ohhhh apt is in maven reactor
+                System.out.println(e.getMessage());
+            }
         };
     }
 
