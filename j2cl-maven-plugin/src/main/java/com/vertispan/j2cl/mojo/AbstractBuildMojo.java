@@ -76,7 +76,7 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
     protected List<DependencyReplacement> dependencyReplacements;
 
     @Parameter(defaultValue = "AVOID_MAVEN")
-    private AnnotationProcessorMode annotationProcessorMode;
+    protected AnnotationProcessorMode annotationProcessorMode;
 
     private List<DependencyReplacement> defaultDependencyReplacements = Arrays.asList(
             new DependencyReplacement("com.google.jsinterop:base", "com.vertispan.jsinterop:base:" + Versions.VERTISPAN_JSINTEROP_BASE_VERSION),
