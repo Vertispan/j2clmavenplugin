@@ -29,6 +29,7 @@ import org.eclipse.aether.resolution.ArtifactResolutionException;
 
 import java.io.File;
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -76,7 +77,7 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
     protected List<DependencyReplacement> dependencyReplacements;
 
     @Parameter(defaultValue = "AVOID_MAVEN")
-    protected AnnotationProcessorMode annotationProcessorMode;
+    private AnnotationProcessorMode annotationProcessorMode;
 
     private List<DependencyReplacement> defaultDependencyReplacements = Arrays.asList(
             new DependencyReplacement("com.google.jsinterop:base", "com.vertispan.jsinterop:base:" + Versions.VERTISPAN_JSINTEROP_BASE_VERSION),
@@ -323,4 +324,11 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
         // use any task wiring if specified
         return new TaskRegistry(taskMappings);
     }
+
+    protected Predicate<String> withTestSourcePathFilter() {
+        return path ->
+            !(annotationProcessorMode.pluginShouldExcludeGeneratedAnnotationsDir()
+                && path.endsWith("generated-test-sources" + File.separator + "test-annotations"));
+    }
+
 }

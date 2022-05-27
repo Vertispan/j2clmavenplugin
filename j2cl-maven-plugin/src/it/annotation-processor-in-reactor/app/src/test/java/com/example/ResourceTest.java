@@ -16,5 +16,8 @@ public class ResourceTest {
         Assert.assertEquals("res-in-package.txt", res.resourceInPackage());
         Assert.assertEquals("res-in-java-default-package.txt", res.resourceInJavaSourceRoot());
         Assert.assertEquals("res-in-java-nested-package.txt", res.resourceInJavaPackage());
+
+        MyTestResources testRes = MyTestResources.INSTANCE;
+        Assert.assertEquals("test-res-in-root-dir.txt", testRes.testResourceInRoot());
     }
 }
