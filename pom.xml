@@ -96,7 +96,7 @@
     <junit.version>4.13.1</junit.version>
 
     <!-- Dependency management -->
-    <maven.shared.utils.version>3.1.0</maven.shared.utils.version>
+    <maven.shared.utils.version>3.3.3</maven.shared.utils.version>
     <plexus.component.annotations.version>1.7.1</plexus.component.annotations.version>
     <plexus.utils.version>3.1.0</plexus.utils.version>
     <plexus.classworlds.version>2.5.2</plexus.classworlds.version>
