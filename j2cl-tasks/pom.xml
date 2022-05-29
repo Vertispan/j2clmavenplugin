@@ -25,10 +25,6 @@
                     <groupId>com.google.javascript</groupId>
                     <artifactId>closure-compiler-unshaded</artifactId>
                 </exclusion>
-                <exclusion>
-                    <groupId>com.google.protobuf</groupId>
-                    <artifactId>protobuf-java</artifactId>
-                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
@@ -51,11 +47,6 @@
             <groupId>com.vertispan.j2cl</groupId>
             <artifactId>common</artifactId>
             <version>${j2cl.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
         </dependency>
 
         <dependency>
