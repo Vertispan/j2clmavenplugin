@@ -29,6 +29,7 @@ import org.eclipse.aether.resolution.ArtifactResolutionException;
 
 import java.io.File;
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -282,9 +283,7 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
                             mavenProject.getResources().stream().map(FileSet::getDirectory)
                     )
                             .distinct()
-                            .filter(path -> new File(path).exists())
-                            .filter(path -> !(annotationProcessorMode.pluginShouldExcludeGeneratedAnnotationsDir()
-                                    && path.endsWith("generated-sources" + File.separator + "annotations")))
+                            .filter(withSourceRootFilter())
                             .collect(Collectors.toList())
             );
         } else {
@@ -323,4 +322,12 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
         // use any task wiring if specified
         return new TaskRegistry(taskMappings);
     }
+
+    protected Predicate<String> withSourceRootFilter() {
+        return path -> new File(path).exists() &&
+            !(annotationProcessorMode.pluginShouldExcludeGeneratedAnnotationsDir()
+                && (path.endsWith("generated-test-sources" + File.separator + "test-annotations") || 
+                    path.endsWith("generated-sources" + File.separator + "annotations")));
+    }
+
 }

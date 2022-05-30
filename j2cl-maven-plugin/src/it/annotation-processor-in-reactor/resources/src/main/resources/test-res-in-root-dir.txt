@@ -1,0 +1,1 @@
+test-res-in-root-dir.txt
