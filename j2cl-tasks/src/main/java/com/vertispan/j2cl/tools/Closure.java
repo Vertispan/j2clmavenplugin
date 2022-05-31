@@ -3,6 +3,7 @@ package com.vertispan.j2cl.tools;
 import com.google.javascript.jscomp.*;
 import com.google.javascript.jscomp.Compiler;
 import com.vertispan.j2cl.build.DiskCache;
+import com.vertispan.j2cl.build.TranslationsFileConfiguration;
 import com.vertispan.j2cl.build.task.BuildLog;
 import com.vertispan.j2cl.build.task.Input;
 
@@ -53,7 +54,7 @@ public class Closure {
             List<String> entrypoints,
             Map<String, String> defines,
             Collection<String> externFiles,
-            Optional<File> translationsFile,
+            Optional<TranslationsFileConfiguration> translationsFile,
             boolean exportTestFunctions,
             boolean checkAssertions,
             boolean rewritePolyfills,
@@ -108,8 +109,11 @@ public class Closure {
 
         translationsFile.ifPresent(file -> {
             if(compilationLevel.equals(CompilationLevel.ADVANCED_OPTIMIZATIONS)) {
-                jscompArgs.add("--translations_file");
-                jscompArgs.add(file.getAbsolutePath());
+                file.getFile().ifPresent(f -> {
+                    jscompArgs.add("--translations_file");
+                    jscompArgs.add(f.getAbsolutePath());
+                });
+
             } else {
                 log.warn("translationsFile only works in the ADVANCED optimization level, in other levels the default messages values will be used");
             }

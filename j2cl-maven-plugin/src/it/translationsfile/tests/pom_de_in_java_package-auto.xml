@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>translation.test</groupId>
-  <artifactId>de_in_java_package</artifactId>
+  <artifactId>de_in_java_package_auto</artifactId>
   <packaging>jar</packaging>
   <version>1.0</version>
 
@@ -73,7 +73,7 @@
         </executions>
         <configuration>
           <translationsFile>
-            <file>${project.basedir}/src/main/java/example/test/MyTranslationBundle_de.xtb</file>
+            <auto>true</auto>
           </translationsFile>
           <defines>
             <goog.LOCALE>de</goog.LOCALE>

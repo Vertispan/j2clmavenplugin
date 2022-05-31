@@ -15,6 +15,8 @@
     <module>tests/pom_cz_in_resource.xml</module>
     <module>tests/pom_fr_meta_inf.xml</module>
     <module>tests/pom_executions.xml</module>
+    <module>tests/pom_cz_auto.xml</module>
+    <module>tests/pom_de_in_java_package-auto.xml</module>
   </modules>
 
 </project>

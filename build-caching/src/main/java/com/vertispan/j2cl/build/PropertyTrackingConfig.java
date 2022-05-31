@@ -142,9 +142,23 @@ public class PropertyTrackingConfig implements Config {
     }
 
     @Override
-    public Optional<File> getTranslationsFile() {
+    public Optional<TranslationsFileConfiguration> getTranslationsFile() {
         ConfigValueProvider.ConfigNode node = config.findNode("translationsFile");
-        return Optional.ofNullable(node).map(this::useFileConfig);
+        if(node != null) {
+            List<ConfigValueProvider.ConfigNode> children = node.getChildren();
+            if(children.isEmpty() || children.size() > 1) {
+                throw new IllegalStateException("TranslationsFile configuration must have 'auto' or 'file' declaration.");
+            }
+
+            for (ConfigValueProvider.ConfigNode child : children) {
+                if (child.getName().equals("auto")) {
+                    return Optional.of(new TranslationsFileConfiguration(this, Boolean.parseBoolean(child.readString())));
+                } else if(child.getName().equals("file")) {
+                    return Optional.of(new TranslationsFileConfiguration(this, useFileConfig(child)));
+                }
+            }
+        }
+        return Optional.empty();
     }
 
     @Override

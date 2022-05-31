@@ -71,7 +71,9 @@
           </execution>
         </executions>
         <configuration>
-          <translationsFile>${project.basedir}/MyTranslationBundle_cz.xtb</translationsFile>
+          <translationsFile>
+            <file>${project.basedir}/MyTranslationBundle_cz.xtb</file>
+          </translationsFile>
           <defines>
             <goog.LOCALE>cz</goog.LOCALE>
             <holder.value>Asi se něco stalo!</holder.value>

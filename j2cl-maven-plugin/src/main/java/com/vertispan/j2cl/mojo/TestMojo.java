@@ -248,7 +248,7 @@ public class TestMojo extends AbstractBuildMojo {
      * Closure flag: "Source of translated messages. Currently only supports XTB."
      */
     @Parameter
-    protected String translationsFile;
+    protected TranslationsFileConfig translationsFile;
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
