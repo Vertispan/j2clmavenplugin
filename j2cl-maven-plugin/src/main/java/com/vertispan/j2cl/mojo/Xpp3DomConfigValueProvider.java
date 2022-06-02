@@ -25,17 +25,15 @@ public class Xpp3DomConfigValueProvider implements PropertyTrackingConfig.Config
     private final List<RemoteRepository> repositories;
     private final RepositorySystem repoSystem;
     private final FileListConfigNode extraClasspath;
-    private final FileListConfigNode extraJsZips;
     private final Log log;
 
-    public Xpp3DomConfigValueProvider(Xpp3Dom config, ExpressionEvaluator expressionEvaluator, RepositorySystemSession repoSession, List<RemoteRepository> repositories, RepositorySystem repoSystem, List<File> extraClasspath, List<File> extraJsZips, Log log) {
+    public Xpp3DomConfigValueProvider(Xpp3Dom config, ExpressionEvaluator expressionEvaluator, RepositorySystemSession repoSession, List<RemoteRepository> repositories, RepositorySystem repoSystem, List<File> extraClasspath, Log log) {
         this.config = config;
         this.expressionEvaluator = expressionEvaluator;
         this.repoSession = repoSession;
         this.repositories = repositories;
         this.repoSystem = repoSystem;
         this.extraClasspath = new FileListConfigNode("extraClasspath", extraClasspath);
-        this.extraJsZips = new FileListConfigNode("extraJsZips", extraJsZips);
         this.log = log;
 
         if (log.isDebugEnabled()) {
@@ -178,8 +176,6 @@ public class Xpp3DomConfigValueProvider implements PropertyTrackingConfig.Config
     public ConfigNode findNode(String path) {
         if (path.equals("extraClasspath")) {
             return extraClasspath;
-        } else if (path.equals("extraJsZips")) {
-            return extraJsZips;
         }
         //uses the path to find the specific node desired
         Xpp3Dom node = findNodeWithKey(config, path, "");

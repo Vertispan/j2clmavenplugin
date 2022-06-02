@@ -50,7 +50,6 @@ public class Closure {
             CompilerOptions.LanguageMode languageOut,
             Map<String, List<String>> jsInputs,
             @Nullable File jsSourceDir,
-            List<File> jsZips,
             List<String> entrypoints,
             Map<String, String> defines,
             Collection<String> externFiles,
@@ -96,11 +95,6 @@ public class Closure {
             duplicateRelativePaths.forEach(path -> log.error("\t" + path));
             return false;
         }
-
-        jsZips.forEach(file -> {
-            jscompArgs.add("--jszip");
-            jscompArgs.add(file.getAbsolutePath());
-        });
 
         for (Map.Entry<String, String> define : defines.entrySet()) {
             jscompArgs.add("--define");

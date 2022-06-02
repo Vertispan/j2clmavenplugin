@@ -145,7 +145,6 @@ public class Xpp3DomConfigValueProviderTest {
                 repositories,
                 repoSystem,
                 Collections.emptyList(),
-                Collections.emptyList(),
                 new SystemStreamLog()
         );
     }

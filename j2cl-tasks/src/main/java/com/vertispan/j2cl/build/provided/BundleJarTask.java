@@ -19,7 +19,6 @@ import java.util.stream.Stream;
 
 import static com.vertispan.j2cl.build.provided.ClosureTask.COPIED_OUTPUT;
 import static com.vertispan.j2cl.build.provided.ClosureTask.copiedOutputPath;
-import static com.vertispan.j2cl.build.provided.JsZipBundleTask.JSZIP_BUNDLE_OUTPUT_TYPE;
 
 @AutoService(TaskFactory.class)
 public class BundleJarTask extends TaskFactory {
@@ -70,9 +69,6 @@ public class BundleJarTask extends TaskFactory {
             }
         }
 
-        //cheaty, but lets us cache
-        Input jszip = input(project, JSZIP_BUNDLE_OUTPUT_TYPE);
-
         File initialScriptFile = config.getWebappDirectory().resolve(config.getInitialScriptFilename()).toFile();
         Map<String, Object> defines = new LinkedHashMap<>(config.getDefines());
 
@@ -100,16 +96,18 @@ public class BundleJarTask extends TaskFactory {
                 // cachable task has already finished, and until we return it isn't possible for
                 // a new compile to start
 
-                for (Path dir : Stream.concat(Stream.of(jszip), jsSources.stream()).map(Input::getParentPaths).flatMap(Collection::stream).collect(Collectors.toSet())) {
+                for (Path dir : jsSources.stream().map(Input::getParentPaths).flatMap(Collection::stream).collect(Collectors.toSet())) {
                     FileUtils.copyDirectory(dir.toFile(), initialScriptFile.getParentFile());
                 }
 
                 try {
                     Gson gson = new GsonBuilder().setPrettyPrinting().create();
-                    String scriptsArray = gson.toJson(Stream.concat(
-                            Stream.of("j2cl-base.js"),//jre and bootstrap wiring, from the jszip input, always named the same
-                            sourceOrder.stream().flatMap(i -> i.getFilesAndHashes().stream()).map(CachedPath::getSourcePath).map(Path::toString)
-                    ).collect(Collectors.toList()));
+                    String scriptsArray = gson.toJson(sourceOrder.stream()
+                            .flatMap(i -> i.getFilesAndHashes().stream())
+                            .map(CachedPath::getSourcePath)
+                            .map(Path::toString)
+                            .collect(Collectors.toList())
+                    );
                     // unconditionally set this to false, so that our dependency order works, since we're always in BUNDLE now
                     defines.put("goog.ENABLE_DEBUG_LOADER", false);
 

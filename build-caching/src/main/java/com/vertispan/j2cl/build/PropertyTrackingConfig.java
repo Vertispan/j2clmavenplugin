@@ -188,15 +188,6 @@ public class PropertyTrackingConfig implements Config {
     }
 
     @Override
-    public List<File> getExtraJsZips() {
-        //TODO perhaps as scope=runtime dependency instead?
-        ConfigValueProvider.ConfigNode extraJsZips = config.findNode("extraJsZips");
-        if (extraJsZips == null) {
-            return Collections.emptyList();
-        }
-        return extraJsZips.getChildren().stream().map(this::useFileConfig).collect(Collectors.toList());
-    }
-    @Override
     public List<File> getExtraClasspath() {
         //TODO perhaps as scope=runtime dependency instead?
         ConfigValueProvider.ConfigNode extraClasspath = config.findNode("extraClasspath");

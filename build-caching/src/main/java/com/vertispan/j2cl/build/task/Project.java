@@ -11,4 +11,6 @@ public interface Project {
     List<? extends Dependency> getDependencies();
 
     boolean hasSourcesMapped();
+
+    boolean isJsZip();
 }
