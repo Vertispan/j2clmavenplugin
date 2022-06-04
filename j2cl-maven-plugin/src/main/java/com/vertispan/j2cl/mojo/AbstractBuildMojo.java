@@ -261,11 +261,6 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
         String key = AbstractBuildMojo.key(artifact);
         Project project = new Project(key);
 
-//        if (getLog().isDebugEnabled()) {
-//            String prefix = IntStream.range(0, depth).mapToObj(i -> "  ").collect(Collectors.joining(""));
-//            getLog().debug(prefix + "* " + key);
-//        }
-
         List<Dependency> dependencies = new ArrayList<>();
 
         // convert to list before iterating, we will sometimes append extra things we discover along the way
