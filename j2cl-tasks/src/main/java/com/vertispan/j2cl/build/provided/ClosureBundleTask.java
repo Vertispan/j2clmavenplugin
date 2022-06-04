@@ -44,14 +44,19 @@ public class ClosureBundleTask extends TaskFactory {
 
     @Override
     public Task resolve(Project project, Config config) {
-        // TODO filter to just JS and sourcemaps? probably not required unless we also get sources
-        //      from the actual input source instead of copying it along each step
-        List<Input> js = Stream.of(
-                input(project, OutputTypes.TRANSPILED_JS),
-                input(project, OutputTypes.BYTECODE)
-        )
-                .map(i -> i.filter(ClosureTask.PLAIN_JS_SOURCES))
-                .collect(Collectors.toList());
+        final List<Input> js;
+        if (project.isJsZip()) {
+            js = Collections.singletonList(input(project, OutputTypes.BYTECODE).filter(ClosureTask.PLAIN_JS_SOURCES));
+        } else {
+            // TODO filter to just JS and sourcemaps? probably not required unless we also get sources
+            //      from the actual input source instead of copying it along each step
+            js = Stream.of(
+                            input(project, OutputTypes.TRANSPILED_JS),
+                            input(project, OutputTypes.BYTECODE)
+                    )
+                    .map(i -> i.filter(ClosureTask.PLAIN_JS_SOURCES))
+                    .collect(Collectors.toList());
+        }
 
         return context -> {
             assert Files.isDirectory(context.outputPath());
@@ -93,7 +98,6 @@ public class ClosureBundleTask extends TaskFactory {
                                     .collect(Collectors.toList())
                     ),
                     sources,
-                    Collections.emptyList(),
                     Collections.emptyList(),
                     Collections.emptyMap(),
                     Collections.emptyList(),//TODO actually pass these in when we can restrict and cache them sanely

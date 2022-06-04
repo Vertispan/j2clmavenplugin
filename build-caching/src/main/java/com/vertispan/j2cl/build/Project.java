@@ -13,6 +13,8 @@ public class Project implements com.vertispan.j2cl.build.task.Project {
     private List<? extends com.vertispan.j2cl.build.task.Dependency> dependencies;
     private List<String> sourceRoots;
 
+    private boolean isJsZip = false;
+
     public Project(String key) {
         this.key = key;
     }
@@ -41,7 +43,7 @@ public class Project implements com.vertispan.j2cl.build.task.Project {
 
     @Override
     public boolean hasSourcesMapped() {
-        return sourceRoots.stream().noneMatch(root -> root.endsWith(".jar"));
+        return sourceRoots.stream().noneMatch(root -> root.endsWith(".jar") || root.endsWith(".zip"));
     }
 
     @Override
@@ -62,5 +64,22 @@ public class Project implements com.vertispan.j2cl.build.task.Project {
     @Override
     public int hashCode() {
         return key.hashCode();
+    }
+
+    /**
+     * Indicate that this Project is actually just a jszip, so should only be unpacked before having
+     * closure run on it, but should not actually run javac or j2cl on it.
+     *
+     * This is an ugly workaround for using bazel outputs in a maven build. That is, we must rely on
+     * bazel to build these jars, since the upstream google/j2cl project could change how this is
+     * built, and we need to rely on that output being accurate and consistent across versions.
+     */
+    public void markJsZip() {
+        isJsZip = true;
+    }
+
+    @Override
+    public boolean isJsZip() {
+        return isJsZip;
     }
 }

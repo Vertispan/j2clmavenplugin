@@ -135,16 +135,25 @@ public class ClosureTask extends TaskFactory {
         // collect current project JS sources and runtime deps JS sources
         // TODO filter to just JS and sourcemaps? probably not required unless we also get sources
         //      from the actual input source instead of copying it along each step
-        List<Input> jsSources = Stream.concat(
-                Stream.of(project),
-                scope(project.getDependencies(), Dependency.Scope.RUNTIME).stream()
-        )
+        Stream<Input> jsFromJavaProjects = Stream.concat(
+                        Stream.of(project),
+                        scope(project.getDependencies(), Dependency.Scope.RUNTIME)
+                                .stream()
+                                .filter(p -> !p.isJsZip())
+                )
                 .flatMap(p -> Stream.of(
                         input(p, OutputTypes.TRANSPILED_JS),
                         // Bytecode sources will include original input sources
                         // as well as generated input when the jar was built
                         input(p, OutputTypes.BYTECODE)
-                ))
+                ));
+
+        Stream<Input> jsFromJsZips = scope(project.getDependencies(), Dependency.Scope.RUNTIME)
+                .stream()
+                .filter(Project::isJsZip)
+                .map(p -> input(p, OutputTypes.BYTECODE));
+
+        List<Input> jsSources = Stream.concat(jsFromJavaProjects, jsFromJsZips)
                 // Only include the JS and externs
                 .map(i -> i.filter(PLAIN_JS_SOURCES, EXTERNS))
                 .collect(Collectors.toList());
@@ -171,7 +180,6 @@ public class ClosureTask extends TaskFactory {
         boolean checkAssertions = config.getCheckAssertions();
         boolean rewritePolyfills = config.getRewritePolyfills();
         boolean sourcemapsEnabled = config.getSourcemapsEnabled();
-        List<File> extraJsZips = config.getExtraJsZips();
         String env = config.getEnv();
 
         return new FinalOutputTask() {
@@ -229,7 +237,6 @@ public class ClosureTask extends TaskFactory {
                         languageOut,
                         js,
                         sources,
-                        extraJsZips,
                         entrypoint,
                         defines,
                         externs,

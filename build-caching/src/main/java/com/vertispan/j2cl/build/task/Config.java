@@ -38,8 +38,6 @@ public interface Config {
 
     Map<String, String> getUsedConfigs();
 
-    List<File> getExtraJsZips();
-
     String getLanguageOut();
 
     List<File> getExtraClasspath();

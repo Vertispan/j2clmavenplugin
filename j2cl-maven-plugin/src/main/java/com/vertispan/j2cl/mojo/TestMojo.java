@@ -284,14 +284,13 @@ public class TestMojo extends AbstractBuildMojo {
                 getFileWithMavenCoords(junitAnnotations)
         );
 
-        List<File> extraJsZips = Arrays.asList(
-                getFileWithMavenCoords(jreJsZip),
-                getFileWithMavenCoords(bootstrapJsZip),
-                getFileWithMavenCoords(testJsZip)
+        List<Artifact> extraJsZips = Arrays.asList(
+                getMavenArtifactWithCoords(jreJsZip),
+                getMavenArtifactWithCoords(bootstrapJsZip),
+                getMavenArtifactWithCoords(testJsZip)
         );
 
-
-        Xpp3DomConfigValueProvider config = new Xpp3DomConfigValueProvider(merge((Xpp3Dom) plugin.getConfiguration(), mojoExecution.getConfiguration()), expressionEvaluator, repoSession, repositories, repoSystem, extraClasspath, extraJsZips, getLog());
+        Xpp3DomConfigValueProvider config = new Xpp3DomConfigValueProvider(merge((Xpp3Dom) plugin.getConfiguration(), mojoExecution.getConfiguration()), expressionEvaluator, repoSession, repositories, repoSystem, extraClasspath, getLog());
 
         ProjectBuildingRequest request = new DefaultProjectBuildingRequest(mavenSession.getProjectBuildingRequest());
 
@@ -301,7 +300,7 @@ public class TestMojo extends AbstractBuildMojo {
         try {
             // Build the dependency tree for the project itself. Note that this picks up the scope of the test side of things, but uses the app sources, which isn't exactly right.
             // Less wrong would be to just build main normally, and then also add in the tests, the maven-specific buildProject() isnt that smart yet
-            Project main = buildProject(project, project.getArtifact(), false, projectBuilder, request, pluginVersion, builtProjects, Artifact.SCOPE_TEST, getDependencyReplacements());
+            Project main = buildProject(project, project.getArtifact(), false, projectBuilder, request, pluginVersion, builtProjects, Artifact.SCOPE_TEST, getDependencyReplacements(), extraJsZips);
 
             // Given that set of tasks, we'll chain one more on the end - this is the one that will have the actual test sources+resources. To be fully correct,
             // only this should have the scope=test deps on it
