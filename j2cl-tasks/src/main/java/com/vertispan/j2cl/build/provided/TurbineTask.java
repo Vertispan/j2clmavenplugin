@@ -36,10 +36,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
-import static com.vertispan.j2cl.build.provided.JavacTask.JAVA_BYTECODE;
 
 @AutoService(TaskFactory.class)
-public class TurbineTask extends TaskFactory {
+public class TurbineTask extends JavacTask {
 
     public static final PathMatcher JAVA_SOURCES = withSuffix(".java");
 
@@ -60,6 +59,11 @@ public class TurbineTask extends TaskFactory {
 
     @Override
     public Task resolve(Project project, Config config) {
+        int version = getJavaVersion();
+        if(version == 8) {
+            return super.resolve(project, config);
+        }
+
         // emits only stripped bytecode, so we're not worried about anything other than .java files to compile and .class on the classpath
         Input ownSources = input(project, OutputTypes.STRIPPED_SOURCES).filter(JAVA_SOURCES);
 
@@ -156,4 +160,14 @@ public class TurbineTask extends TaskFactory {
                     .map(Paths::get)
                     .filter(Files::exists)
                     .collect(toImmutableList());
+
+    private int getJavaVersion() {
+        String version = System.getProperty("java.version");
+        if(version.startsWith("1.")) {
+            version = version.substring(2, 3);
+        } else {
+            int dot = version.indexOf(".");
+            if(dot != -1) { version = version.substring(0, dot); }
+        } return Integer.parseInt(version);
+    }
 }
