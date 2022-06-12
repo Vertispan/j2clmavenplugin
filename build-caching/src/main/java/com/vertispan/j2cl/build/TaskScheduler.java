@@ -7,7 +7,6 @@ import com.vertispan.j2cl.build.task.TaskFactory;
 import com.vertispan.j2cl.build.task.TaskContext;
 
 import java.io.FileNotFoundException;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -61,12 +60,18 @@ public class TaskScheduler {
         this.buildLog = buildLog;
     }
 
-    private static class State {
+    /**
+     * Wraps the tasks that the scheduler is currently responsible for, representing the state of a single call to
+     * submit().
+     *
+     * Future refactors should probably move more methods into this class, and possibly make it a top level type.
+     */
+    private static class Tasks {
         enum TaskState { PENDING, RUNNING, COMPLETE, CANCELED; }
         private final Map<CollectedTaskInputs, TaskState> work = new ConcurrentHashMap<>();
         private final AtomicBoolean isCanceled = new AtomicBoolean(false);
 
-        public State(Collection<CollectedTaskInputs> inputs, Set<Input> ready) {
+        public Tasks(Collection<CollectedTaskInputs> inputs, Set<Input> ready) {
             inputs.forEach(i -> work.put(i, ready.contains(i.getAsInput()) ? TaskState.COMPLETE : TaskState.PENDING));
         }
 
@@ -124,11 +129,9 @@ public class TaskScheduler {
                 .flatMap(Collection::stream)
                 .collect(Collectors.groupingBy(Function.identity()));
 
-//        Set<CollectedTaskInputs> remainingWork = Collections.synchronizedSet(new HashSet<>(inputs));
-        State buildState = new State(inputs, ready);
-//        remainingWork.removeIf(item -> ready.contains(item.getAsInput()));
+        Tasks tasks = new Tasks(inputs, ready);
 
-        scheduleAvailableWork(Collections.synchronizedSet(ready), allInputs, buildState, new BuildListener() {
+        scheduleAvailableWork(Collections.synchronizedSet(ready), allInputs, tasks, new BuildListener() {
             private final AtomicBoolean firstNotificationSent = new AtomicBoolean(false);
             @Override
             public void onSuccess() {
@@ -155,7 +158,7 @@ public class TaskScheduler {
             }
         });
 
-        return buildState::cancelPending;//TODO either this method or this lambda should check if there are no tasks running and trigger onSuccess
+        return tasks::cancelPending;//TODO either this method or this lambda should check if there are no tasks running and trigger onSuccess
     }
 
     private void verifyFinalTaskMarkerNull() {
@@ -165,16 +168,16 @@ public class TaskScheduler {
         }
     }
 
-    private void scheduleAvailableWork(Set<Input> ready, Map<Input, List<Input>> allInputs, State buildState, BuildListener listener) {
-        buildState.dumpDebugState(buildLog);
+    private void scheduleAvailableWork(Set<Input> ready, Map<Input, List<Input>> allInputs, Tasks tasks, BuildListener listener) {
+        tasks.dumpDebugState(buildLog);
 
-        if (buildState.isDone()) {
+        if (tasks.isDone()) {
             // no work left, mark entire set of tasks as finished
             listener.onSuccess();
             return;
         }
         // Filter based on work which has no dependencies in this batch.
-        List<CollectedTaskInputs> copy = buildState.pendingList();
+        List<CollectedTaskInputs> copy = tasks.pendingList();
 
         // iterating a copy in case something is removed while we're in here - at the time we were called it was important
         copy.forEach(taskDetails -> {
@@ -306,7 +309,7 @@ public class TaskScheduler {
 
                         // When something finishes, remove it from the various dependency lists and see if we can run the loop again with more work.
                         // Presently this could be called multiple times, so we check if already removed
-                        if (buildState.complete(taskDetails)) {
+                        if (tasks.complete(taskDetails)) {
                             for (Input input : allInputs.computeIfAbsent(taskDetails.getAsInput(), ignore -> Collections.emptyList())) {
                                 // since we don't support running more than one thing at a time, this will not change data out from under a running task
                                 input.setCurrentContents(cacheResult.output());
@@ -317,7 +320,7 @@ public class TaskScheduler {
                         }
                     }
                     if (scheduleMore) {
-                        scheduleAvailableWork(ready, allInputs, buildState, listener);
+                        scheduleAvailableWork(ready, allInputs, tasks, listener);
                     }
                 }
 
