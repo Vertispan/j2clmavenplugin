@@ -110,7 +110,7 @@ public class WatchService {
         }
 
         public void requestBuild() {
-             if (timerStarted.compareAndSet(false, true)) {
+            if (timerStarted.compareAndSet(false, true)) {
                 executorService.schedule(this::timerElapsed, 100, TimeUnit.MILLISECONDS);
             } // otherwise already started, will elapse soon
         }
