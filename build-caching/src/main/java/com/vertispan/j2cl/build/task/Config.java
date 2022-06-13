@@ -1,13 +1,11 @@
 package com.vertispan.j2cl.build.task;
 
-import com.vertispan.j2cl.build.TranslationsFileConfiguration;
 
 import java.io.File;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 public interface Config {
     String getString(String key);
@@ -26,7 +24,7 @@ public interface Config {
 
     Collection<String> getExterns();
 
-    Optional<TranslationsFileConfiguration> getTranslationsFile();
+    Map<String, Object> getTranslationsFile();
 
     boolean getCheckAssertions();
 

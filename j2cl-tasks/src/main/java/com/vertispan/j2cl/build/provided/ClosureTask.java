@@ -4,7 +4,6 @@ import com.google.auto.service.AutoService;
 import com.google.javascript.jscomp.CompilationLevel;
 import com.google.javascript.jscomp.CompilerOptions;
 import com.google.javascript.jscomp.DependencyOptions;
-import com.vertispan.j2cl.build.TranslationsFileConfiguration;
 import com.vertispan.j2cl.build.task.*;
 import com.vertispan.j2cl.tools.Closure;
 import org.apache.commons.io.FileUtils;
@@ -179,19 +178,19 @@ public class ClosureTask extends TaskFactory {
         CompilerOptions.LanguageMode languageOut = CompilerOptions.LanguageMode.fromString(config.getLanguageOut());
         //TODO probably kill this, or at least make it work like an import via another task so we detect changes
         Collection<String> externs = config.getExterns();
-        Optional<TranslationsFileConfiguration> translationsfile = config.getTranslationsFile();
-        translationsfile.ifPresent(file -> file.setProjectInputs(
 
+        TranslationsFileProcessor translationsFileProcessor = new TranslationsFileProcessor(config);
+        translationsFileProcessor.setProjectInputs(
                 Stream.concat(
-                        Stream.of(project),
-                        scope(project.getDependencies(), com.vertispan.j2cl.build.task.Dependency.Scope.RUNTIME).stream()
-                )
-                .map(p ->
-                        input(p, OutputTypes.BYTECODE)
-                )
-                // Only include the .xtb
-                .map(i -> i.filter(XTB))
-                .collect(Collectors.toList())));
+                                Stream.of(project),
+                                scope(project.getDependencies(), com.vertispan.j2cl.build.task.Dependency.Scope.RUNTIME).stream()
+                        )
+                        .map(p ->
+                                input(p, OutputTypes.BYTECODE)
+                        )
+                        // Only include the .xtb
+                        .map(i -> i.filter(XTB))
+                        .collect(Collectors.toList()));
 
         boolean checkAssertions = config.getCheckAssertions();
         boolean rewritePolyfills = config.getRewritePolyfills();
@@ -256,7 +255,7 @@ public class ClosureTask extends TaskFactory {
                         entrypoint,
                         defines,
                         externs,
-                        translationsfile,
+                        translationsFileProcessor,
                         true,//TODO have this be passed in,
                         checkAssertions,
                         rewritePolyfills,
