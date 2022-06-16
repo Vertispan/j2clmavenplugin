@@ -179,18 +179,15 @@ public class ClosureTask extends TaskFactory {
         //TODO probably kill this, or at least make it work like an import via another task so we detect changes
         Collection<String> externs = config.getExterns();
 
-        TranslationsFileProcessor translationsFileProcessor = new TranslationsFileProcessor(config);
-        translationsFileProcessor.setProjectInputs(
-                Stream.concat(
-                                Stream.of(project),
-                                scope(project.getDependencies(), com.vertispan.j2cl.build.task.Dependency.Scope.RUNTIME).stream()
-                        )
-                        .map(p ->
-                                input(p, OutputTypes.BYTECODE)
-                        )
-                        // Only include the .xtb
-                        .map(i -> i.filter(XTB))
-                        .collect(Collectors.toList()));
+        TranslationsFileProcessor translationsFileProcessor = TranslationsFileProcessor.get(config);
+        List<Input> xtbInputs = Stream.concat(
+                        Stream.of(project),
+                        scope(project.getDependencies(), Dependency.Scope.RUNTIME).stream()
+                )
+                .map(p -> input(p, OutputTypes.BYTECODE))
+                // Only include the .xtb
+                .map(i -> i.filter(XTB))
+                .collect(Collectors.toList());
 
         boolean checkAssertions = config.getCheckAssertions();
         boolean rewritePolyfills = config.getRewritePolyfills();
@@ -255,7 +252,7 @@ public class ClosureTask extends TaskFactory {
                         entrypoint,
                         defines,
                         externs,
-                        translationsFileProcessor,
+                        translationsFileProcessor.getTranslationsFile(xtbInputs, context.log()),
                         true,//TODO have this be passed in,
                         checkAssertions,
                         rewritePolyfills,

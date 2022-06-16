@@ -142,22 +142,6 @@ public class PropertyTrackingConfig implements Config {
     }
 
     @Override
-    public Map<String, Object> getTranslationsFile() {
-        ConfigValueProvider.ConfigNode translationsFile = config.findNode("translationsFile");
-        if (translationsFile == null) {
-            return Collections.emptyMap();
-        }
-        return translationsFile.getChildren().stream()
-                .collect(Collectors.toMap(ConfigValueProvider.ConfigNode::getName, e -> {
-                    if(e.getName().equals("file")) {
-                        return e.readFile();
-                    } else {
-                        return e.readString();
-                    }
-                }));
-    }
-
-    @Override
     public boolean getCheckAssertions() {
         return Boolean.parseBoolean(getString("checkAssertions"));
     }

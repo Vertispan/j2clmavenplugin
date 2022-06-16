@@ -18,6 +18,7 @@ import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -100,7 +101,7 @@ public class ClosureBundleTask extends TaskFactory {
                     Collections.emptyList(),
                     Collections.emptyMap(),
                     Collections.emptyList(),//TODO actually pass these in when we can restrict and cache them sanely
-                    new TranslationsFileProcessor(config),
+                    Optional.empty(),
                     true,//TODO have this be passed in,
                     true,//default to true, will have no effect anyway
                     false,

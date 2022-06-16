@@ -1,6 +1,5 @@
 package com.vertispan.j2cl.build.task;
 
-
 import java.io.File;
 import java.nio.file.Path;
 import java.util.Collection;
@@ -23,8 +22,6 @@ public interface Config {
     String getDependencyMode();
 
     Collection<String> getExterns();
-
-    Map<String, Object> getTranslationsFile();
 
     boolean getCheckAssertions();
 

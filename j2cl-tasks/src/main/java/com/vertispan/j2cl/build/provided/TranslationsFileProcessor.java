@@ -1,6 +1,9 @@
 package com.vertispan.j2cl.build.provided;
 
-import com.vertispan.j2cl.build.task.*;
+import com.vertispan.j2cl.build.task.BuildLog;
+import com.vertispan.j2cl.build.task.CachedPath;
+import com.vertispan.j2cl.build.task.Config;
+import com.vertispan.j2cl.build.task.Input;
 import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
@@ -16,68 +19,51 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-public class TranslationsFileProcessor {
+public interface TranslationsFileProcessor {
+    public static TranslationsFileProcessor get(Config config) {
+        File file = config.getFile("translationsFile.file");
+        boolean auto = Boolean.parseBoolean(config.getString("translationsFile.auto"));
 
-    private final Config config;
-
-    private XTBLookup lookup = new TranslationsFileNotDefined();
-
-    private List<Input> jsSources;
-
-    public TranslationsFileProcessor(Config config) {
-        this.config = config;
-        if (!config.getTranslationsFile().isEmpty()) {
-            if (!config.getCompilationLevel().equals("ADVANCED")) {
-                //Do we have logger ?
-                System.out.println("translationsFile only works in the ADVANCED optimization level, in other levels the default messages values will be used");
-            } else {
-                if (config.getTranslationsFile().containsKey("file")) {
-                    //translation file explicitly defined
-                    lookup = new ExplicitlyDefined();
-                } else if (config.getTranslationsFile().containsKey("auto") && config.getTranslationsFile().get("auto").equals("true")) {
-                    // we have to perform Project wide lookup
-                    lookup = new ProjectLookup();
-                }
-            }
+        if ((auto || file != null) && !config.getCompilationLevel().equals("ADVANCED")) {
+            return new TranslationsFileNotDefined(true);
         }
+        if (file != null) {
+            return (inputs, log) -> Optional.of(file);
+        } else if (auto) {
+            return new ProjectLookup(config);
+        }
+        return new TranslationsFileNotDefined(false);
     }
 
-    public Optional<File> getTranslationsFile() {
-        return lookup.getFile();
-    }
+    Optional<File> getTranslationsFile(List<Input> inputs, BuildLog log);
 
-    public void setProjectInputs(List<Input> collect) {
-        this.jsSources = collect;
-    }
+    class TranslationsFileNotDefined implements TranslationsFileProcessor {
+        private final boolean shouldWarn;
 
-    private interface XTBLookup {
-
-        Optional<File> getFile();
-    }
-
-    private class TranslationsFileNotDefined implements XTBLookup {
+        public TranslationsFileNotDefined(boolean shouldWarn) {
+            this.shouldWarn = shouldWarn;
+        }
 
         @Override
-        public Optional<File> getFile() {
+        public Optional<File> getTranslationsFile(List<Input> inputs, BuildLog log) {
+            if (shouldWarn) {
+                log.warn("translationsFile only works in the ADVANCED optimization level, in other levels the default messages values will be used");
+            }
+
             return Optional.empty();
         }
     }
 
-    private class ExplicitlyDefined implements XTBLookup {
+    class ProjectLookup implements TranslationsFileProcessor {
+        private final String locale;
 
-        @Override
-        public Optional<File> getFile() {
-            System.out.println("getFile " + config.getTranslationsFile().get("file"));
-
-            return Optional.of((File) config.getTranslationsFile().get("file"));
+        public ProjectLookup(Config config) {
+            locale = config.getString("defines.goog.LOCALE");
         }
-    }
-
-    private class ProjectLookup implements XTBLookup {
 
         @Override
-        public Optional<File> getFile() {
-            List<File> temp = jsSources.stream()
+        public Optional<File> getTranslationsFile(List<Input> inputs, BuildLog log) {
+            List<File> temp = inputs.stream()
                     .map(Input::getFilesAndHashes)
                     .flatMap(Collection::stream)
                     .map(CachedPath::getAbsolutePath)
@@ -85,10 +71,8 @@ public class TranslationsFileProcessor {
                     .collect(Collectors.toList());
 
             if (temp.isEmpty()) {
-                System.out.println("no .xtb files was found");
+                log.warn("no .xtb files was found");
             }
-
-            String locale = config.getDefines().get("goog.LOCALE");
 
             try {
                 DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
@@ -117,13 +101,11 @@ public class TranslationsFileProcessor {
                         return Optional.of(xtb);
                     }
                 }
-            } catch (ParserConfigurationException e) {
-                throw new RuntimeException(e);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            } catch (SAXException e) {
+            } catch (ParserConfigurationException | SAXException | IOException e) {
+                log.error("Error while reading xtb files ", e);
                 throw new RuntimeException(e);
             }
+            log.warn("No matching locales for " + locale);
             return Optional.empty();
         }
 

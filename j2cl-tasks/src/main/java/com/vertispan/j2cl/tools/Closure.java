@@ -3,7 +3,6 @@ package com.vertispan.j2cl.tools;
 import com.google.javascript.jscomp.*;
 import com.google.javascript.jscomp.Compiler;
 import com.vertispan.j2cl.build.DiskCache;
-import com.vertispan.j2cl.build.provided.TranslationsFileProcessor;
 import com.vertispan.j2cl.build.task.BuildLog;
 import com.vertispan.j2cl.build.task.Input;
 
@@ -16,6 +15,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class Closure {
@@ -53,7 +53,7 @@ public class Closure {
             List<String> entrypoints,
             Map<String, String> defines,
             Collection<String> externFiles,
-            TranslationsFileProcessor translationsFile,
+            Optional<File> translationsFile,
             boolean exportTestFunctions,
             boolean checkAssertions,
             boolean rewritePolyfills,
@@ -106,7 +106,7 @@ public class Closure {
             jscompArgs.add(extern);
         }
 
-        translationsFile.getTranslationsFile().ifPresent(file -> {
+        translationsFile.ifPresent(file -> {
             jscompArgs.add("--translations_file");
             jscompArgs.add(file.getAbsolutePath());
         });
