@@ -27,6 +27,9 @@ import java.util.stream.Stream;
  */
 @AutoService(TaskFactory.class)
 public class ClosureBundleTask extends TaskFactory {
+
+    public static final String BUNDLE_JS_EXTENSION = ".bundle.js";
+
     @Override
     public String getOutputType() {
         return OutputTypes.BUNDLED_JS;
@@ -122,7 +125,7 @@ public class ClosureBundleTask extends TaskFactory {
                     murmur.update(b);
                 }
             }
-            Files.move(outputFilePath, outputFilePath.resolveSibling(fileNameKey + "-" + murmur.getValueHexString() + ".bundle.js"));
+            Files.move(outputFilePath, outputFilePath.resolveSibling(fileNameKey + "-" + murmur.getValueHexString() + BUNDLE_JS_EXTENSION));
             //TODO when back to keyboard rename sourcemap? is that a thing we need to do?
         };
     }

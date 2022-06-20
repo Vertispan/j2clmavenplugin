@@ -4,6 +4,7 @@ import com.google.auto.service.AutoService;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.vertispan.j2cl.build.task.*;
+import com.vertispan.j2cl.tools.Closure;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
@@ -13,17 +14,19 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static com.vertispan.j2cl.build.provided.ClosureBundleTask.BUNDLE_JS_EXTENSION;
 import static com.vertispan.j2cl.build.provided.ClosureTask.COPIED_OUTPUT;
 import static com.vertispan.j2cl.build.provided.ClosureTask.copiedOutputPath;
 
 @AutoService(TaskFactory.class)
 public class BundleJarTask extends TaskFactory {
 
-    public static final PathMatcher BUNDLE_JS = FileSystems.getDefault().getPathMatcher("glob:*.bundle.js");
+    public static final PathMatcher BUNDLE_JS = withSuffix(BUNDLE_JS_EXTENSION);
 
     @Override
     public String getOutputType() {
@@ -96,8 +99,24 @@ public class BundleJarTask extends TaskFactory {
                 // cachable task has already finished, and until we return it isn't possible for
                 // a new compile to start
 
-                for (Path dir : jsSources.stream().map(Input::getParentPaths).flatMap(Collection::stream).collect(Collectors.toSet())) {
-                    FileUtils.copyDirectory(dir.toFile(), initialScriptFile.getParentFile());
+                File outputDir = initialScriptFile.getParentFile();
+                outputDir.mkdirs();
+                for (CachedPath bundle : jsSources.stream()
+                        .flatMap(i -> i.getFilesAndHashes().stream())
+                        .collect(Collectors.toList())) {
+                    Path targetFile = outputDir.toPath().resolve(bundle.getSourcePath());
+                    // if the file is present and has the same size, skip it
+                    if (Files.exists(targetFile) && Files.size(targetFile) == Files.size(bundle.getAbsolutePath())) {
+                        continue;
+                    }
+                    Files.copy(bundle.getAbsolutePath(), targetFile, StandardCopyOption.REPLACE_EXISTING);
+                }
+
+                File destSourcesDir = outputDir.toPath().resolve(Closure.SOURCES_DIRECTORY_NAME).toFile();
+                destSourcesDir.mkdirs();
+                for (Path dir : jsSources.stream().map(Input::getParentPaths).flatMap(Collection::stream).map(p -> p.resolve(Closure
+                        .SOURCES_DIRECTORY_NAME)).collect(Collectors.toSet())) {
+                    FileUtils.copyDirectory(dir.toFile(), destSourcesDir);
                 }
 
                 try {
@@ -137,7 +156,7 @@ public class BundleJarTask extends TaskFactory {
                 }
                 for (Input input : outputToCopy) {
                     for (CachedPath entry : input.getFilesAndHashes()) {
-                        copiedOutputPath(initialScriptFile.getParentFile().toPath(), entry);
+                        copiedOutputPath(outputDir.toPath(), entry);
                     }
                 }
             }
