@@ -107,6 +107,9 @@
         <version>\${maven.jetty.plugin.version}</version>
         <configuration>
           <webApp>
+            <_initParams>
+              <org.eclipse.jetty.servlet.Default.useFileMappedBuffer>false</org.eclipse.jetty.servlet.Default.useFileMappedBuffer>
+            </_initParams>
             <resourceBases>
               <!-- Serve static content without copying from src/main/webapp -->
               <resourceBase>src/main/webapp</resourceBase>
