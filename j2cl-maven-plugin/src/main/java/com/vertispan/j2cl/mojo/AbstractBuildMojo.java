@@ -211,6 +211,7 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
 
         // Attach any jszip dependencies as runtime-only dependencies of the final project
         // Note that this assumes/requires that this is not covered by dependency-replacements
+        List<Project> seenJsZipProjects = new ArrayList<>();
         for (Artifact extraJsZip : extraJsZips) {
             String key = key(extraJsZip);
             final Project child;
@@ -222,14 +223,19 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
                     p = resolveNonReactorProjectForArtifact(projectBuilder, request, extraJsZip);
                 }
                 child = buildProjectHelper(p, extraJsZip, lookupReactorProjects, projectBuilder, request, pluginVersion, builtProjects, Artifact.SCOPE_COMPILE_PLUS_RUNTIME, dependencyReplacements, 1);
+                child.getDependencies().clear();//ignore default jar deps
             }
             child.markJsZip();
-            Dependency dependency = new Dependency();
-            dependency.setScope(com.vertispan.j2cl.build.task.Dependency.Scope.RUNTIME);
-            dependency.setProject(child);
-            ArrayList<com.vertispan.j2cl.build.task.Dependency> deps = new ArrayList<>(finalProject.getDependencies());
-            deps.add(dependency);
-            finalProject.setDependencies(deps);
+            Stream.concat(seenJsZipProjects.stream(), builtProjects.values().stream().filter(proj -> extraJsZips.stream().noneMatch(a -> key(a).equals(proj.getKey())))).forEach(proj -> {
+                Dependency dependency = new Dependency();
+                dependency.setScope(com.vertispan.j2cl.build.task.Dependency.Scope.BOTH);
+                dependency.setProject(child);
+                ArrayList<com.vertispan.j2cl.build.task.Dependency> deps = new ArrayList<>(proj.getDependencies());
+                deps.add(dependency);
+                proj.setDependencies(deps);
+            });
+            seenJsZipProjects.add(child);
+
         }
 
         // Before returning this, log the full dependency tree if requested. We do this afterwards instead of
