@@ -27,6 +27,8 @@ public class ClosureTask extends TaskFactory {
     private static final Path PUBLIC = Paths.get("public");
 
     private static final PathMatcher JS_SOURCES = withSuffix(".js");
+
+    private static final PathMatcher XTB = withSuffix(".xtb");
     private static final PathMatcher NATIVE_JS_SOURCES = withSuffix(".native.js");
     private static final PathMatcher EXTERNS_SOURCES = withSuffix(".externs.js");
 
@@ -176,7 +178,17 @@ public class ClosureTask extends TaskFactory {
         CompilerOptions.LanguageMode languageOut = CompilerOptions.LanguageMode.fromString(config.getLanguageOut());
         //TODO probably kill this, or at least make it work like an import via another task so we detect changes
         Collection<String> externs = config.getExterns();
-        Optional<File> translationsfile = config.getTranslationsFile();
+
+        TranslationsFileProcessor translationsFileProcessor = TranslationsFileProcessor.get(config);
+        List<Input> xtbInputs = Stream.concat(
+                        Stream.of(project),
+                        scope(project.getDependencies(), Dependency.Scope.RUNTIME).stream()
+                )
+                .map(p -> input(p, OutputTypes.BYTECODE))
+                // Only include the .xtb
+                .map(i -> i.filter(XTB))
+                .collect(Collectors.toList());
+
         boolean checkAssertions = config.getCheckAssertions();
         boolean rewritePolyfills = config.getRewritePolyfills();
         boolean sourcemapsEnabled = config.getSourcemapsEnabled();
@@ -240,7 +252,7 @@ public class ClosureTask extends TaskFactory {
                         entrypoint,
                         defines,
                         externs,
-                        translationsfile,
+                        translationsFileProcessor.getTranslationsFile(xtbInputs, context.log()),
                         true,//TODO have this be passed in,
                         checkAssertions,
                         rewritePolyfills,

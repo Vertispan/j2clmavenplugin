@@ -13,6 +13,7 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugin.PluginParameterExpressionEvaluator;
 import org.apache.maven.plugin.descriptor.PluginDescriptor;
+import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -138,7 +139,7 @@ public class BuildMojo extends AbstractBuildMojo {
      * Closure flag: "Source of translated messages. Currently only supports XTB."
      */
     @Parameter
-    protected String translationsFile;
+    protected TranslationsFileConfig translationsFile;
 
     /**
      * Closure flag: "Determines the set of builtin externs to load. Options: BROWSER, CUSTOM. Defaults to BROWSER."

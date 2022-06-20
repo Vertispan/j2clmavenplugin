@@ -5,7 +5,6 @@ import java.nio.file.Path;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 public interface Config {
     String getString(String key);
@@ -23,8 +22,6 @@ public interface Config {
     String getDependencyMode();
 
     Collection<String> getExterns();
-
-    Optional<File> getTranslationsFile();
 
     boolean getCheckAssertions();
 

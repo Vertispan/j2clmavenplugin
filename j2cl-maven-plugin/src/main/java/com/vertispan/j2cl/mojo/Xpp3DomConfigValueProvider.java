@@ -205,7 +205,13 @@ public class Xpp3DomConfigValueProvider implements PropertyTrackingConfig.Config
             if (index == -1) {
                 return null;// failed to find it so far, must not be present
             }
-            return findNodeWithKey(config, prefix.substring(0, index), prefix.substring(index + 1) + '.' + remaining);
+            String nextRemaining;
+            if (remaining.isEmpty()) {
+                nextRemaining = prefix.substring(index + 1);
+            } else {
+                nextRemaining = prefix.substring(index + 1) + '.' + remaining;
+            }
+            return findNodeWithKey(config, prefix.substring(0, index), nextRemaining);
         }
     }
 

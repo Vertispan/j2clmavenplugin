@@ -107,12 +107,8 @@ public class Closure {
         }
 
         translationsFile.ifPresent(file -> {
-            if(compilationLevel.equals(CompilationLevel.ADVANCED_OPTIMIZATIONS)) {
-                jscompArgs.add("--translations_file");
-                jscompArgs.add(file.getAbsolutePath());
-            } else {
-                log.warn("translationsFile only works in the ADVANCED optimization level, in other levels the default messages values will be used");
-            }
+            jscompArgs.add("--translations_file");
+            jscompArgs.add(file.getAbsolutePath());
         });
 
         jscompArgs.add("--compilation_level");
