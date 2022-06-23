@@ -92,11 +92,8 @@ public class TurbineTask extends JavacTask {
         };
     }
 
-    public void extractJar(String zipFilePath, String extractDirectory, TaskContext context) {
-        Path filePath = Paths.get(zipFilePath);
-        Path target = Paths.get(extractDirectory);
-
-        try (ZipInputStream zis = new ZipInputStream(new FileInputStream(filePath.toFile()))) {
+    public void extractJar(File zipFile, Path target, TaskContext context) {
+        try (ZipInputStream zis = new ZipInputStream(new FileInputStream(filePath))) {
             ZipEntry zipEntry = zis.getNextEntry();
             while (zipEntry != null) {
                 boolean isDirectory = false;
