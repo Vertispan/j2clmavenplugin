@@ -44,5 +44,4 @@ public class Dependency implements com.vertispan.j2cl.build.task.Dependency {
     public void setScope(Scope scope) {
         this.scope = scope;
     }
-
 }
