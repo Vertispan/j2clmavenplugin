@@ -1,7 +1,5 @@
 package com.vertispan.j2cl.build;
 
-import java.io.File;
-
 /**
  * A dependency is a reference to another project's contents, scoped to indicate whether these are
  * required to be compiled against, or linked against (and so are required at runtime). The default
@@ -12,8 +10,6 @@ import java.io.File;
  */
 public class Dependency implements com.vertispan.j2cl.build.task.Dependency {
     private Project project;
-
-    private File jar;
 
     private Scope scope = com.vertispan.j2cl.build.task.Dependency.Scope.BOTH;
 
@@ -49,11 +45,4 @@ public class Dependency implements com.vertispan.j2cl.build.task.Dependency {
         this.scope = scope;
     }
 
-    public File getJar() {
-        return jar;
-    }
-
-    public void setJar(File jar) {
-        this.jar = jar;
-    }
 }

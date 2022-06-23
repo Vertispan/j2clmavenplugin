@@ -1,13 +1,9 @@
 package com.vertispan.j2cl.build.task;
 
-import java.io.File;
-
 public interface Dependency {
     Project getProject();
 
     Scope getScope();
-
-    File getJar();
 
     enum Scope {
         COMPILE,

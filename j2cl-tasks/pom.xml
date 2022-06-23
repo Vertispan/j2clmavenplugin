@@ -49,12 +49,6 @@
             <version>${j2cl.version}</version>
         </dependency>
 
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-compress</artifactId>
-        </dependency>
-
-
         <!-- closure compiler dependencies -->
         <dependency>
             <groupId>com.vertispan.javascript</groupId>

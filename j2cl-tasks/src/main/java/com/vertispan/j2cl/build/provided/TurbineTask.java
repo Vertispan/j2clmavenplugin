@@ -1,41 +1,23 @@
 package com.vertispan.j2cl.build.provided;
 
 import com.google.auto.service.AutoService;
-import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableList;
 import com.google.j2cl.common.SourceUtils;
 import com.google.turbine.diag.TurbineError;
 import com.google.turbine.main.Main;
-import com.google.turbine.options.LanguageVersion;
 import com.google.turbine.options.TurbineOptions;
-import com.vertispan.j2cl.build.task.Config;
-import com.vertispan.j2cl.build.task.Dependency;
-import com.vertispan.j2cl.build.task.Input;
-import com.vertispan.j2cl.build.task.OutputTypes;
-import com.vertispan.j2cl.build.task.Project;
-import com.vertispan.j2cl.build.task.TaskFactory;
-import org.apache.commons.compress.archivers.ArchiveEntry;
-import org.apache.commons.compress.archivers.ArchiveException;
-import org.apache.commons.compress.archivers.ArchiveInputStream;
-import org.apache.commons.compress.archivers.ArchiveStreamFactory;
-import org.apache.commons.io.IOUtils;
+import com.vertispan.j2cl.build.task.*;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.PathMatcher;
-import java.nio.file.Paths;
+import javax.lang.model.SourceVersion;
+import java.io.*;
+import java.nio.file.*;
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static com.google.common.collect.ImmutableList.toImmutableList;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 @AutoService(TaskFactory.class)
 public class TurbineTask extends JavacTask {
@@ -59,7 +41,7 @@ public class TurbineTask extends JavacTask {
 
     @Override
     public Task resolve(Project project, Config config) {
-        int version = getJavaVersion();
+        int version = SourceVersion.latestSupported().ordinal();
         if(version == 8) {
             return super.resolve(project, config);
         }
@@ -77,9 +59,9 @@ public class TurbineTask extends JavacTask {
         return context -> {
 
             Set<String> deps = Stream.concat(extraClasspath.stream().map(File::toString),
-                            compileClasspath.stream().map(Input::getParentPaths).flatMap(Collection::stream).map(Path::toFile)
-                                    .map(File::toString)
-                                    .map(path -> path + "/output.jar"))
+                            compileClasspath.stream().map(Input::getParentPaths).flatMap(Collection::stream)
+                                    .map(p -> p.resolve("output.jar"))
+                                    .map(Path::toString))
                     .collect(Collectors.toSet());
 
             File resultFolder = context.outputPath().toFile();
@@ -93,81 +75,52 @@ public class TurbineTask extends JavacTask {
 
             try {
                 Main.Result result = Main.compile(
-                        optionsWithBootclasspath()
+                        TurbineOptions.builder()
                                 .setSources(ImmutableList.copyOf(sources))
                                 .setOutput(output.toString())
                                 .setClassPath(ImmutableList.copyOf(deps))
-                                //TODO take a look at ReducedClasspathMode
+                                //TODO https://github.com/Vertispan/j2clmavenplugin/issues/181
                                 //.setReducedClasspathMode(TurbineOptions.ReducedClasspathMode.JAVABUILDER_REDUCED)
                                 .build());
 
-                System.out.println("turbine finished: " + result);
-                extractJar(output.toString(), resultFolder.toString());
+                context.debug("turbine finished: " + result);
+                extractJar(output.toString(), resultFolder.toString(), context);
             } catch (TurbineError e) {
-                //ohhhh apt is in maven reactor
-                System.out.println(e.getMessage());
+                // usually it means, it's an apt that can't be processed, log it
+                context.info(e.getMessage());
             }
         };
     }
 
-    public void extractJar(String zipFilePath, String extractDirectory) {
-        InputStream inputStream;
-        try {
-            Path filePath = Paths.get(zipFilePath);
-            inputStream = Files.newInputStream(filePath);
-            ArchiveStreamFactory archiveStreamFactory = new ArchiveStreamFactory();
-            ArchiveInputStream archiveInputStream = archiveStreamFactory.createArchiveInputStream(ArchiveStreamFactory.ZIP, inputStream);
-            ArchiveEntry archiveEntry ;
-            while((archiveEntry = archiveInputStream.getNextEntry()) != null) {
-                Path path = Paths.get(extractDirectory, archiveEntry.getName());
-                File file = path.toFile();
-                if(archiveEntry.isDirectory()) {
-                    if(!file.isDirectory()) {
-                        file.mkdirs();
-                    }
-                } else {
-                    File parent = file.getParentFile();
-                    if(!parent.isDirectory()) {
-                        parent.mkdirs();
-                    }
-                    try (OutputStream outputStream = Files.newOutputStream(path)) {
-                        IOUtils.copy(archiveInputStream, outputStream);
-                    }
+    public void extractJar(String zipFilePath, String extractDirectory, TaskContext context) {
+        Path filePath = Paths.get(zipFilePath);
+        Path target = Paths.get(extractDirectory);
+
+        try (ZipInputStream zis = new ZipInputStream(new FileInputStream(filePath.toFile()))) {
+            ZipEntry zipEntry = zis.getNextEntry();
+            while (zipEntry != null) {
+                boolean isDirectory = false;
+                if (zipEntry.getName().endsWith(File.separator)) {
+                    isDirectory = true;
                 }
+                Path newPath = target.resolve(zipEntry.getName());
+                if (isDirectory) {
+                    Files.createDirectories(newPath);
+                } else {
+                    if (newPath.getParent() != null) {
+                        if (Files.notExists(newPath.getParent())) {
+                            Files.createDirectories(newPath.getParent());
+                        }
+                    }
+                    Files.copy(zis, newPath, StandardCopyOption.REPLACE_EXISTING);
+                }
+                zipEntry = zis.getNextEntry();
             }
-        } catch (IOException | ArchiveException e) {
-            throw new RuntimeException(e);
+            zis.closeEntry();
+        } catch (IOException e) {
+            context.error(e);
+            throw new IllegalStateException("Error while running turbine");
         }
     }
 
-    public static TurbineOptions.Builder optionsWithBootclasspath() {
-        TurbineOptions.Builder options = TurbineOptions.builder();
-        if (!BOOTCLASSPATH.isEmpty()) {
-            options.setBootClassPath(
-                    BOOTCLASSPATH.stream().map(Path::toString).collect(toImmutableList()));
-        } else {
-            options.setLanguageVersion(LanguageVersion.fromJavacopts(ImmutableList.of("--release", "8")));
-        }
-        return options;
-    }
-
-    private static final Splitter CLASS_PATH_SPLITTER =
-            Splitter.on(File.pathSeparatorChar).omitEmptyStrings();
-
-    public static final ImmutableList<Path> BOOTCLASSPATH =
-            CLASS_PATH_SPLITTER
-                    .splitToStream(Optional.ofNullable(System.getProperty("sun.boot.class.path")).orElse(""))
-                    .map(Paths::get)
-                    .filter(Files::exists)
-                    .collect(toImmutableList());
-
-    private int getJavaVersion() {
-        String version = System.getProperty("java.version");
-        if(version.startsWith("1.")) {
-            version = version.substring(2, 3);
-        } else {
-            int dot = version.indexOf(".");
-            if(dot != -1) { version = version.substring(0, dot); }
-        } return Integer.parseInt(version);
-    }
 }
