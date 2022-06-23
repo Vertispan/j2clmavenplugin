@@ -84,7 +84,7 @@ public class TurbineTask extends JavacTask {
                                 .build());
 
                 context.debug("turbine finished: " + result);
-                extractJar(output.toString(), resultFolder.toString(), context);
+                extractJar(output, resultFolder.toPath(), context);
             } catch (TurbineError e) {
                 // usually it means, it's an apt that can't be processed, log it
                 context.info(e.getMessage());
