@@ -36,8 +36,10 @@
                         <scanIntervalSeconds>1</scanIntervalSeconds>
                         <webApp>
                             <extraClasspath>\${project.basedir}/../\${rootArtifactId}-shared/target/classes/</extraClasspath>
+                            <_initParams>
+                                <org.eclipse.jetty.servlet.Default.useFileMappedBuffer>false</org.eclipse.jetty.servlet.Default.useFileMappedBuffer>
+                            </_initParams>
                         </webApp>
-                        <contextXml>\${project.basedir}/src/main/jettyconf/context.xml</contextXml>
                     </configuration>
                 </plugin>
             </plugins>
