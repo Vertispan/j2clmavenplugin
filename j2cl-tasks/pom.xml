@@ -63,11 +63,6 @@
             <artifactId>commons-io</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-        </dependency>
-
         <!-- register tasks for factory -->
         <dependency>
             <groupId>com.google.auto.service</groupId>
@@ -80,6 +75,17 @@
             <groupId>com.vertispan.j2cl</groupId>
             <artifactId>build-caching</artifactId>
             <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.vertispan.turbine</groupId>
+            <artifactId>turbine</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.google.protobuf</groupId>
+                    <artifactId>protobuf-java</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- Test -->
