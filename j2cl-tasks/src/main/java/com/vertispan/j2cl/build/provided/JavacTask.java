@@ -38,23 +38,23 @@ public class JavacTask extends TaskFactory {
 
     @Override
     public Task resolve(Project project, Config config, BuildService buildService) {
-        boolean incremental = true;
+        boolean incremental = config.getIncremental();
         // emits only stripped bytecode, so we're not worried about anything other than .java files to compile and .class on the classpath
-        Input ownSources = input(project, OutputTypes.STRIPPED_SOURCES, buildService).filter(JAVA_SOURCES);
+        Input ownSources = input(project, OutputTypes.STRIPPED_SOURCES).filter(JAVA_SOURCES);
 
-        List<Project> projects = scope(project.getDependencies(), com.vertispan.j2cl.build.task.Dependency.Scope.COMPILE);
-        List<Input> classpathHeaders = projects.stream()
-                                               .map(inputs(OutputTypes.STRIPPED_BYTECODE_HEADERS, buildService))
-                                               // we only want bytecode _changes_, but we'll use the whole dir
-                                               .map(input -> input.filter(JAVA_BYTECODE))
-                                               .collect(Collectors.toList());
+        List<Input> classpathHeaders = scope(project.getDependencies(), com.vertispan.j2cl.build.task.Dependency.Scope.COMPILE)
+                .stream()
+                .map(inputs(OutputTypes.STRIPPED_BYTECODE_HEADERS))
+                // we only want bytecode _changes_, but we'll use the whole dir
+                .map(input -> input.filter(JAVA_BYTECODE))
+                .collect(Collectors.toList());
 
         File bootstrapClasspath = config.getBootstrapClasspath();
         List<File> extraClasspath = config.getExtraClasspath();
-        return context -> {
+        return (context) -> {
             List<CachedPath> files = ownSources.getFilesAndHashes()
-                    .stream()
-                    .filter( new ChangedAcceptor((com.vertispan.j2cl.build.Project) project, buildService)).collect(Collectors.toList());
+                                                 .stream()
+                                                 .filter( new ChangedAcceptor((com.vertispan.j2cl.build.Project) project, buildService)).collect(Collectors.toList());
 
             if (files.isEmpty()) {
                 return;// no work to do

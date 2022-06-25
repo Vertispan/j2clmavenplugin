@@ -1,7 +1,7 @@
 package com.vertispan.j2cl.build;
 
-import com.vertispan.j2cl.build.task.BuildLog;
 import com.google.common.base.Splitter;
+import com.vertispan.j2cl.build.task.BuildLog;
 import com.vertispan.j2cl.build.task.OutputTypes;
 import io.methvin.watcher.DirectoryChangeEvent;
 import io.methvin.watcher.DirectoryChangeListener;
@@ -70,8 +70,8 @@ public class WatchService {
         for (Map.Entry<Path, Project> entry : pathToProjects.entrySet()) {
             Project project = entry.getValue();
             Path rootPath = entry.getKey();
-
-            Map<Path, DiskCache.CacheEntry> allFiles = directoryWatcher.pathHashes().entrySet().stream()
+            Map<Path, DiskCache.CacheEntry> projectFiles = directoryWatcher.pathHashes().entrySet().stream()
+                    .filter(e -> e.getValue() != FileHash.DIRECTORY)
                     .filter(e -> e.getKey().startsWith(rootPath))
                     .map(e -> new DiskCache.CacheEntry(rootPath.relativize(e.getKey()), rootPath, e.getValue()))
                     .collect(Collectors.toMap(e -> e.getSourcePath(), Function.identity()));
@@ -80,7 +80,7 @@ public class WatchService {
             Map<Path, DiskCache.CacheEntry> changedFiles = new HashMap<>();
             Map<Path, DiskCache.CacheEntry> deletedFile = new HashMap<>();
 
-            populateChanges(project, allFiles, createdFiles, changedFiles, deletedFile);
+            populateChanges(project, projectFiles, createdFiles, changedFiles, deletedFile);
             buildService.triggerChanges(project, createdFiles, changedFiles, deletedFile);
         }
 
@@ -98,7 +98,6 @@ public class WatchService {
                                 Map<Path, DiskCache.CacheEntry> deletedFiles) {
         Path projPath = buildService.getDiskCache().cacheDir.toPath().resolve(project.getKey().replaceAll("[^\\-_a-zA-Z0-9.]", "-"));
         Path filesDat = projPath.resolve("files.dat");
-
         boolean putAll = true;
         try {
             File file;

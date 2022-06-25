@@ -50,8 +50,8 @@ public class BundleJarTask extends TaskFactory {
                 .concat(
                         scope(project.getDependencies(), Dependency.Scope.RUNTIME)
                                 .stream()
-                                .map(inputs(OutputTypes.BUNDLED_JS, buildService)),
-                        Stream.of(input(project, OutputTypes.BUNDLED_JS, buildService))
+                                .map(inputs(OutputTypes.BUNDLED_JS)),
+                        Stream.of(input(project, OutputTypes.BUNDLED_JS))
                 )
                 .map(i -> i.filter(BUNDLE_JS))
                 .collect(Collectors.toList());
@@ -82,7 +82,7 @@ public class BundleJarTask extends TaskFactory {
                 )
                 // Only need to consider the original inputs and generated sources,
                 // J2CL won't contribute this kind of sources
-                .map(p -> input(p, OutputTypes.BYTECODE, buildService).filter(COPIED_OUTPUT))
+                .map(p -> input(p, OutputTypes.BYTECODE).filter(COPIED_OUTPUT))
                 .collect(Collectors.toList());
 
         return new FinalOutputTask() {

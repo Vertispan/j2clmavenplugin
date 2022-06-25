@@ -200,7 +200,7 @@ public class WatchMojo extends AbstractBuildMojo {
 
         // TODO support individual task registries per execution
         TaskRegistry taskRegistry = createTaskRegistry();
-        BuildService buildService = new BuildService(taskRegistry, taskScheduler, diskCache);
+        BuildService buildService = new BuildService(taskRegistry, taskScheduler, diskCache, incremental);
         // TODO end
 
         // assemble all of the projects we are hoping to run - if we fail in this process, we can't actually start building or watching
@@ -290,4 +290,10 @@ public class WatchMojo extends AbstractBuildMojo {
     protected boolean shouldCompileBuild() {
         return true;
     }
+
+    /**
+     * True to enable experimental incremental mode.
+     */
+    @Parameter(defaultValue = "false")
+    protected boolean incremental;
 }

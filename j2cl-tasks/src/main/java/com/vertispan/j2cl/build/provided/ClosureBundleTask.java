@@ -51,13 +51,13 @@ public class ClosureBundleTask extends TaskFactory {
     public Task resolve(Project project, Config config, BuildService buildService) {
         final List<Input> js;
         if (project.isJsZip()) {
-            js = Collections.singletonList(input(project, OutputTypes.BYTECODE, buildService).filter(ClosureTask.PLAIN_JS_SOURCES));
+            js = Collections.singletonList(input(project, OutputTypes.BYTECODE).filter(ClosureTask.PLAIN_JS_SOURCES));
         } else {
             // TODO filter to just JS and sourcemaps? probably not required unless we also get sources
             //      from the actual input source instead of copying it along each step
             js = Stream.of(
-                            input(project, OutputTypes.TRANSPILED_JS, buildService),
-                            input(project, OutputTypes.BYTECODE, buildService)
+                            input(project, OutputTypes.TRANSPILED_JS),
+                            input(project, OutputTypes.BYTECODE)
                     )
                     .map(i -> i.filter(ClosureTask.PLAIN_JS_SOURCES))
                     .collect(Collectors.toList());

@@ -9,7 +9,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import com.vertispan.j2cl.build.BuildService;
-import com.vertispan.j2cl.build.DiskCache;
 
 /**
  * A task describes the type of output it provides, and for a given project will provide the
@@ -39,16 +38,16 @@ public abstract class TaskFactory {
 
     public final List<com.vertispan.j2cl.build.Input> inputs = new ArrayList<>();
 
-    protected Input input(Dependency dependency, String outputType, BuildService buildService) {
-        return input(dependency.getProject(), outputType, buildService);
+    protected Input input(Dependency dependency, String outputType) {
+        return input(dependency.getProject(), outputType);
     }
-    protected Input input(Project dependencyProject, String outputType, BuildService buildService) {
+    protected Input input(Project dependencyProject, String outputType) {
         com.vertispan.j2cl.build.Input i = new com.vertispan.j2cl.build.Input((com.vertispan.j2cl.build.Project) dependencyProject, outputType);
         inputs.add(i);
         return i;
     }
-    protected Function<Project, Input> inputs(String outputType, BuildService buildService) {
-        return p -> input(p, outputType, buildService);
+    protected Function<Project, Input> inputs(String outputType) {
+        return p -> input(p, outputType);
     }
 
     protected List<Project> scope(Collection<? extends Dependency> dependencies, Dependency.Scope scope) {

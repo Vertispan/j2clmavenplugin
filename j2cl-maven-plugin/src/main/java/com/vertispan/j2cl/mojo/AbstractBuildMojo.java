@@ -44,7 +44,7 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
     public static final String BUNDLE_JAR = "BUNDLE_JAR";
 
     @Parameter( defaultValue = "${session}", readonly = true)
-    public MavenSession mavenSession;
+    protected MavenSession mavenSession;
 
     @Parameter(defaultValue = "${reactorProjects}", required = true, readonly = true)
     protected List<MavenProject> reactorProjects;

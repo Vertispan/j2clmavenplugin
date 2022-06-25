@@ -83,7 +83,6 @@ public abstract class DiskCache {
 
     protected final File cacheDir;
     private final Executor executor;
-
     protected BuildService buildService;
 
     public void setBuildService(BuildService buildService) {
@@ -496,7 +495,7 @@ public abstract class DiskCache {
             knownMarkers.put(failureMarker, taskDir);
 
             // register to watch if a marker is made so we can get a call back, then check for existing markers
-            WatchKey key = registerWatchCreate(taskDir.resolve("status"));
+            WatchKey key = registerWatchCreate(taskDir);
 
             // check once more if we can take over the task dir, if we raced with the registration
             //TODO one more check here that we even want to make this and start the work

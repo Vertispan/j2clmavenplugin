@@ -1,7 +1,6 @@
 package com.vertispan.j2cl.build;
 
 import com.vertispan.j2cl.build.impl.CollectedTaskInputs;
-import com.vertispan.j2cl.build.task.BuildLog;
 import com.vertispan.j2cl.build.task.OutputTypes;
 import com.vertispan.j2cl.build.task.TaskFactory;
 import org.apache.commons.io.FileUtils;
@@ -24,6 +23,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class BuildService {
+
+    private Map<Project, Path> strippedSources = new HashMap<>();
     private final TaskRegistry taskRegistry;
     private final TaskScheduler taskScheduler;
     private final DiskCache diskCache;
@@ -37,12 +38,18 @@ public class BuildService {
 
     private BlockingBuildListener prevBuild;
 
-    public BuildService(TaskRegistry taskRegistry, TaskScheduler taskScheduler, DiskCache diskCache) {
+    private boolean incremental;
+
+    public BuildService(TaskRegistry taskRegistry, TaskScheduler taskScheduler, DiskCache diskCache, boolean incremental) {
         this.taskRegistry = taskRegistry;
         this.taskScheduler = taskScheduler;
         this.diskCache = diskCache;
         this.diskCache.setBuildService(this);
-        this.taskScheduler.setBuildService(this);
+        this.incremental = incremental;
+    }
+
+    public void addStrippedSourcesPath(Project project, Path path) {
+        this.strippedSources.put(project, path);
     }
 
     public Map<Project, BuildMap> getBuildMaps() {
@@ -71,7 +78,7 @@ public class BuildService {
 //            return collectedSoFar.get(newInput);
             return;
         }
-        CollectedTaskInputs collectedInputs = new CollectedTaskInputs(project, this);
+        CollectedTaskInputs collectedInputs = new CollectedTaskInputs(project);
         if (!taskName.equals(OutputTypes.INPUT_SOURCES)) {
             PropertyTrackingConfig propertyTrackingConfig = new PropertyTrackingConfig(config);
 
@@ -180,20 +187,25 @@ public class BuildService {
     AtomicReference<Map<Project, Map<Path, DiskCache.CacheEntry>>> createdFilesRef = new AtomicReference<>();
     AtomicReference<Map<Project, Map<Path, DiskCache.CacheEntry>>> changedFilesRef = new AtomicReference<>();
     AtomicReference<Map<Project, Map<Path, DiskCache.CacheEntry>>> deletedFilesRef = new AtomicReference<>();
+
     /**
      * Marks that a file has been created, deleted, or modified in the given project.
      */
     public synchronized void triggerChanges(Project project, Map<Path, DiskCache.CacheEntry> createdFiles, Map<Path, DiskCache.CacheEntry> changedFiles, Map<Path, DiskCache.CacheEntry> deletedFiles) {
-
-        accumulateChanges(project, createdFiles, createdFilesRef);
-        accumulateChanges(project, changedFiles, changedFilesRef);
-        accumulateChanges(project, deletedFiles, deletedFilesRef);
-
-        System.out.println("created: " + createdFiles);
-        System.out.println("changed: " + changedFiles);
-        System.out.println("deleted: " + deletedFiles);
         Map<Path, DiskCache.CacheEntry> hashes = currentProjectSourceHash.computeIfAbsent(project, ignore -> new HashMap<>());
+
+        if(incremental) {
+            accumulateChanges(project, createdFiles, createdFilesRef);
+            accumulateChanges(project, changedFiles, changedFilesRef);
+            accumulateChanges(project, deletedFiles, deletedFilesRef);
+
+            System.out.println("created: " + createdFiles);
+            System.out.println("changed: " + changedFiles);
+            System.out.println("deleted: " + deletedFiles);
+        }
+
         hashes.keySet().removeAll(deletedFiles.keySet());
+
         assert hashes.keySet().stream().noneMatch(createdFiles.keySet()::contains) : "File already exists, can't be added " + createdFiles.keySet() + ", " + hashes.keySet();
         hashes.putAll(createdFiles);
         assert hashes.keySet().containsAll(changedFiles.keySet()) : "File doesn't exist, can't be modified";
@@ -226,12 +238,14 @@ public class BuildService {
             prevBuild.blockUntilFinished();
         }
 
-        Map<Project, Map<Path, DiskCache.CacheEntry>> createdFiles = createdFilesRef.getAndSet(new HashMap<>());
-        Map<Project, Map<Path, DiskCache.CacheEntry>> changedFiles = changedFilesRef.getAndSet(new HashMap<>());
-        Map<Project, Map<Path, DiskCache.CacheEntry>> deletedFiles = deletedFilesRef.getAndSet(new HashMap<>());
 
-        buildRequested(currentProjectSourceHash, createdFiles, changedFiles, deletedFiles);
+        if(incremental) {
+            Map<Project, Map<Path, DiskCache.CacheEntry>> createdFiles = createdFilesRef.getAndSet(new HashMap<>());
+            Map<Project, Map<Path, DiskCache.CacheEntry>> changedFiles = changedFilesRef.getAndSet(new HashMap<>());
+            Map<Project, Map<Path, DiskCache.CacheEntry>> deletedFiles = deletedFilesRef.getAndSet(new HashMap<>());
 
+            buildRequested(currentProjectSourceHash, createdFiles, changedFiles, deletedFiles);
+        }
         // TODO update inputs with the hash changes we've seen
         Stream.concat(inputs.keySet().stream(), inputs.values().stream().flatMap(i -> i.getInputs().stream()))
                 .filter(i -> i.getProject().hasSourcesMapped())
@@ -295,8 +309,8 @@ public class BuildService {
     }
 
     private BuildMap createBuildMap(Project project, Path dir, Map<Project, Map<Path, DiskCache.CacheEntry>> createdFiles, Map<Project, Map<Path, DiskCache.CacheEntry>> changedFiles, Map<Project, Map<Path, DiskCache.CacheEntry>> deletedFiles) {
-        BuildMap                        buildMap;
-        Map<Path, DiskCache.CacheEntry> cachedFiles     = currentProjectSourceHash.get(project);
+        BuildMap buildMap;
+        Map<Path, DiskCache.CacheEntry> cachedFiles = currentProjectSourceHash.get(project);
         Map<Path, DiskCache.CacheEntry> createdFilesMap = createdFiles.get(project);
         Map<Path, DiskCache.CacheEntry> changedFilesMap = changedFiles.get(project);
         Map<Path, DiskCache.CacheEntry> deletedFilesMap = deletedFiles.get(project);
@@ -307,23 +321,21 @@ public class BuildService {
 
         if (createdFilesMap != null) {
             createdFilesMap.values().forEach(e -> dirToProjectFiles.get(e.getAbsoluteParent().toString())
-                                                                   .getAdded().add(e.getSourcePath().toString()));
+                    .getAdded().add(e.getSourcePath().toString()));
         }
 
         if (changedFilesMap != null) {
             changedFilesMap.values().forEach(e -> dirToProjectFiles.get(e.getAbsoluteParent().toString())
-                                                                   .getUpdated().add(e.getSourcePath().toString()));
+                    .getUpdated().add(e.getSourcePath().toString()));
         }
 
         if (deletedFilesMap != null) {
             deletedFilesMap.values().forEach(e -> dirToProjectFiles.get(e.getAbsoluteParent().toString())
-                                                                   .getRemoved().add(e.getSourcePath().toString()));
+                    .getRemoved().add(e.getSourcePath().toString()));
         }
 
         buildMap = new BuildMap(project, dirToProjectFiles);
         buildMaps.put(project, buildMap);
-        System.out.println("BuildMap: " + project.getKey());
-
         try {
             // previous execution exists, so process .dat files
             // we don't know what this module will link to, so all classes need to be cloned.
@@ -333,7 +345,7 @@ public class BuildService {
                 Path path = diskCache.getLastSuccessfulDirectory(input);
                 if (depBuildMap == null && path != null) {
                     depBuildMap = safeCreateBuildMap((Project) dep.getProject(), path,
-                                                     createdFiles, changedFiles, deletedFiles);
+                            createdFiles, changedFiles, deletedFiles);
                 }
 
                 // Dep projects not in the sources map, will not have BuildMaps
@@ -341,8 +353,8 @@ public class BuildService {
                     depBuildMap.cloneToTargetBuildMap(buildMap);
                 }
             }
+            buildMap.build(strippedSources.get(project));
 
-            buildMap.build(dir);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -350,17 +362,22 @@ public class BuildService {
     }
 
     private void createDirToProjectFiles(Project project, Map<Path, DiskCache.CacheEntry> cachedFiles, Map<String, ProjectFiles> dirToProjectFiles) {
+
+        if (cachedFiles == null || cachedFiles.isEmpty()) {
+            return;
+        }
+
         Map<String, Set<String>> dirToAll = new HashMap<>();
         project.getSourceRoots().stream().forEach(s -> {
             dirToAll.put(s, new HashSet<>());
         });
 
         // do not include folders.
-        cachedFiles.values().stream().filter(entry -> !Files.isDirectory(entry.getAbsolutePath())).forEach(e ->{
+        cachedFiles.values().stream().filter(entry -> !Files.isDirectory(entry.getAbsolutePath())).forEach(e -> {
             dirToAll.get(e.getAbsoluteParent().toString()).add(e.getSourcePath().toString());
         });
 
-        dirToAll.entrySet().stream().forEach( e -> {
+        dirToAll.entrySet().stream().forEach(e -> {
             ProjectFiles projectFiles = new ProjectFiles(e.getKey(), e.getValue());
             dirToProjectFiles.put(e.getKey(), projectFiles);
         });
@@ -370,10 +387,10 @@ public class BuildService {
         writeFileMetaData(project);
     }
 
-    public void buildRequested(Map<Project, Map<Path, DiskCache.CacheEntry>> currentProjectSourceHash,
-                               Map<Project, Map<Path, DiskCache.CacheEntry>> createdFiles,
-                               Map<Project, Map<Path, DiskCache.CacheEntry>> changedFiles,
-                               Map<Project, Map<Path, DiskCache.CacheEntry>> deletedFiles) {
+    private void buildRequested(Map<Project, Map<Path, DiskCache.CacheEntry>> currentProjectSourceHash,
+                                Map<Project, Map<Path, DiskCache.CacheEntry>> createdFiles,
+                                Map<Project, Map<Path, DiskCache.CacheEntry>> changedFiles,
+                                Map<Project, Map<Path, DiskCache.CacheEntry>> deletedFiles) {
         // make sure all BuildMaps are cleared before build starts
         System.out.println("Clear BuildMaps");
         buildMaps.clear();
@@ -383,11 +400,11 @@ public class BuildService {
             for (Project p : currentProjectSourceHash.keySet()) {
                 // null check avoids re-entrance, as createBuildMap is recursive
                 // and the same dep can be revisited.
-                if ( buildMaps.get(p) == null) {
+                if (buildMaps.get(p) == null) {
                     Input input = new Input(p, OutputTypes.TRANSPILED_JS);
                     if (diskCache.lastSuccessfulTaskDir.containsKey(input)) {
                         safeCreateBuildMap(p, diskCache.getLastSuccessfulDirectory(input),
-                                           createdFiles, changedFiles, deletedFiles);
+                                createdFiles, changedFiles, deletedFiles);
                     }
                 }
             }
@@ -396,14 +413,13 @@ public class BuildService {
 
     public void copyAndDeleteFiles(Project project, String outputType, Path path) {
         Path lastPath = diskCache.lastSuccessfulTaskDir.get(new Input(project, outputType));
-
         if (lastPath != null) {
             copyFolder(lastPath.resolve("results").toFile(),
-                       path.toFile());
+                    path.toFile());
 
             BuildMap buildMap = buildMaps.get(project);
 
-            if (outputType.equals(OutputTypes.STRIPPED_SOURCES) || outputType.equals(OutputTypes.TRANSPILED_JS)) {
+            if (outputType.equals(OutputTypes.TRANSPILED_JS)) {
                 Set<String> visited = new HashSet<>(); // don't duplicate visit .native/.java pairs
                 for (String changed : buildMap.getFilesToDelete()) {
                     try {
@@ -414,39 +430,21 @@ public class BuildService {
                             String binaryTypeName = firstPart.replace('/', '.');
 
                             if (visited.add(binaryTypeName)) {
-                                Path    javaPath = path.resolve( firstPart + ".java");
-                                boolean b1       = Files.deleteIfExists(javaPath);
+                                Path javaPath = path.resolve(firstPart + ".java");
+                                boolean b1 = Files.deleteIfExists(javaPath);
                                 System.out.println("Delete: " + javaPath + ":" + b1);
 
                                 if (outputType.equals(OutputTypes.STRIPPED_SOURCES)) {
-                                    Path    jsNativePath = path.resolve(firstPart + ".native.js");
-                                    boolean b2           = Files.deleteIfExists(jsNativePath);
-                                    System.out.println("Delete: " + jsNativePath + ":" + b2);
+                                    Path jsNativePath = path.resolve(firstPart + ".native.js");
+                                    Files.deleteIfExists(jsNativePath);
                                 } else {
                                     deleteInnerTypesSource(buildMap, path, binaryTypeName);
                                 }
                             }
                         } else {
                             // just standard delete for anything else
-                            Path    changedPath = path.resolve(changed);
-                            boolean b1 = Files.deleteIfExists(changedPath);
-                            System.out.println("Delete: " + changedPath + " : " + b1);
-                        }
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                        throw new RuntimeException(e);
-                    }
-                }
-            } else if (outputType.contains(OutputTypes.BYTECODE) ) {
-                for (String changed : buildMap.getFilesToDelete()) {
-                    try {
-                        if (changed.endsWith(".java")) {
-                            int suffixLength = changed.endsWith(".native.js") ? 10 : 5;
-
-                            String firstPart = changed.substring(0, changed.length() - suffixLength);
-                            String binaryTypeName = firstPart.replace('/', '.');
-
-                            deleteInnerTypesClass(buildMap, path, binaryTypeName);
+                            Path changedPath = path.resolve(changed);
+                            Files.deleteIfExists(changedPath);
                         }
                     } catch (IOException e) {
                         e.printStackTrace();
@@ -461,8 +459,8 @@ public class BuildService {
                                         String binaryTypeName) throws IOException {
         int lastDotIndex = binaryTypeName.lastIndexOf('.');
         String packageName = binaryTypeName.substring(0, lastDotIndex);
-        String simpleName = binaryTypeName.substring(lastDotIndex+1);
-        String firstPart  = packageName.replace('.', '/') + "/" + simpleName;
+        String simpleName = binaryTypeName.substring(lastDotIndex + 1);
+        String firstPart = packageName.replace('.', '/') + "/" + simpleName;
 
         Path javaJsPath = path.resolve(firstPart + ".java.js");
         boolean b3 = Files.deleteIfExists(javaJsPath);
@@ -475,34 +473,13 @@ public class BuildService {
 
         Path nativeUndrscoreJs = path.resolve(firstPart + ".native_js");
         boolean b6 = Files.deleteIfExists(nativeUndrscoreJs);
-
-        System.out.println("Delete: " + javaJsPath + " : " + b3);
-        System.out.println("Delete: " + implJavaJsPath + " : " + b4);
-        System.out.println("Delete: " + jsMap + " : " + b5);
-        System.out.println("Delete: " + nativeUndrscoreJs + " : " + b6);
-
         List<String> innerTypes = buildMap.getInnerTypes(binaryTypeName);
         for (String innerType : innerTypes) {
             deleteInnerTypesSource(buildMap, path, innerType);
         }
     }
 
-    private void deleteInnerTypesClass(BuildMap buildMap, Path path, String binaryTypeName) throws IOException {
-        int lastDotIndex = binaryTypeName.lastIndexOf('.');
-        String packageName = binaryTypeName.substring(0, lastDotIndex);
-        String simpleName = binaryTypeName.substring(lastDotIndex+1);
-        Path classPath = path.resolve(packageName.replace('.', '/') + "/" + simpleName + ".class");
-        boolean b3 = Files.deleteIfExists(classPath);
-
-        System.out.println("Delete: " + classPath + " : " + b3);
-        List<String> innerTypes = buildMap.getInnerTypes(binaryTypeName);
-
-        for (String innerType : innerTypes) {
-            deleteInnerTypesClass(buildMap, path, innerType);
-        }
-    }
-
-    static void copyFolder(File src, File dest){
+    static void copyFolder(File src, File dest) {
         try {
             FileUtils.copyDirectory(src, dest);
         } catch (IOException e) {
@@ -514,17 +491,16 @@ public class BuildService {
     public void writeFileMetaData(Project project) {
         Path projPath = diskCache.cacheDir.toPath().resolve(project.getKey().replaceAll("[^\\-_a-zA-Z0-9.]", "-"));
         Path filesDat = projPath.resolve("files.dat");
-
-        try(Writer out = Files.newBufferedWriter(filesDat, Charset.forName("UTF-8"))) {
+        try (Writer out = Files.newBufferedWriter(filesDat, Charset.forName("UTF-8"))) {
             // The paths for the last outputs need to be preserved, for restart.
-            String[] outputPaths = new String[] { OutputTypes.GENERATED_SOURCES, OutputTypes.STRIPPED_SOURCES, OutputTypes.STRIPPED_BYTECODE,
-                                                  OutputTypes.BYTECODE, OutputTypes.STRIPPED_BYTECODE_HEADERS, OutputTypes.TRANSPILED_JS};
+            String[] outputPaths = new String[]{OutputTypes.GENERATED_SOURCES, OutputTypes.STRIPPED_SOURCES, OutputTypes.STRIPPED_BYTECODE,
+                    OutputTypes.BYTECODE, OutputTypes.STRIPPED_BYTECODE_HEADERS, OutputTypes.TRANSPILED_JS};
             for (String outputPath : outputPaths) {
                 Path path = diskCache.lastSuccessfulTaskDir.get(new Input(project, outputPath));
                 out.append(path + System.lineSeparator());
             }
 
-            Map<Path, DiskCache.CacheEntry> cachedFiles     = currentProjectSourceHash.get(project);
+            Map<Path, DiskCache.CacheEntry> cachedFiles = currentProjectSourceHash.get(project);
             Map<String, ProjectFiles> dirToProjectFiles = new HashMap<>();
 
             createDirToProjectFiles(project, cachedFiles, dirToProjectFiles);
@@ -541,13 +517,13 @@ public class BuildService {
 
                 //sourceDirs
                 for (String file : files) {
-                    Path     absFile = base.resolve(file);
+                    Path absFile = base.resolve(file);
                     FileTime newTime = Files.getLastModifiedTime(absFile);
 
                     out.append(newTime.toMillis() + "," + file + System.lineSeparator());
                 }
             }
-        } catch  ( IOException e) {
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }

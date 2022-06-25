@@ -3,15 +3,11 @@ package com.vertispan.j2cl.build.provided;
 import com.google.auto.service.AutoService;
 import com.google.j2cl.common.SourceUtils;
 import com.vertispan.j2cl.build.BuildService;
-import com.vertispan.j2cl.build.ChangedAcceptor;
-import com.vertispan.j2cl.build.DiskCache;
 import com.vertispan.j2cl.build.task.*;
 import com.vertispan.j2cl.tools.GwtIncompatiblePreprocessor;
 
 import java.nio.file.PathMatcher;
-import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @AutoService(TaskFactory.class)
 public class StripSourcesTask extends TaskFactory {
@@ -35,7 +31,7 @@ public class StripSourcesTask extends TaskFactory {
 
     @Override
     public Task resolve(Project project, Config config, BuildService buildService) {
-        Input inputSources = input(project, OutputTypes.BYTECODE, buildService).filter(JAVA_SOURCES);
+        Input inputSources = input(project, OutputTypes.BYTECODE).filter(JAVA_SOURCES);
 
         return context -> {
             if (inputSources.getFilesAndHashes().isEmpty()) {

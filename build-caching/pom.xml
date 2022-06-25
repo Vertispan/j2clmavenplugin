@@ -24,11 +24,25 @@
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
         </dependency>
+
+        <dependency>
+            <groupId>org.jspecify</groupId>
+            <artifactId>jspecify</artifactId>
+            <version>0.2.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.javassist</groupId>
+            <artifactId>javassist</artifactId>
+            <version>3.28.0-GA</version>
+        </dependency>
+
+
         <!-- watch service -->
         <dependency>
             <groupId>io.methvin</groupId>
             <artifactId>directory-watcher</artifactId>
-            <version>0.15.0</version>
+            <version>0.15.1</version>
         </dependency>
 
         <!-- Test -->

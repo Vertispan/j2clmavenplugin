@@ -2,7 +2,6 @@ package com.vertispan.j2cl.build.provided;
 
 import com.google.auto.service.AutoService;
 import com.vertispan.j2cl.build.BuildService;
-import com.vertispan.j2cl.build.DiskCache;
 import com.vertispan.j2cl.build.task.*;
 
 import java.nio.file.Files;
@@ -32,7 +31,7 @@ public class IJarTask extends TaskFactory {
 
     @Override
     public Task resolve(Project project, Config config, BuildService buildService) {
-        Input myStrippedBytecode = input(project, OutputTypes.STRIPPED_BYTECODE, buildService);
+        Input myStrippedBytecode = input(project, OutputTypes.STRIPPED_BYTECODE);
         return context -> {
 
             // for now we're going to just copy the bytecode

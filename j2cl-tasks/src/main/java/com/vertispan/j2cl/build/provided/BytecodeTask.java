@@ -46,10 +46,12 @@ public class BytecodeTask extends TaskFactory {
     }
 
     @Override
-    public Task resolve(Project project, Config config, BuildService buildService) {
+    public Task resolve(Project project, Config config, BuildService service) {
+        boolean incremental = config.getIncremental();
+
         if (!project.hasSourcesMapped()) {
             // instead, copy the bytecode+resources out of the jar so it can be used by downstream bytecode/apt tasks
-            Input existingUnpackedBytecode = input(project, OutputTypes.INPUT_SOURCES, buildService);
+            Input existingUnpackedBytecode = input(project, OutputTypes.INPUT_SOURCES);
             return context -> {
                 for (CachedPath entry : existingUnpackedBytecode.getFilesAndHashes()) {
                     Path outputFile = context.outputPath().resolve(entry.getSourcePath());
@@ -61,16 +63,16 @@ public class BytecodeTask extends TaskFactory {
 
         // TODO just use one input for both of these
         // track the dirs (with all file changes) so that APT can see things it wants
-        Input inputDirs = input(project, OutputTypes.INPUT_SOURCES, buildService);
+        Input inputDirs = input(project, OutputTypes.INPUT_SOURCES);
         // track just java files (so we can just compile them)
-        Input inputSources = input(project, OutputTypes.INPUT_SOURCES, buildService).filter(JAVA_SOURCES);
+        Input inputSources = input(project, OutputTypes.INPUT_SOURCES).filter(JAVA_SOURCES);
         // track resources so they are available to downstream processors on the classpath, as they would
         // be if we had built a jar
-        Input resources = input(project, OutputTypes.INPUT_SOURCES, buildService).filter(NOT_BYTECODE);
+        Input resources = input(project, OutputTypes.INPUT_SOURCES).filter(NOT_BYTECODE);
 
         List<Input> bytecodeClasspath = scope(project.getDependencies(), com.vertispan.j2cl.build.task.Dependency.Scope.COMPILE)
                 .stream()
-                .map(inputs(OutputTypes.BYTECODE, buildService))
+                .map(inputs(OutputTypes.BYTECODE))
                 .collect(Collectors.toList());
 
         File bootstrapClasspath = config.getBootstrapClasspath();
@@ -83,6 +85,15 @@ public class BytecodeTask extends TaskFactory {
                         bytecodeClasspath.stream().map(Input::getParentPaths).flatMap(Collection::stream).map(Path::toFile),
                         extraClasspath.stream()
                 ).collect(Collectors.toList());
+
+                if (incremental) {
+                    Path bytecodePath = service.getDiskCache().getLastSuccessfulDirectory(new com.vertispan.j2cl.build.Input((com.vertispan.j2cl.build.Project) project,
+                                                                                                                                                          OutputTypes.BYTECODE));
+
+                    if (bytecodePath != null) {
+                        classpathDirs.add(bytecodePath.resolve("results").toFile());
+                    }
+                }
 
                 List<File> sourcePaths = inputDirs.getParentPaths().stream().map(Path::toFile).collect(Collectors.toList());
                 File generatedClassesDir = getGeneratedClassesDir(context);

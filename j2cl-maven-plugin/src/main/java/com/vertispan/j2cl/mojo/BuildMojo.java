@@ -236,7 +236,7 @@ public class BuildMojo extends AbstractBuildMojo {
         TaskRegistry taskRegistry = createTaskRegistry();
 
         // Given these, build the graph of work we need to complete
-        BuildService buildService = new BuildService(taskRegistry, taskScheduler, diskCache);
+        BuildService buildService = new BuildService(taskRegistry, taskScheduler, diskCache, false);
         buildService.assignProject(p, outputTask, config);
 
         // Get the hash of all current files, since we aren't running a watch service
