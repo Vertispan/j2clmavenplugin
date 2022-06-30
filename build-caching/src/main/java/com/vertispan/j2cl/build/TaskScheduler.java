@@ -7,6 +7,7 @@ import com.vertispan.j2cl.build.task.TaskFactory;
 import com.vertispan.j2cl.build.task.TaskContext;
 
 import java.io.FileNotFoundException;
+import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -210,6 +211,7 @@ public class TaskScheduler {
                     }
                     try {
                         long start = System.currentTimeMillis();
+                        result.markBegun();
                         taskDetails.getTask().execute(new TaskContext(result.outputDir(), log));
                         long elapsedMillis = System.currentTimeMillis() - start;
                         if (elapsedMillis > 5) {

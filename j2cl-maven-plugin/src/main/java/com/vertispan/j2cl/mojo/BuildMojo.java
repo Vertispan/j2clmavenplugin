@@ -38,6 +38,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Transpiles this project and all of its dependencies, then combines them all into a single JS
@@ -230,6 +231,29 @@ public class BuildMojo extends AbstractBuildMojo {
         }
         MavenLog mavenLog = new MavenLog(getLog());
         TaskScheduler taskScheduler = new TaskScheduler(executor, diskCache, mavenLog);
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try {
+                // first prevent new tasks from starting
+                executor.shutdown();
+
+                // next, make sure the disk cache doesn't try to pick up work - this will block on joining
+                // to the watching thread, so we ran shutdown above
+                diskCache.close();
+
+                // finally, interrupt running work and wait a short time for that to stop
+                executor.shutdownNow();
+                executor.awaitTermination(10, TimeUnit.SECONDS);
+
+            } catch (IOException e) {
+                executor.shutdownNow();
+                e.printStackTrace();
+            } catch (InterruptedException e) {
+                executor.shutdownNow();
+                e.printStackTrace();
+                Thread.currentThread().interrupt();
+            }
+        }));
+
         TaskRegistry taskRegistry = createTaskRegistry();
 
         // Given these, build the graph of work we need to complete
