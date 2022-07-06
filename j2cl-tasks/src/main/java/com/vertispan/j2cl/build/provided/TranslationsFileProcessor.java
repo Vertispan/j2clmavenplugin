@@ -10,8 +10,15 @@ import org.xml.sax.SAXException;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 import java.io.File;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.util.*;
@@ -55,8 +62,16 @@ public interface TranslationsFileProcessor {
     class ProjectLookup implements TranslationsFileProcessor {
         private final String locale;
 
-        public ProjectLookup(Config config) {
-            locale = config.getString("defines.goog.LOCALE");
+        final private String ph_open = "<ph ";
+        final private String ph_close = "</ph>";
+        final private String ph_self_close = "/>";
+
+        ProjectLookup(Config config) {
+            this(config.getString("defines.goog.LOCALE"));
+        }
+
+        ProjectLookup(String locale) {
+            this.locale = locale;
         }
 
         @Override
@@ -69,7 +84,7 @@ public interface TranslationsFileProcessor {
                     .collect(Collectors.toList());
 
             if (temp.isEmpty()) {
-                context.log().warn("no .xtb files was found");
+                context.warn("no .xtb files was found");
             }
 
             try {
@@ -99,10 +114,7 @@ public interface TranslationsFileProcessor {
                     String lang = translationbundleNode.item(0).getAttributes().getNamedItem("lang").getNodeValue();
 
                     if (locales.contains(lang)) {
-                        if(!suitableFiles.containsKey(lang)) {
-                            suitableFiles.put(lang, new HashSet<>());
-                        }
-
+                        suitableFiles.computeIfAbsent(lang, k -> new HashSet<>());
                         suitableFiles.get(lang).add(translationbundleNode);
                     }
                 }
@@ -123,7 +135,7 @@ public interface TranslationsFileProcessor {
             result.add(locale);
 
             if (locale.contains("_")) {
-                // according to spec, locale discaration can have 3 parts max
+                // according to spec, locale declaration can have 3 parts max
                 if(locale.indexOf("_") != locale.lastIndexOf("_")) {
                     result.add(locale.substring(0, locale.lastIndexOf("_")));
                 }
@@ -164,12 +176,12 @@ public interface TranslationsFileProcessor {
             StringBuffer sb = new StringBuffer();
 
             sb.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
-            sb.append(System.lineSeparator());
+            sb.append("\n");
             sb.append("<!DOCTYPE translationbundle SYSTEM \"translationbundle.dtd\">");
-            sb.append(System.lineSeparator());
+            sb.append("\n");
 
             sb.append("<translationbundle lang=\"" + locale + "\">");
-            sb.append(System.lineSeparator());
+            sb.append("\n");
 
             resultedCodeSet.values().forEach(node -> {
                 sb.append("  <translation id=\"");
@@ -178,23 +190,23 @@ public interface TranslationsFileProcessor {
                 sb.append(node.getAttributes().getNamedItem("key").getNodeValue());
                 sb.append("\">");
 
-                // we have to process placeholders here
-                for (int i = 0; i < node.getChildNodes().getLength(); i++) {
-                    Node innerTextNode = node.getChildNodes().item(i);
-                    if(innerTextNode.getNodeType() == Node.TEXT_NODE) {
-                        sb.append(innerTextNode.getTextContent());
-                    } else if(innerTextNode.getNodeType() == Node.ELEMENT_NODE && innerTextNode.getNodeName().equals("ph")) {
-                        sb.append("<ph name=\"");
-                        sb.append(innerTextNode.getAttributes().getNamedItem("name").getNodeValue());
-                        sb.append("\"/>");
+                if(node.hasChildNodes()) {
+                    StringBuffer innerContent = new StringBuffer();
+                    for (int i = 0; i < node.getChildNodes().getLength(); i++) {
+                        innerContent.append(getInnerContent(node.getChildNodes().item(i)));
                     }
+                    String result = parse(innerContent.toString())
+                            .stream()
+                            .collect(Collectors.joining(""));
+                    sb.append(result);
                 }
+
                 sb.append("</translation>");
-                sb.append(System.lineSeparator());
+                sb.append("\n");
             });
 
             sb.append("</translationbundle>");
-            sb.append(System.lineSeparator());
+            sb.append("\n");
 
             try {
                 FileUtils.writeStringToFile(generated, sb.toString(), Charset.forName("UTF-8"));
@@ -202,5 +214,76 @@ public interface TranslationsFileProcessor {
                 throw new RuntimeException(e);
             }
         }
+
+        private String getInnerContent(Node node) {
+            try {
+                Transformer transformer = TransformerFactory.newInstance().newTransformer();
+                transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
+                StreamResult result = new StreamResult(new StringWriter());
+                DOMSource source = new DOMSource(node);
+                transformer.transform(source, result);
+                return result.getWriter().toString();
+            } catch(TransformerException ex) {
+                throw new RuntimeException(ex);
+            }
+        }
+
+        List<String> parse(String content) {
+            List<String> parts = new ArrayList<>();
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < content.length(); i++) {
+                char character = content.charAt(i);
+                if (character == '<' && (i + 4) < content.length()) {
+                    String tag = content.substring(i, i + 4);
+                    if (tag.equals(ph_open)) {
+                        if (sb.length() > 0) {
+                            parts.add(escape(sb.toString()));
+                        }
+                        sb.setLength(0);
+                        sb.append(ph_open);
+                        int temp = i + ph_open.length();
+                        boolean run = true;
+                        while (run && temp < content.length()) {
+                            boolean isSelfClosing = false;
+                            boolean isClosing = false;
+                            if(content.length() >= (temp + ph_self_close.length())) {
+                                isSelfClosing = content.substring(temp, temp + ph_self_close.length()).equals(ph_self_close);
+                            }
+                            if(content.length() >= (temp + ph_close.length())) {
+                                isClosing = content.substring(temp, temp + ph_close.length()).equals(ph_close);
+                            }
+                            if (isSelfClosing || isClosing) {
+                                sb.append(isSelfClosing ? ph_self_close : ph_close);
+                                parts.add(sb.toString());
+                                i += sb.length() - 1;
+                                run = false;
+                                sb.setLength(0);
+                            } else {
+                                char current = content.charAt(temp);
+                                sb.append(current);
+                                temp++;
+                            }
+                        }
+                    } else {
+                        sb.append(character);
+                    }
+                } else {
+                    sb.append(character);
+                }
+            }
+            if (sb.length() > 0) {
+                parts.add(escape(sb.toString()));
+            }
+            return parts;
+        }
+
+        private String escape(String part) {
+            return part.replace("<", "&lt;")
+                    .replace(">", "&gt;")
+                    .replace("'", "&apos;")
+                    .replace("\"", "&quot;")
+                    .replace("&", "&amp;");
+        }
+
     }
 }

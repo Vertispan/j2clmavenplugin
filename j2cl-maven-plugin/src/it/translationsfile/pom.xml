@@ -17,6 +17,7 @@
     <module>tests/pom_executions.xml</module>
     <module>tests/pom_cz_auto.xml</module>
     <module>tests/pom_de_in_java_package-auto.xml</module>
+    <module>tests/pom_escape_zr.xml</module>
   </modules>
 
 </project>
