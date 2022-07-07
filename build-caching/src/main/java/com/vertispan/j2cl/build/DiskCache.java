@@ -28,6 +28,8 @@ import java.util.concurrent.Executor;
  */
 public abstract class DiskCache {
     private static final boolean IS_MAC = System.getProperty("os.name").toLowerCase().contains("mac");
+    private static final int MARK_ACTIVE_UPDATE_DELAY = Integer.getInteger("j2cl.diskcache.mark_active_update_delay_ms", 1000);
+    private static final int MAX_STALE_AGE = Integer.getInteger("j2cl.diskcache.max_stale_age", 10);
 
     public class CacheResult {
         private final Path taskDir;
@@ -172,7 +174,7 @@ public abstract class DiskCache {
                 }
             });
             try {
-                Thread.sleep(1000);
+                Thread.sleep(MARK_ACTIVE_UPDATE_DELAY);
             } catch (InterruptedException e) {
                 return;// done
             }
@@ -484,7 +486,7 @@ public abstract class DiskCache {
                 return;
             }
 
-            if (Files.getLastModifiedTime(taskDir).compareTo(FileTime.from(Instant.now().minusSeconds(10))) < 0) {
+            if (Files.getLastModifiedTime(taskDir).compareTo(FileTime.from(Instant.now().minusSeconds(MAX_STALE_AGE))) < 0) {
                 //directory hasn't been updated, it must be stale, take over
                 System.out.println("STALE BUILD DETECTED - build was stale after 10 seconds, deleting it to take over: " + taskDir);
                 deleteRecursively(taskDir);

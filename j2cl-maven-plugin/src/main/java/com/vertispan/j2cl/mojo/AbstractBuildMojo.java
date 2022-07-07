@@ -112,6 +112,9 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
     @Parameter
     protected Map<String, String> taskMappings = new HashMap<>();
 
+    @Parameter
+    private int shutdownWaitSeconds = 10;
+
     private static String key(Artifact artifact) {
         // this is roughly DefaultArtifact.toString, minus scope, since we don't care what the scope is for the purposes of building projects
         String key = artifact.getGroupId() + ":" + artifact.getArtifactId() + ":" + artifact.getBaseVersion();
@@ -416,7 +419,7 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
 
                 // finally, interrupt running work and wait a short time for that to stop
                 executor.shutdownNow();
-                executor.awaitTermination(10, TimeUnit.SECONDS);
+                executor.awaitTermination(shutdownWaitSeconds, TimeUnit.SECONDS);
 
             } catch (IOException e) {
                 executor.shutdownNow();
