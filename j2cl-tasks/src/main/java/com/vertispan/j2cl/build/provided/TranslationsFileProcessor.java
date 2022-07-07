@@ -52,7 +52,7 @@ public interface TranslationsFileProcessor {
         @Override
         public Optional<File> getTranslationsFile(List<Input> inputs, TaskContext context) {
             if (shouldWarn) {
-                context.log().warn("translationsFile only works in the ADVANCED optimization level, in other levels the default messages values will be used");
+                context.warn("translationsFile only works in the ADVANCED optimization level, in other levels the default messages values will be used");
             }
 
             return Optional.empty();
@@ -62,9 +62,9 @@ public interface TranslationsFileProcessor {
     class ProjectLookup implements TranslationsFileProcessor {
         private final String locale;
 
-        final private String ph_open = "<ph ";
-        final private String ph_close = "</ph>";
-        final private String ph_self_close = "/>";
+        final static private String ph_open = "<ph ";
+        final static private String ph_close = "</ph>";
+        final static private String ph_self_close = "/>";
 
         ProjectLookup(Config config) {
             this(config.getString("defines.goog.LOCALE"));
@@ -114,18 +114,18 @@ public interface TranslationsFileProcessor {
                     String lang = translationbundleNode.item(0).getAttributes().getNamedItem("lang").getNodeValue();
 
                     if (locales.contains(lang)) {
-                        suitableFiles.computeIfAbsent(lang, k -> new HashSet<>());
-                        suitableFiles.get(lang).add(translationbundleNode);
+                        suitableFiles.computeIfAbsent(lang, k -> new HashSet<>())
+                                     .add(translationbundleNode);
                     }
                 }
                 if(!suitableFiles.isEmpty()) {
                     return mergeFiles(suitableFiles, locales, context);
                 }
             } catch (ParserConfigurationException | SAXException | IOException e) {
-                context.log().error("Error while reading xtb files ", e);
+                context.error("Error while reading xtb files ", e);
                 throw new RuntimeException(e);
             }
-            context.log().warn("No matching locales for " + locale);
+            context.warn("No matching locales for " + locale);
             return Optional.empty();
         }
 
@@ -187,7 +187,7 @@ public interface TranslationsFileProcessor {
                 sb.append("  <translation id=\"");
                 sb.append(node.getAttributes().getNamedItem("id").getNodeValue());
                 sb.append("\" key=\"");
-                sb.append(node.getAttributes().getNamedItem("key").getNodeValue());
+                sb.append(escape(node.getAttributes().getNamedItem("key").getNodeValue()));
                 sb.append("\">");
 
                 if(node.hasChildNodes()) {
