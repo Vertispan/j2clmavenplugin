@@ -168,11 +168,11 @@ public interface TranslationsFileProcessor {
 
             Path folder = context.outputPath();
             File generated = folder.resolve("generated_messages.xtb").toFile();
-            generateAndWriteXTB(resultedCodeSet, generated);
+            generateAndWriteXTB(resultedCodeSet.values(), generated);
             return generated;
         }
 
-        private void generateAndWriteXTB(Map<String, Node> resultedCodeSet, File generated) {
+        private void generateAndWriteXTB(Collection<Node> resultedCodeSet, File generated) {
             StringBuffer sb = new StringBuffer();
 
             sb.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
@@ -183,7 +183,7 @@ public interface TranslationsFileProcessor {
             sb.append("<translationbundle lang=\"" + locale + "\">");
             sb.append("\n");
 
-            resultedCodeSet.values().forEach(node -> {
+            resultedCodeSet.forEach(node -> {
                 sb.append("  <translation id=\"");
                 sb.append(node.getAttributes().getNamedItem("id").getNodeValue());
                 sb.append("\" key=\"");
