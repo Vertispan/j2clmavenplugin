@@ -317,7 +317,7 @@ public abstract class DiskCache {
                     }
                 }
             }
-            Files.delete(path);
+            Files.deleteIfExists(path);
         }
     }
 
