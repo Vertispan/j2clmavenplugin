@@ -64,6 +64,15 @@ public abstract class DiskCache {
         public void markBegun() {
             runningTasks.add(taskDir);
         }
+
+        public void cancel() {
+            try {
+                deleteRecursively(taskDir);
+            } catch (IOException e) {
+                // log and return, might be useful for debugging, but not recoverable
+                e.printStackTrace();
+            }
+        }
     }
 
     protected final File cacheDir;
@@ -477,6 +486,7 @@ public abstract class DiskCache {
 
             if (Files.getLastModifiedTime(taskDir).compareTo(FileTime.from(Instant.now().minusSeconds(10))) < 0) {
                 //directory hasn't been updated, it must be stale, take over
+                System.out.println("STALE BUILD DETECTED - build was stale after 10 seconds, deleting it to take over: " + taskDir);
                 deleteRecursively(taskDir);
             }
         } catch (IOException ioException) {
