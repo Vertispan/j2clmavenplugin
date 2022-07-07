@@ -119,7 +119,7 @@ public interface TranslationsFileProcessor {
                     }
                 }
                 if(!suitableFiles.isEmpty()) {
-                    return mergeFiles(suitableFiles, locales, context);
+                    return Optional.of(mergeFiles(suitableFiles, locales, context));
                 }
             } catch (ParserConfigurationException | SAXException | IOException e) {
                 context.error("Error while reading xtb files ", e);
@@ -144,7 +144,7 @@ public interface TranslationsFileProcessor {
             return result;
         }
 
-        private Optional<File> mergeFiles(HashMap<String, Set<NodeList>> suitableFiles, Set<String> locales, TaskContext context) {
+        private File mergeFiles(HashMap<String, Set<NodeList>> suitableFiles, Set<String> locales, TaskContext context) {
             Map<String, Node> resultedCodeSet = new HashMap<>();
             // parent nodes first
             locales.stream().sorted((o1, o2) -> {
@@ -169,7 +169,7 @@ public interface TranslationsFileProcessor {
             Path folder = context.outputPath();
             File generated = folder.resolve("generated_messages.xtb").toFile();
             generateAndWriteXTB(resultedCodeSet, generated);
-            return Optional.of(generated);
+            return generated;
         }
 
         private void generateAndWriteXTB(Map<String, Node> resultedCodeSet, File generated) {
