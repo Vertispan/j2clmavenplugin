@@ -1,6 +1,7 @@
 package com.vertispan.j2cl.mojo;
 
 import com.vertispan.j2cl.build.Dependency;
+import com.vertispan.j2cl.build.DiskCache;
 import com.vertispan.j2cl.build.Project;
 import com.vertispan.j2cl.build.TaskRegistry;
 import com.vertispan.j2cl.build.provided.SkipAptTask;
@@ -31,10 +32,12 @@ import org.eclipse.aether.resolution.ArtifactResult;
 
 import javax.annotation.Nullable;
 import java.io.File;
+import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 public abstract class AbstractBuildMojo extends AbstractCacheMojo {
@@ -108,6 +111,9 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
 
     @Parameter
     protected Map<String, String> taskMappings = new HashMap<>();
+
+    @Parameter
+    private int shutdownWaitSeconds = 10;
 
     private static String key(Artifact artifact) {
         // this is roughly DefaultArtifact.toString, minus scope, since we don't care what the scope is for the purposes of building projects
@@ -401,4 +407,28 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
                     path.endsWith("generated-sources" + File.separator + "annotations")));
     }
 
+    protected void addShutdownHook(ScheduledExecutorService executor, DiskCache diskCache) {
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try {
+                // first prevent new tasks from starting
+                executor.shutdown();
+
+                // next, make sure the disk cache doesn't try to pick up work - this will block on joining
+                // to the watching thread, so we ran shutdown above
+                diskCache.close();
+
+                // finally, interrupt running work and wait a short time for that to stop
+                executor.shutdownNow();
+                executor.awaitTermination(shutdownWaitSeconds, TimeUnit.SECONDS);
+
+            } catch (IOException e) {
+                executor.shutdownNow();
+                e.printStackTrace();
+            } catch (InterruptedException e) {
+                executor.shutdownNow();
+                e.printStackTrace();
+                Thread.currentThread().interrupt();
+            }
+        }));
+    }
 }

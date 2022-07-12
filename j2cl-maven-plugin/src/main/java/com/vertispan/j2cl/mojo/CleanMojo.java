@@ -102,7 +102,7 @@ public class CleanMojo extends AbstractCacheMojo {
                     }
                 }
             }
-            Files.delete(path);
+            Files.deleteIfExists(path);
         }
     }
 }

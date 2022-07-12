@@ -14,8 +14,13 @@ import java.io.UncheckedIOException;
 import java.nio.file.WatchService;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
+import java.time.Instant;
+import java.time.temporal.TemporalAmount;
+import java.time.temporal.TemporalUnit;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
 
 /**
@@ -23,6 +28,8 @@ import java.util.concurrent.Executor;
  */
 public abstract class DiskCache {
     private static final boolean IS_MAC = System.getProperty("os.name").toLowerCase().contains("mac");
+    private static final int MARK_ACTIVE_UPDATE_DELAY = Integer.getInteger("j2cl.diskcache.mark_active_update_delay_ms", 1000);
+    private static final int MAX_STALE_AGE = Integer.getInteger("j2cl.diskcache.max_stale_age", 10);
 
     public class CacheResult {
         private final Path taskDir;
@@ -48,12 +55,26 @@ public abstract class DiskCache {
         }
 
         public void markSuccess() {
+            runningTasks.remove(taskDir);
             markFinished(this);
         }
         public void markFailure() {
+            runningTasks.remove(taskDir);
             markFailed(this);
         }
 
+        public void markBegun() {
+            runningTasks.add(taskDir);
+        }
+
+        public void cancel() {
+            try {
+                deleteRecursively(taskDir);
+            } catch (IOException e) {
+                // log and return, might be useful for debugging, but not recoverable
+                e.printStackTrace();
+            }
+        }
     }
 
     protected final File cacheDir;
@@ -73,6 +94,9 @@ public abstract class DiskCache {
     private final Map<Path, Path> knownMarkers = new ConcurrentHashMap<>();
     private final Map<Path, Set<PendingCacheResult>> taskFutures = new ConcurrentHashMap<>();
 
+    private final List<Path> runningTasks = new CopyOnWriteArrayList<>();
+    private final Thread livenessThread = new Thread(this::markActive, "DiskCacheLivenessThread");
+
     public DiskCache(File cacheDir, Executor executor) throws IOException {
         this.cacheDir = cacheDir;
         this.executor = executor;
@@ -88,6 +112,7 @@ public abstract class DiskCache {
         }
 
         watchThread.start();
+        livenessThread.start();
     }
 
     private void checkForWork() {
@@ -117,8 +142,13 @@ public abstract class DiskCache {
                         Path taskDir = (Path) event.context();
                         Set<PendingCacheResult> listeners = taskFutures.get(taskDir);
 
-                        //TODO prep for new attempt, attempt to take over instead of this
-//                        future.complete(new CacheResult(Status.NOT_STARTED, taskDir));
+                        // Attempt to re-create the directory (note that we might not be the only process watching
+                        // for this work to complete), then alert only the first listener to attempt the work again.
+                        if (taskDir.toFile().mkdir()) {
+                            Files.createDirectory(outputDir(taskDir));
+                            Files.createFile(logFile(taskDir));
+                            listeners.iterator().next().ready();
+                        }
                         listeners.forEach(l -> l.error(new IllegalStateException("Existing task was canceled, not yet supported")));
                     }
                 }
@@ -127,6 +157,27 @@ public abstract class DiskCache {
         } catch (InterruptedException e) {
             // asked to shut down, time to stop
             // TODO mark all pending work as canceled?
+        } catch (IOException e) {
+            // disaster, can't interact with the cache, stop and give up
+            // TODO mark all pending work as canceled?
+        }
+    }
+
+    private void markActive() {
+        while (true) {
+            runningTasks.forEach(path -> {
+                try {
+                    Files.setLastModifiedTime(path, FileTime.from(Instant.now()));
+                } catch (IOException e) {
+                    // race, probably the file was deleted, leaving it in the collection
+                    // for now, the failing task will cause the entry to be deleted.
+                }
+            });
+            try {
+                Thread.sleep(MARK_ACTIVE_UPDATE_DELAY);
+            } catch (InterruptedException e) {
+                return;// done
+            }
         }
     }
 
@@ -258,9 +309,27 @@ public abstract class DiskCache {
         return fileHashes;
     }
 
-    public void close() throws IOException {
-        service.close();
+    public void close() throws IOException, InterruptedException {
+        livenessThread.interrupt();
         watchThread.interrupt();
+        service.close();
+        watchThread.join();
+        for (Path path : runningTasks) {
+            deleteRecursively(path);
+        }
+    }
+
+    private void deleteRecursively(Path path) throws IOException {
+        if (Files.exists(path)) {
+            if (Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)) {
+                try (DirectoryStream<Path> entries = Files.newDirectoryStream(path)) {
+                    for (Path entry : entries) {
+                        deleteRecursively(entry);
+                    }
+                }
+            }
+            Files.deleteIfExists(path);
+        }
     }
 
     protected abstract Path taskDir(CollectedTaskInputs inputs);
@@ -415,6 +484,12 @@ public abstract class DiskCache {
                 //TODO mark as "nevermind" further?
                 key.cancel();
                 return;
+            }
+
+            if (Files.getLastModifiedTime(taskDir).compareTo(FileTime.from(Instant.now().minusSeconds(MAX_STALE_AGE))) < 0) {
+                //directory hasn't been updated, it must be stale, take over
+                System.out.println("STALE BUILD DETECTED - build was stale after 10 seconds, deleting it to take over: " + taskDir);
+                deleteRecursively(taskDir);
             }
         } catch (IOException ioException) {
             cancelable.error(new IOException("Error when interacting with the disk cache", ioException));

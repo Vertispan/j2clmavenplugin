@@ -7,6 +7,7 @@ import com.vertispan.j2cl.build.task.TaskFactory;
 import com.vertispan.j2cl.build.task.TaskContext;
 
 import java.io.FileNotFoundException;
+import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -210,7 +211,14 @@ public class TaskScheduler {
                     }
                     try {
                         long start = System.currentTimeMillis();
+                        result.markBegun();
                         taskDetails.getTask().execute(new TaskContext(result.outputDir(), log));
+                        if (Thread.currentThread().isInterrupted()) {
+                            // Tried and failed to be canceled, so even though we were successful, some files might
+                            // have been deleted. Continue deleting contents
+                            result.cancel();
+                            return;
+                        }
                         long elapsedMillis = System.currentTimeMillis() - start;
                         if (elapsedMillis > 5) {
                             buildLog.info("Finished " + taskDetails.getDebugName() + " in " + elapsedMillis + "ms");
@@ -218,6 +226,12 @@ public class TaskScheduler {
                         result.markSuccess();
 
                     } catch (Throwable exception) {
+                        if (Thread.currentThread().isInterrupted()) {
+                            // Tried and failed to be canceled, so even though we failed, some files might have
+                            // been deleted. Continue deleting contents.
+                            result.cancel();
+                            return;
+                        }
                         buildLog.error("Exception executing task " + taskDetails.getDebugName(), exception);
                         result.markFailure();
                         listener.onFailure();

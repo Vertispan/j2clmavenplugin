@@ -13,7 +13,6 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugin.PluginParameterExpressionEvaluator;
 import org.apache.maven.plugin.descriptor.PluginDescriptor;
-import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -228,8 +227,12 @@ public class BuildMojo extends AbstractBuildMojo {
         } catch (IOException ioException) {
             throw new MojoExecutionException("Failed to create cache", ioException);
         }
+
+        addShutdownHook(executor, diskCache);
+
         MavenLog mavenLog = new MavenLog(getLog());
         TaskScheduler taskScheduler = new TaskScheduler(executor, diskCache, mavenLog);
+
         TaskRegistry taskRegistry = createTaskRegistry();
 
         // Given these, build the graph of work we need to complete

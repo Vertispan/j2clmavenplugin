@@ -328,6 +328,9 @@ public class TestMojo extends AbstractBuildMojo {
         } catch (IOException ioException) {
             throw new MojoExecutionException("Failed to create cache", ioException);
         }
+
+        addShutdownHook(executor, diskCache);
+
         MavenLog mavenLog = new MavenLog(getLog());
         TaskScheduler taskScheduler = new TaskScheduler(executor, diskCache, mavenLog);
         TaskRegistry taskRegistry = createTaskRegistry();
