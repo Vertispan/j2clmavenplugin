@@ -252,7 +252,7 @@ public class ClosureTask extends TaskFactory {
                         entrypoint,
                         defines,
                         externs,
-                        translationsFileProcessor.getTranslationsFile(xtbInputs, context.log()),
+                        translationsFileProcessor.getTranslationsFile(xtbInputs, context),
                         true,//TODO have this be passed in,
                         checkAssertions,
                         rewritePolyfills,
