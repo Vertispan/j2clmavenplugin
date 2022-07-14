@@ -29,7 +29,7 @@ import java.util.concurrent.Executor;
 public abstract class DiskCache {
     private static final boolean IS_MAC = System.getProperty("os.name").toLowerCase().contains("mac");
     private static final int MARK_ACTIVE_UPDATE_DELAY = Integer.getInteger("j2cl.diskcache.mark_active_update_delay_ms", 1000);
-    private static final int MAX_STALE_AGE = Integer.getInteger("j2cl.diskcache.max_stale_age", 10);
+    private static final int MAX_STALE_AGE = Integer.getInteger("j2cl.diskcache.max_stale_age", 30);
 
     public class CacheResult {
         private final Path taskDir;
@@ -165,16 +165,24 @@ public abstract class DiskCache {
 
     private void markActive() {
         while (true) {
+            long startLoop = System.currentTimeMillis();
+            FileTime now = FileTime.from(Instant.now());
             runningTasks.forEach(path -> {
                 try {
-                    Files.setLastModifiedTime(path, FileTime.from(Instant.now()));
+                    Files.setLastModifiedTime(path, now);
                 } catch (IOException e) {
                     // race, probably the file was deleted, leaving it in the collection
                     // for now, the failing task will cause the entry to be deleted.
+                    e.printStackTrace();
                 }
             });
             try {
-                Thread.sleep(MARK_ACTIVE_UPDATE_DELAY);
+                long remainingDelay = MARK_ACTIVE_UPDATE_DELAY - (System.currentTimeMillis() - startLoop);
+                if (remainingDelay > 0) {
+                    Thread.sleep(remainingDelay);
+                } else {
+                    System.out.println("Negative remaining delay, continuing " + now);
+                }
             } catch (InterruptedException e) {
                 return;// done
             }
@@ -486,9 +494,13 @@ public abstract class DiskCache {
                 return;
             }
 
-            if (Files.getLastModifiedTime(taskDir).compareTo(FileTime.from(Instant.now().minusSeconds(MAX_STALE_AGE))) < 0) {
+            FileTime lastModifiedTime = Files.getLastModifiedTime(taskDir);
+            FileTime limit = FileTime.from(Instant.now().minusSeconds(MAX_STALE_AGE));
+            if (lastModifiedTime.compareTo(limit) < 0) {
                 //directory hasn't been updated, it must be stale, take over
-                System.out.println("STALE BUILD DETECTED - build was stale after 10 seconds, deleting it to take over: " + taskDir);
+                System.out.println("STALE BUILD DETECTED - build was stale after " + MAX_STALE_AGE + " seconds, deleting it to take over: " + taskDir);
+                System.out.println("File was last modified at " + lastModifiedTime);
+                System.out.println("Expected it to be after " + limit);
                 deleteRecursively(taskDir);
             }
         } catch (IOException ioException) {
