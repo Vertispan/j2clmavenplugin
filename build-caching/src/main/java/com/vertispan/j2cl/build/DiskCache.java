@@ -29,7 +29,7 @@ import java.util.concurrent.Executor;
 public abstract class DiskCache {
     private static final boolean IS_MAC = System.getProperty("os.name").toLowerCase().contains("mac");
     private static final int MARK_ACTIVE_UPDATE_DELAY = Integer.getInteger("j2cl.diskcache.mark_active_update_delay_ms", 1000);
-    private static final int MAX_STALE_AGE = Integer.getInteger("j2cl.diskcache.max_stale_age", 30);
+    private static final int MAX_STALE_AGE = Integer.getInteger("j2cl.diskcache.max_stale_age", 10);
 
     public class CacheResult {
         private final Path taskDir;
@@ -494,14 +494,17 @@ public abstract class DiskCache {
                 return;
             }
 
-            FileTime lastModifiedTime = Files.getLastModifiedTime(taskDir);
-            FileTime limit = FileTime.from(Instant.now().minusSeconds(MAX_STALE_AGE));
-            if (lastModifiedTime.compareTo(limit) < 0) {
-                //directory hasn't been updated, it must be stale, take over
-                System.out.println("STALE BUILD DETECTED - build was stale after " + MAX_STALE_AGE + " seconds, deleting it to take over: " + taskDir);
-                System.out.println("File was last modified at " + lastModifiedTime);
-                System.out.println("Expected it to be after " + limit);
-                deleteRecursively(taskDir);
+            // This task dir isn't owned by this process, and it might be stale
+            if (!runningTasks.contains(taskDir)) {
+                FileTime lastModifiedTime = Files.getLastModifiedTime(taskDir);
+                FileTime limit = FileTime.from(Instant.now().minusSeconds(MAX_STALE_AGE));
+                if (lastModifiedTime.compareTo(limit) < 0) {
+                    //directory hasn't been updated, it must be stale, take over
+                    System.out.println("STALE BUILD DETECTED - build was stale after " + MAX_STALE_AGE + " seconds, deleting it to take over: " + taskDir);
+                    System.out.println("File was last modified at " + lastModifiedTime);
+                    System.out.println("Expected it to be after " + limit);
+                    deleteRecursively(taskDir);
+                }
             }
         } catch (IOException ioException) {
             cancelable.error(new IOException("Error when interacting with the disk cache", ioException));
