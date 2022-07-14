@@ -211,7 +211,6 @@ public class TaskScheduler {
                     }
                     try {
                         long start = System.currentTimeMillis();
-                        result.markBegun();
                         taskDetails.getTask().execute(new TaskContext(result.outputDir(), log));
                         if (Thread.currentThread().isInterrupted()) {
                             // Tried and failed to be canceled, so even though we were successful, some files might
@@ -262,6 +261,7 @@ public class TaskScheduler {
                 public void onReady(DiskCache.CacheResult cacheResult) {
                     // We can now begin this work off-thread, will be woken up when it finishes.
                     // It is too late to cancel at this time, so no need to check.
+                    cacheResult.markBegun();
                     executor.execute(() -> {
                         executeTask(taskDetails, cacheResult, listener);
                     });
