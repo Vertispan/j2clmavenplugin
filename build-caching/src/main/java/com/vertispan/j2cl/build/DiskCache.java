@@ -55,12 +55,12 @@ public abstract class DiskCache {
         }
 
         public void markSuccess() {
-            runningTasks.remove(taskDir);
             markFinished(this);
+            runningTasks.remove(taskDir);
         }
         public void markFailure() {
-            runningTasks.remove(taskDir);
             markFailed(this);
+            runningTasks.remove(taskDir);
         }
 
         public void markBegun() {
