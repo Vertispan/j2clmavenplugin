@@ -55,12 +55,12 @@ public abstract class DiskCache {
         }
 
         public void markSuccess() {
-            runningTasks.remove(taskDir);
             markFinished(this);
+            runningTasks.remove(taskDir);
         }
         public void markFailure() {
-            runningTasks.remove(taskDir);
             markFailed(this);
+            runningTasks.remove(taskDir);
         }
 
         public void markBegun() {
@@ -165,16 +165,24 @@ public abstract class DiskCache {
 
     private void markActive() {
         while (true) {
+            long startLoop = System.currentTimeMillis();
+            FileTime now = FileTime.from(Instant.now());
             runningTasks.forEach(path -> {
                 try {
-                    Files.setLastModifiedTime(path, FileTime.from(Instant.now()));
+                    Files.setLastModifiedTime(path, now);
                 } catch (IOException e) {
                     // race, probably the file was deleted, leaving it in the collection
                     // for now, the failing task will cause the entry to be deleted.
+                    e.printStackTrace();
                 }
             });
             try {
-                Thread.sleep(MARK_ACTIVE_UPDATE_DELAY);
+                long remainingDelay = MARK_ACTIVE_UPDATE_DELAY - (System.currentTimeMillis() - startLoop);
+                if (remainingDelay > 0) {
+                    Thread.sleep(remainingDelay);
+                } else {
+                    System.out.println("Negative remaining delay, continuing " + now);
+                }
             } catch (InterruptedException e) {
                 return;// done
             }
@@ -486,10 +494,17 @@ public abstract class DiskCache {
                 return;
             }
 
-            if (Files.getLastModifiedTime(taskDir).compareTo(FileTime.from(Instant.now().minusSeconds(MAX_STALE_AGE))) < 0) {
-                //directory hasn't been updated, it must be stale, take over
-                System.out.println("STALE BUILD DETECTED - build was stale after 10 seconds, deleting it to take over: " + taskDir);
-                deleteRecursively(taskDir);
+            // This task dir isn't owned by this process, and it might be stale
+            if (!runningTasks.contains(taskDir)) {
+                FileTime lastModifiedTime = Files.getLastModifiedTime(taskDir);
+                FileTime limit = FileTime.from(Instant.now().minusSeconds(MAX_STALE_AGE));
+                if (lastModifiedTime.compareTo(limit) < 0) {
+                    //directory hasn't been updated, it must be stale, take over
+                    System.out.println("STALE BUILD DETECTED - build was stale after " + MAX_STALE_AGE + " seconds, deleting it to take over: " + taskDir);
+                    System.out.println("File was last modified at " + lastModifiedTime);
+                    System.out.println("Expected it to be after " + limit);
+                    deleteRecursively(taskDir);
+                }
             }
         } catch (IOException ioException) {
             cancelable.error(new IOException("Error when interacting with the disk cache", ioException));
