@@ -114,6 +114,15 @@ public class Input implements com.vertispan.j2cl.build.task.Input {
         }
     }
 
+    public void updateHashSummary(StringBuilder stringBuilder) {
+        stringBuilder.append("\n\t").append(getProject().getKey()).append(" ").append(getOutputType());
+        for (DiskCache.CacheEntry fileAndHash : getFilesAndHashes()) {
+            stringBuilder.append("\n\t\t").append(fileAndHash.getSourcePath().toString());
+            stringBuilder.append(" with hash ").append(fileAndHash.getHash().asString());
+        }
+    }
+
+
     @Override
     public Project getProject() {
         return project;

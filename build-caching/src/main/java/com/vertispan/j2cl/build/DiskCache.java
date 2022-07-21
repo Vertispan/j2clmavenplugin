@@ -5,19 +5,19 @@ import com.vertispan.j2cl.build.task.CachedPath;
 import io.methvin.watcher.PathUtils;
 import io.methvin.watcher.hashing.FileHash;
 import io.methvin.watcher.hashing.FileHasher;
+import io.methvin.watcher.hashing.Murmur3F;
 import io.methvin.watchservice.MacOSXListeningWatchService;
 import io.methvin.watchservice.WatchablePath;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.WatchService;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
-import java.time.temporal.TemporalAmount;
-import java.time.temporal.TemporalUnit;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -340,11 +340,42 @@ public abstract class DiskCache {
         }
     }
 
-    protected abstract Path taskDir(CollectedTaskInputs inputs);
+    protected String taskSummaryContents(CollectedTaskInputs inputs) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Cache summary for ");
+        String projectName = inputs.getProject().getKey();
+        sb.append(projectName);
+
+        sb.append("\nTask name ").append(inputs.getTaskFactory().getTaskName());
+        sb.append("\nImplemented by ").append(inputs.getTaskFactory().getClass().toString());
+        sb.append(" version ").append(inputs.getTaskFactory().getVersion());
+
+        sb.append("\n\nInputs:");
+        for (Input input : inputs.getInputs()) {
+            input.updateHashSummary(sb);
+        }
+
+
+        sb.append("\n\nConfigs:");
+        for (Map.Entry<String, String> entry : inputs.getUsedConfigs().entrySet()) {
+            sb.append("\n\t").append(entry.getKey()).append(" = ");
+            if (entry.getValue() == null) {
+                sb.append("null");
+            } else {
+                sb.append("\"").append(entry.getValue()).append("\"");
+            }
+        }
+
+        return sb.toString();
+    }
+
+    protected abstract Path taskDir(String projectName, String hashString, String outputType);
+
     protected abstract Path successMarker(Path taskDir);
     protected abstract Path failureMarker(Path taskDir);
     protected abstract Path logFile(Path taskDir);
     protected abstract Path outputDir(Path taskDir);
+    protected abstract Path cacheSummary(Path taskDir);
 
     interface Listener {
         void onReady(CacheResult result);
@@ -431,7 +462,14 @@ public abstract class DiskCache {
      */
     public void waitForTask(CollectedTaskInputs taskDetails, Listener listener) {
         assert taskDetails.getInputs().stream().allMatch(Input::hasContents);
-        final Path taskDir = taskDir(taskDetails);
+
+        Murmur3F murmur3F = new Murmur3F();
+        byte[] taskSummaryContents = taskSummaryContents(taskDetails).getBytes(StandardCharsets.UTF_8);
+        murmur3F.update(taskSummaryContents);
+        String hashString = murmur3F.getValueHexString();
+
+        final Path taskDir = taskDir(taskDetails.getProject().getKey(), hashString, taskDetails.getTaskFactory().getOutputType());
+
         PendingCacheResult cancelable = new PendingCacheResult(taskDir, listener);
         taskFutures.computeIfAbsent(taskDir, ignore -> Collections.newSetFromMap(new ConcurrentHashMap<>())).add(cancelable);
         try {
@@ -449,6 +487,7 @@ public abstract class DiskCache {
                 // caller can begin work right away
                 Files.createDirectory(outputDir);
                 Files.createFile(logFile(taskDir));
+                Files.write(cacheSummary(taskDir), taskSummaryContents);
                 cancelable.ready();
                 return;
             }

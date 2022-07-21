@@ -72,7 +72,7 @@ public class PropertyTrackingConfig implements Config {
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to hash file contents " + value, e);
         }
-        useKey(node.getPath(), hash);
+        useKey(node.getPath(), "File with hash " + hash);
         return value;
     }
     private void useKey(String path, String value) {
