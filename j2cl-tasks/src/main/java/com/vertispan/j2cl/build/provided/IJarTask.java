@@ -1,7 +1,6 @@
 package com.vertispan.j2cl.build.provided;
 
 import com.google.auto.service.AutoService;
-import com.vertispan.j2cl.build.BuildService;
 import com.vertispan.j2cl.build.task.*;
 
 import java.nio.file.Files;
@@ -30,7 +29,7 @@ public class IJarTask extends TaskFactory {
     }
 
     @Override
-    public Task resolve(Project project, Config config, BuildService buildService) {
+    public Task resolve(Project project, Config config) {
         Input myStrippedBytecode = input(project, OutputTypes.STRIPPED_BYTECODE);
         return context -> {
 

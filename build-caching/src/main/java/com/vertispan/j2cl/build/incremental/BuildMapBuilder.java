@@ -15,8 +15,10 @@
  */
 package com.vertispan.j2cl.build.incremental;
 
+import com.google.common.hash.HashCode;
 import javassist.CtClass;
 import javassist.CtMethod;
+import javassist.Modifier;
 import javassist.NotFoundException;
 import javassist.bytecode.BadBytecode;
 import javassist.bytecode.SignatureAttribute;
@@ -26,9 +28,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
+import java.util.function.BiPredicate;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 /**
  * This is a clone of LibraryInfoBuilder, with all pruning removed.
@@ -46,7 +49,9 @@ public final class BuildMapBuilder {
         this.outputPath = outputPath;
     }
 
-    public void addClass(CtClass clazz) throws NotFoundException {
+    public void addClass(CtClass clazz, Path javaFilePath) throws NotFoundException {
+        JavaFileHashReader javaFileHashReader = new JavaFileHashReader(javaFilePath);
+
         StringBuffer sb = new StringBuffer("- sources");
         sb.append(LINE_SEPARATOR);
         sb.append(clazz.getName());
@@ -57,7 +62,7 @@ public final class BuildMapBuilder {
 
         CtClass superClass = clazz.getSuperclass();
 
-        if (!superClass.getName().equals("java.lang.Object")) {
+        if (superClass != null) {
             sb.append(superClass.getName());
             sb.append(":");
             sb.append(LINE_SEPARATOR);
@@ -82,41 +87,20 @@ public final class BuildMapBuilder {
         sb.append("- dependencies");
         sb.append(LINE_SEPARATOR);
 
-        Set<String> types = new HashSet<>();
-
         clazz.getRefClasses()
+                .stream()
+                .filter(ref -> maybeAddType.test(clazz.getName(), ref))
                 .forEach(
-                        c -> maybeAddType(c, types));
-
-        Arrays.stream(clazz.getFields())
-                .forEach(
-                        field -> {
-                            try {
-                                if(field.getGenericSignature() != null) {
-                                    SignatureAttribute.Type typeSignature = SignatureAttribute.toTypeSignature(field.getGenericSignature());
-                                    if(typeSignature instanceof javassist.bytecode.SignatureAttribute.ClassType) {
-                                        javassist.bytecode.SignatureAttribute.ClassType classType =
-                                                (javassist.bytecode.SignatureAttribute.ClassType) typeSignature;
-                                        for (SignatureAttribute.TypeArgument typeArgument : classType.getTypeArguments()) {
-                                            maybeAddType(typeArgument.toString(), types);
-                                        }
-                                    }
-                                }
-                                maybeAddType(field.getType().getName(), types);
-                            } catch (NotFoundException e) {
-                                throw new RuntimeException(e);
-                            } catch (BadBytecode e) {
-                                throw new RuntimeException(e);
-                            }
+                        ref -> {
+                            sb.append(ref);
+                            sb.append(LINE_SEPARATOR);
                         });
 
-        types.forEach(type -> {
-            if (!clazz.getName().equals(type)) {
-                sb.append(type);
-                sb.append(LINE_SEPARATOR);
-            }
-        });
 
+        sb.append("- hash");
+        sb.append(LINE_SEPARATOR);
+        sb.append(javaFileHashReader.hash());
+        sb.append(LINE_SEPARATOR);
 
         String pkg = clazz.getPackageName().replaceAll("\\.", System.getProperty("file.separator"));
         File output = new File(outputPath.toFile(), pkg + "/" + clazz.getSimpleName() + ".build.map");
@@ -131,9 +115,6 @@ public final class BuildMapBuilder {
 
     }
 
-    void maybeAddType(String clazz, Set<String> types) {
-        if(!(clazz.startsWith("java."))) {
-            types.add(clazz);
-        }
-    }
+    private BiPredicate<String, String> maybeAddType = (clazz, ref) -> !(ref.startsWith("java.") || clazz.equals(ref));
+
 }

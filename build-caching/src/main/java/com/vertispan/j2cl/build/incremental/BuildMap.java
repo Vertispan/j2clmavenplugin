@@ -1,6 +1,8 @@
-package com.vertispan.j2cl.build;
+package com.vertispan.j2cl.build.incremental;
 
 import com.google.common.collect.Streams;
+import com.vertispan.j2cl.build.Project;
+import com.vertispan.j2cl.build.ProjectFiles;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -24,10 +26,8 @@ public class BuildMap {
     private Map<String, String> qualifiedSourceNameToPath = new HashMap<>();
 
     private List<String> childrenChangedFiles = new ArrayList<>();
-    ;
 
     private Set<String> changedFiles = new HashSet<>();
-    ;
 
     private Set<String> expandedFiles = new HashSet<>();
 
@@ -65,10 +65,9 @@ public class BuildMap {
     }
 
     private void populateFilesToDelete() {
-        // Merge all except added - which by it's nature has nothing needed deleting
         for (ProjectFiles p : dirToprojectFiles.values()) {
             filesToDelete.addAll(p.getRemoved());
-            filesToDelete.addAll(p.getUpdated());
+            filesToDelete.addAll(p.getUpdated().keySet());
         }
         filesToDelete.addAll(getExpandedFiles());
     }
@@ -80,7 +79,7 @@ public class BuildMap {
 
         // Populate the complete list of potentially changed files
         for (ProjectFiles projectFiles : dirToprojectFiles.values()) {
-            changedFiles.addAll(projectFiles.getUpdated());
+            changedFiles.addAll(projectFiles.getUpdated().keySet());
             changedFiles.addAll(projectFiles.getAdded());
         }
         changedFiles.addAll(expandedFiles);
@@ -92,7 +91,11 @@ public class BuildMap {
 
     public void expandChangedFiles() {
         for (ProjectFiles projectFiles : dirToprojectFiles.values()) {
-            expandChangedFiles(projectFiles.getUpdated(), expandedFiles);
+            expandChangedFiles(projectFiles.getUpdated()
+                    .entrySet()
+                    .stream()
+                    .filter(e -> e.getValue()).map(e -> e.getKey())
+                    .collect(Collectors.toSet()), expandedFiles);
         }
         expandChangedFiles(childrenChangedFiles, expandedFiles);
     }
@@ -126,10 +129,7 @@ public class BuildMap {
             expandChangedFiles(dep.outgoing, changedFiles);
         }
 
-
         // Now add all the dependencies
-
-
         for (TypeDependency dep : typeInfo.getMethodFieldIn()) {
             maybeAddNativeFile(dep.outgoing);
             changedFiles.add(qualifiedSourceNameToPath.get(dep.outgoing.getQualifiedSourceName()));
@@ -216,13 +216,11 @@ public class BuildMap {
     }
 
     private void readBuildMapDescrForFileName(String javaFileName, Map<String, TypeInfoDescr> typeInfoDescrs, Path dir) {
-
-
         if (javaFileName.endsWith(".java")) {
             String fileName = javaFileName.substring(0, javaFileName.lastIndexOf(".java"));
             String buildMapFileName = fileName + ".build.map";
-            Path buildMapPath = dir.resolve(buildMapFileName);
-
+            Path buildMapPath = dir.resolve("results")
+                    .resolve(buildMapFileName);
             if (Files.notExists(buildMapPath)) {
                 throw new RuntimeException("build.map files must exist for all changed .java files");
             }
@@ -250,7 +248,7 @@ public class BuildMap {
         for (LineReader reader = new LineReader(lines); reader.hasNext(); ) {
             String line = reader.getAndInc();
             if (!line.startsWith("- sources")) {
-                throw new RuntimeException("Illegal File Format, it must start with '- sources' at line " + reader.lineNbr);
+                throw new RuntimeException("Illegal File Format, it must start with '- sources' at line " + reader.lineNbr + " at " + javaFileName);
             }
 
             typeInfoDescr = readBuildMapSources(reader, typeInfoDescrs);
@@ -259,15 +257,20 @@ public class BuildMap {
 
             line = reader.getAndInc();
             if (!line.startsWith("- interfaces")) {
-                throw new RuntimeException("Illegal File Format, the next element must be '-interfaces' at line " + reader.lineNbr);
+                throw new RuntimeException("Illegal File Format, the next element must be '- interfaces' at line " + reader.lineNbr);
             }
             readBuildMapInterfaces(reader, typeInfoDescr);
 
             line = reader.getAndInc();
             if (!line.startsWith("- dependencies")) {
-                throw new RuntimeException("Illegal File Format, the next element must be '-dependencies' at line " + reader.lineNbr);
+                throw new RuntimeException("Illegal File Format, the next element must be '- dependencies' at line " + reader.lineNbr);
             }
             readBuildMapDependencies(reader, typeInfoDescr);
+            line = reader.getAndInc();
+            if (!line.startsWith("- hash")) {
+                throw new RuntimeException("Illegal File Format, the next element must be '- hash' at line " + reader.lineNbr);
+            }
+            readBuildMapHash(reader, typeInfoDescr);
         }
 
         return typeInfoDescr;
@@ -286,76 +289,6 @@ public class BuildMap {
             if (!typeInfo.getInnerTypes().isEmpty()) {
                 collectInnerTypes(innerType, innerTypes);
             }
-        }
-    }
-
-    public static class LineReader {
-        private int lineNbr;
-        List<String> lines;
-
-        public LineReader(List<String> lines) {
-            this.lines = lines;
-        }
-
-        String getAndInc() {
-            String line = lines.get(lineNbr++);
-
-
-            // skip any empty lines
-            while (lineNbr < lines.size() &&
-                    lines.get(lineNbr).trim().isEmpty()) {
-                lineNbr++;
-            }
-
-            return line;
-        }
-
-        String peekNext() {
-            return lines.get(lineNbr);
-        }
-
-        boolean hasNext() {
-            return lineNbr < lines.size();
-        }
-
-    }
-
-    static class TypeInfoDescr {
-        private String qualifiedSourceName;
-        private String superTypeName;       // optional
-        private String qualifiedBinaryName; // optional if it's different to qualifiedSourceName, i.e. nested classes
-        private String nativePathName;      // optional
-        private String enclosingType;
-        private List<String> innerTypes;
-        private List<String> interfaces;
-        private List<String> dependencies;  // dependencies that are not one of the above.
-
-        public TypeInfoDescr(String qualifiedSourceName, String qualifiedBinaryName, String nativePathName) {
-            this.qualifiedSourceName = qualifiedSourceName;
-            this.qualifiedBinaryName = qualifiedBinaryName != null && !qualifiedBinaryName.trim().isEmpty() ? qualifiedBinaryName : qualifiedSourceName;
-            this.nativePathName = nativePathName;
-
-            this.innerTypes = new ArrayList<>();
-            this.interfaces = new ArrayList<>();
-            this.dependencies = new ArrayList<>();
-        }
-
-        public List<String> dependencies() {
-            return dependencies;
-        }
-
-        @Override
-        public String toString() {
-            return "TypeInfoDescr{" +
-                    "qualifiedSourceName='" + qualifiedSourceName + '\'' +
-                    ", qualifiedBinaryName='" + qualifiedBinaryName + '\'' +
-                    ", superTypeName='" + superTypeName + '\'' +
-                    ", nativePathName='" + nativePathName + '\'' +
-                    ", enclosingType='" + enclosingType + '\'' +
-                    ", innerTypes=" + innerTypes +
-                    ", interfaces=" + interfaces +
-                    ", dependencies=" + dependencies +
-                    '}';
         }
     }
 
@@ -460,6 +393,10 @@ public class BuildMap {
         }
     }
 
+    private void readBuildMapHash(LineReader reader, TypeInfoDescr typeInfoDescr) {
+         typeInfoDescr.hash = reader.getAndInc();
+    }
+
     private boolean isNotEmpty(int i, String[] x) {
         return x[i] != null && x[i].length() > 0;
     }
@@ -491,7 +428,12 @@ public class BuildMap {
         target.qualifiedSourceNameToPath.putAll(qualifiedSourceNameToPath);
 
         for (ProjectFiles projectFiles : dirToprojectFiles.values()) {
-            target.childrenChangedFiles.addAll(projectFiles.getUpdated());
+            target.childrenChangedFiles.addAll(projectFiles.getUpdated()
+                    .entrySet()
+                    .stream()
+                    .filter(e -> e.getValue())
+                    .map(e -> e.getKey())
+                    .collect(Collectors.toSet()));
         }
 
         target.childrenChangedFiles.addAll(expandedFiles);

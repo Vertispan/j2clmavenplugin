@@ -2,7 +2,6 @@ package com.vertispan.j2cl.build.provided;
 
 import com.google.auto.service.AutoService;
 import com.google.j2cl.common.SourceUtils;
-import com.vertispan.j2cl.build.BuildService;
 import com.vertispan.j2cl.build.task.*;
 import com.vertispan.j2cl.tools.GwtIncompatiblePreprocessor;
 
@@ -30,7 +29,7 @@ public class StripSourcesTask extends TaskFactory {
     }
 
     @Override
-    public Task resolve(Project project, Config config, BuildService buildService) {
+    public Task resolve(Project project, Config config) {
         Input inputSources = input(project, OutputTypes.BYTECODE).filter(JAVA_SOURCES);
 
         return context -> {

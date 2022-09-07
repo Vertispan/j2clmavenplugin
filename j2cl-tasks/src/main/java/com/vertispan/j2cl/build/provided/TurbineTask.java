@@ -9,6 +9,7 @@ import com.google.turbine.options.TurbineOptions;
 import com.vertispan.j2cl.build.BuildService;
 import com.vertispan.j2cl.build.incremental.BuildMapBuilder;
 import com.vertispan.j2cl.build.task.*;
+import javassist.ClassPath;
 import javassist.ClassPool;
 import javassist.CtClass;
 import javassist.NotFoundException;
@@ -47,10 +48,10 @@ public class TurbineTask extends JavacTask {
     }
 
     @Override
-    public Task resolve(Project project, Config config, BuildService buildService) {
+    public Task resolve(Project project, Config config) {
         int version = SourceVersion.latestSupported().ordinal();
         if(version == 8) {
-            return super.resolve(project, config, buildService);
+            return super.resolve(project, config);
         }
 
         // emits only stripped bytecode, so we're not worried about anything other than .java files to compile and .class on the classpath
@@ -58,7 +59,6 @@ public class TurbineTask extends JavacTask {
 
         List<File> extraClasspath = config.getExtraClasspath();
 
-        boolean incremental = config.getIncremental();
         List<Input> compileClasspath = scope(project.getDependencies(), Dependency.Scope.COMPILE).stream()
                 .map(p -> input(p, OutputTypes.STRIPPED_BYTECODE_HEADERS))
                 .map(input -> input.filter(JAVA_BYTECODE))
@@ -96,35 +96,6 @@ public class TurbineTask extends JavacTask {
             } catch (TurbineError e) {
                 // usually it means, it's an apt that can't be processed, log it
                 context.info(e.getMessage());
-            }
-
-            if(incremental) {
-
-                buildService.addStrippedSourcesPath((com.vertispan.j2cl.build.Project) project, context.outputPath());
-
-                BuildMapBuilder builder = new BuildMapBuilder(context.outputPath());
-                String jarFileName = output.toString();
-
-                JarFile jar = new JarFile(output);
-                ClassPool pool = ClassPool.getDefault();
-                try{
-                    pool.insertClassPath(jarFileName);
-
-                    jar.stream().map(JarEntry::getName).forEach(name -> {
-                        if(name.endsWith(".class") && !name.startsWith("META-INF")) {
-                            String className = name.replace(".class", "").replace("/", ".");
-                            try {
-                                CtClass clazz = pool.get(className);
-                                builder.addClass(clazz);
-                            } catch (NotFoundException e) {
-                                throw new RuntimeException(e);
-                            }
-                        }
-                    });
-
-                } catch (NotFoundException e) {
-                    context.info(e.getMessage());
-                }
             }
         };
     }

@@ -4,7 +4,6 @@ import com.google.auto.service.AutoService;
 import com.google.javascript.jscomp.CompilationLevel;
 import com.google.javascript.jscomp.CompilerOptions;
 import com.google.javascript.jscomp.DependencyOptions;
-import com.vertispan.j2cl.build.BuildService;
 import com.vertispan.j2cl.build.task.*;
 import com.vertispan.j2cl.tools.Closure;
 import org.apache.commons.io.FileUtils;
@@ -134,7 +133,7 @@ public class ClosureTask extends TaskFactory {
     }
 
     @Override
-    public Task resolve(Project project, Config config, BuildService service) {
+    public Task resolve(Project project, Config config) {
         // collect current project JS sources and runtime deps JS sources
         // TODO filter to just JS and sourcemaps? probably not required unless we also get sources
         //      from the actual input source instead of copying it along each step

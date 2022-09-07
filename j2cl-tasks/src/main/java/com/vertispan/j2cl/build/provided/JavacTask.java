@@ -37,7 +37,7 @@ public class JavacTask extends TaskFactory {
     }
 
     @Override
-    public Task resolve(Project project, Config config, BuildService buildService) {
+    public Task resolve(Project project, Config config) {
         boolean incremental = config.getIncremental();
         // emits only stripped bytecode, so we're not worried about anything other than .java files to compile and .class on the classpath
         Input ownSources = input(project, OutputTypes.STRIPPED_SOURCES).filter(JAVA_SOURCES);
@@ -54,7 +54,7 @@ public class JavacTask extends TaskFactory {
         return (context) -> {
             List<CachedPath> files = ownSources.getFilesAndHashes()
                                                  .stream()
-                                                 .filter( new ChangedAcceptor((com.vertispan.j2cl.build.Project) project, buildService)).collect(Collectors.toList());
+                                                 .filter( new ChangedAcceptor((com.vertispan.j2cl.build.Project) project, context.getBuildService())).collect(Collectors.toList());
 
             if (files.isEmpty()) {
                 return;// no work to do
@@ -65,7 +65,7 @@ public class JavacTask extends TaskFactory {
 
             List<File> sourcePaths = ownSources.getParentPaths().stream().map(Path::toFile).collect(Collectors.toList());
             if (incremental) {
-                Path bytecodePath = buildService.getDiskCache().getLastSuccessfulDirectory(new com.vertispan.j2cl.build.Input((com.vertispan.j2cl.build.Project) project,
+                Path bytecodePath = context.getBuildService().getDiskCache().getLastSuccessfulDirectory(new com.vertispan.j2cl.build.Input((com.vertispan.j2cl.build.Project) project,
                                                                                                                               OutputTypes.STRIPPED_BYTECODE));
 
                 if (bytecodePath != null) {

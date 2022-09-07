@@ -1,6 +1,9 @@
 package com.vertispan.j2cl.build;
 
 import com.vertispan.j2cl.build.impl.CollectedTaskInputs;
+import com.vertispan.j2cl.build.incremental.BuildMap;
+import com.vertispan.j2cl.build.incremental.BuildMapHashReader;
+import com.vertispan.j2cl.build.incremental.JavaFileHashReader;
 import com.vertispan.j2cl.build.task.OutputTypes;
 import com.vertispan.j2cl.build.task.TaskFactory;
 import org.apache.commons.io.FileUtils;
@@ -23,8 +26,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class BuildService {
-
-    private Map<Project, Path> strippedSources = new HashMap<>();
     private final TaskRegistry taskRegistry;
     private final TaskScheduler taskScheduler;
     private final DiskCache diskCache;
@@ -35,6 +36,9 @@ public class BuildService {
 
     // hashes of each file in each project, updated under lock
     private final Map<Project, Map<Path, DiskCache.CacheEntry>> currentProjectSourceHash = new HashMap<>();
+    private final AtomicReference<Map<Project, Map<Path, DiskCache.CacheEntry>>> createdFilesRef = new AtomicReference<>();
+    private final AtomicReference<Map<Project, Map<Path, DiskCache.CacheEntry>>> changedFilesRef = new AtomicReference<>();
+    private final AtomicReference<Map<Project, Map<Path, DiskCache.CacheEntry>>> deletedFilesRef = new AtomicReference<>();
 
     private BlockingBuildListener prevBuild;
 
@@ -46,10 +50,6 @@ public class BuildService {
         this.diskCache = diskCache;
         this.diskCache.setBuildService(this);
         this.incremental = incremental;
-    }
-
-    public void addStrippedSourcesPath(Project project, Path path) {
-        this.strippedSources.put(project, path);
     }
 
     public Map<Project, BuildMap> getBuildMaps() {
@@ -69,6 +69,10 @@ public class BuildService {
     public void assignProject(Project project, String finalTask, PropertyTrackingConfig.ConfigValueProvider config) {
         // find the tasks and their upstream tasks
         collectTasksFromProject(finalTask, project, config, inputs);
+        // TODO this is a bit of a hack, but it's the only way to get the project's .class files
+        if(incremental) {
+            collectTasksFromProject(OutputTypes.BYTECODE, project, config, inputs);
+        }
     }
 
     private void collectTasksFromProject(String taskName, Project project, PropertyTrackingConfig.ConfigValueProvider config, Map<Input, CollectedTaskInputs> collectedSoFar) {
@@ -89,7 +93,7 @@ public class BuildService {
                 throw new NullPointerException("Missing task factory: " + taskName);
             }
             assert taskFactory.inputs.isEmpty();
-            TaskFactory.Task task = taskFactory.resolve(project, propertyTrackingConfig, this);
+            TaskFactory.Task task = taskFactory.resolve(project, propertyTrackingConfig);
             collectedInputs.setTask(task);
             collectedInputs.setInputs(new ArrayList<>(taskFactory.inputs));
             taskFactory.inputs.clear();
@@ -184,10 +188,6 @@ public class BuildService {
                 });
     }
 
-    AtomicReference<Map<Project, Map<Path, DiskCache.CacheEntry>>> createdFilesRef = new AtomicReference<>();
-    AtomicReference<Map<Project, Map<Path, DiskCache.CacheEntry>>> changedFilesRef = new AtomicReference<>();
-    AtomicReference<Map<Project, Map<Path, DiskCache.CacheEntry>>> deletedFilesRef = new AtomicReference<>();
-
     /**
      * Marks that a file has been created, deleted, or modified in the given project.
      */
@@ -237,7 +237,6 @@ public class BuildService {
         if (prevBuild != null) {
             prevBuild.blockUntilFinished();
         }
-
 
         if(incremental) {
             Map<Project, Map<Path, DiskCache.CacheEntry>> createdFiles = createdFilesRef.getAndSet(new HashMap<>());
@@ -325,8 +324,20 @@ public class BuildService {
         }
 
         if (changedFilesMap != null) {
+            for (DiskCache.CacheEntry value : changedFilesMap.values()) {
+                if (value.getSourcePath().toString().endsWith(".java")) {
+                    String fileName = value.getSourcePath().toString()
+                            .substring(0, value.getSourcePath().toString().lastIndexOf(".java"));
+                    String buildMapFileName = fileName + ".build.map";
+                    Path buildMapFile = dir.resolve("results").resolve(buildMapFileName);
+                    String hash = new BuildMapHashReader(buildMapFile).hash();
+                    boolean propagate = new JavaFileHashReader(value.getAbsolutePath()).hash().equals(hash);
+                    //read hash from .java and compare to propagate deps
+                    value.setPropagate(!propagate);
+                }
+            }
             changedFilesMap.values().forEach(e -> dirToProjectFiles.get(e.getAbsoluteParent().toString())
-                    .getUpdated().add(e.getSourcePath().toString()));
+                    .getUpdated().put(e.getSourcePath().toString(), e.isPropagate()));
         }
 
         if (deletedFilesMap != null) {
@@ -341,7 +352,7 @@ public class BuildService {
             // we don't know what this module will link to, so all classes need to be cloned.
             for (com.vertispan.j2cl.build.task.Dependency dep : project.getDependencies()) {
                 BuildMap depBuildMap = buildMaps.get(dep.getProject());
-                Input input = new Input((Project) dep.getProject(), OutputTypes.TRANSPILED_JS);
+                Input input = new Input((Project) dep.getProject(), OutputTypes.BYTECODE);
                 Path path = diskCache.getLastSuccessfulDirectory(input);
                 if (depBuildMap == null && path != null) {
                     depBuildMap = safeCreateBuildMap((Project) dep.getProject(), path,
@@ -353,7 +364,10 @@ public class BuildService {
                     depBuildMap.cloneToTargetBuildMap(buildMap);
                 }
             }
-            buildMap.build(strippedSources.get(project));
+
+            Input input = new Input(project, OutputTypes.BYTECODE);
+            Path path = diskCache.getLastSuccessfulDirectory(input);
+            buildMap.build(path);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -401,7 +415,7 @@ public class BuildService {
                 // null check avoids re-entrance, as createBuildMap is recursive
                 // and the same dep can be revisited.
                 if (buildMaps.get(p) == null) {
-                    Input input = new Input(p, OutputTypes.TRANSPILED_JS);
+                    Input input = new Input(p, OutputTypes.BYTECODE);
                     if (diskCache.lastSuccessfulTaskDir.containsKey(input)) {
                         safeCreateBuildMap(p, diskCache.getLastSuccessfulDirectory(input),
                                 createdFiles, changedFiles, deletedFiles);
@@ -430,10 +444,6 @@ public class BuildService {
                             String binaryTypeName = firstPart.replace('/', '.');
 
                             if (visited.add(binaryTypeName)) {
-                                Path javaPath = path.resolve(firstPart + ".java");
-                                boolean b1 = Files.deleteIfExists(javaPath);
-                                System.out.println("Delete: " + javaPath + ":" + b1);
-
                                 if (outputType.equals(OutputTypes.STRIPPED_SOURCES)) {
                                     Path jsNativePath = path.resolve(firstPart + ".native.js");
                                     Files.deleteIfExists(jsNativePath);

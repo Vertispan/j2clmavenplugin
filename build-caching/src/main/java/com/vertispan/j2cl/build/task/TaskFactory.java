@@ -112,6 +112,6 @@ public abstract class TaskFactory {
      * @return a task that will be executed each time the given project
      * needs to be built, which should use created inputs and configs
      */
-    public abstract Task resolve(Project project, Config config, BuildService buildService);
+    public abstract Task resolve(Project project, Config config);
 
 }

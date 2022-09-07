@@ -1,14 +1,19 @@
 package com.vertispan.j2cl.build.task;
 
+import com.vertispan.j2cl.build.BuildService;
+
 import java.nio.file.Path;
 
 public class TaskContext implements BuildLog {
     private final Path path;
     private final BuildLog log;
 
-    public TaskContext(Path path, BuildLog log) {
+    private final BuildService buildService;
+
+    public TaskContext(Path path, BuildLog log, BuildService buildService) {
         this.path = path;
         this.log = log;
+        this.buildService = buildService;
     }
 
     public Path outputPath() {
@@ -57,5 +62,9 @@ public class TaskContext implements BuildLog {
     @Override
     public void error(Throwable t) {
         log.error(t);
+    }
+
+    public BuildService getBuildService() {
+        return buildService;
     }
 }

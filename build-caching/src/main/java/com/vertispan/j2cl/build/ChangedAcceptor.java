@@ -2,6 +2,7 @@ package com.vertispan.j2cl.build;
 
 import java.util.function.Predicate;
 
+import com.vertispan.j2cl.build.incremental.BuildMap;
 import com.vertispan.j2cl.build.task.CachedPath;
 import io.methvin.watcher.hashing.FileHash;
 

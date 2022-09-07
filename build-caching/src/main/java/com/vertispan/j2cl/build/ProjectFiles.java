@@ -1,15 +1,12 @@
 package com.vertispan.j2cl.build;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class ProjectFiles {
     private String dir;
 
     private List<String>        removed        = new ArrayList<>(); // files
-    private Set<String>         updated        = new HashSet<>(); // files
+    private Map<String, Boolean>         updated        = new HashMap<>(); // files
     private Set<String>         added          = new HashSet<>(); // files
     private Set<String>         all; // files
 
@@ -26,7 +23,7 @@ public class ProjectFiles {
         return removed;
     }
 
-    public Set<String> getUpdated() {
+    public Map<String, Boolean> getUpdated() {
         return updated;
     }
 
@@ -41,7 +38,7 @@ public class ProjectFiles {
     @Override public String toString() {
         return "ProjectFiles{" +
                "removed=" + removed +
-               ", updated=" + updated +
+               ", updated=" + updated.keySet() +
                ", added=" + added +
                ", all=" + all +
                '}';

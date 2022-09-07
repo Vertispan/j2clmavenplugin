@@ -43,7 +43,7 @@ public class J2clTask extends TaskFactory {
     }
 
     @Override
-    public Task resolve(Project project, Config config, BuildService buildService) {
+    public Task resolve(Project project, Config config) {
         boolean incremental = config.getIncremental();
         // J2CL is only interested in .java and .native.js files in our own sources
         Input ownJavaSources = input(project, OutputTypes.STRIPPED_SOURCES).filter(JAVA_SOURCES, NATIVE_JS_SOURCES);
@@ -62,7 +62,7 @@ public class J2clTask extends TaskFactory {
         return (context) -> {
             List<CachedPath> javaFiles = ownJavaSources.getFilesAndHashes()
                                                .stream()
-                                               .filter( new ChangedAcceptor((com.vertispan.j2cl.build.Project) project, buildService))
+                                               .filter( new ChangedAcceptor((com.vertispan.j2cl.build.Project) project, context.getBuildService()))
                                                .collect(Collectors.toList());
 
             if (javaFiles.isEmpty()) {
@@ -74,8 +74,8 @@ public class J2clTask extends TaskFactory {
             )
                     .collect(Collectors.toList());
 
-            //ownJavaSources only one file
             if (incremental) {
+                BuildService buildService = context.getBuildService();
                 Path bytecodePath = buildService.getDiskCache().getLastSuccessfulDirectory(new com.vertispan.j2cl.build.Input((com.vertispan.j2cl.build.Project) project,
                                                                                                                               OutputTypes.BYTECODE));
 
@@ -101,10 +101,14 @@ public class J2clTask extends TaskFactory {
                     .map(p -> SourceUtils.FileInfo.create(p.getAbsolutePath().toString(), p.getSourcePath().toString()))
                     .collect(Collectors.toList());
 
+            javaSources.forEach(f -> {
+                context.debug("Compiling " + f.sourcePath());
+            });
+
             List<SourceUtils.FileInfo> nativeSources = ownNativeJsSources.stream().flatMap(i ->
                     i.getFilesAndHashes()
                             .stream())
-                    .filter( new ChangedAcceptor((com.vertispan.j2cl.build.Project) project, buildService))
+                    .filter( new ChangedAcceptor((com.vertispan.j2cl.build.Project) project, context.getBuildService()))
                     .filter(e -> NATIVE_JS_SOURCES.matches(e.getSourcePath()))
                     .map(p -> SourceUtils.FileInfo.create(p.getAbsolutePath().toString(), p.getSourcePath().toString()))
                     .collect(Collectors.toList());

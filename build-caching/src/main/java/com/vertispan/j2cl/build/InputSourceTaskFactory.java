@@ -25,7 +25,7 @@ public class InputSourceTaskFactory extends TaskFactory {
     }
 
     @Override
-    public Task resolve(Project project, Config config, BuildService buildService) {
+    public Task resolve(Project project, Config config) {
         return (ignore) -> {};
     }
 }

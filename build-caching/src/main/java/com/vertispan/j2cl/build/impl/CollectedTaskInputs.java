@@ -52,7 +52,7 @@ public class CollectedTaskInputs {
 
         CollectedTaskInputs t = new CollectedTaskInputs(project);
         t.setTaskFactory(new UnpackJarTaskFactory());
-        t.setTask(t.getTaskFactory().resolve(project, null, null));
+        t.setTask(t.getTaskFactory().resolve(project, null));
         // create a fake input and give it a hash so that this unpack only runs if the jar changes
         Input jarInput = new Input(project, "jar");
         try {

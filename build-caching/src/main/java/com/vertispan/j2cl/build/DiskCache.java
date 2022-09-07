@@ -229,6 +229,8 @@ public abstract class DiskCache {
 
         private long time;
 
+        private boolean propagate;
+
         public CacheEntry(Path sourcePath, Path absoluteParent, FileHash hash) {
             if (sourcePath.isAbsolute()) {
                 this.sourcePath = absoluteParent.relativize(sourcePath);
@@ -305,6 +307,14 @@ public abstract class DiskCache {
                     ", absoluteParent=" + absoluteParent +
                     ", hash=" + hash +
                     '}';
+        }
+
+        public boolean isPropagate() {
+            return propagate;
+        }
+
+        public void setPropagate(boolean propagate) {
+            this.propagate = propagate;
         }
     }
 
@@ -581,6 +591,11 @@ public abstract class DiskCache {
             //TODO need to basically stop everything if we can't write files to cache
             throw new UncheckedIOException(ioException);
         }
+    }
+
+
+    public BuildService buildService() {
+        return buildService;
     }
 
 }

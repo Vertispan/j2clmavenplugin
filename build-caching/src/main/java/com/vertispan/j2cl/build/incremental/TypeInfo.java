@@ -1,4 +1,4 @@
-package com.vertispan.j2cl.build;
+package com.vertispan.j2cl.build.incremental;
 
 import java.util.ArrayList;
 import java.util.List;

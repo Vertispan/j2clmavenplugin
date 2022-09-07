@@ -1,7 +1,6 @@
 package com.vertispan.j2cl.build.provided;
 
 import com.google.auto.service.AutoService;
-import com.vertispan.j2cl.build.BuildService;
 import com.vertispan.j2cl.build.task.*;
 import org.apache.commons.io.FileUtils;
 
@@ -35,7 +34,7 @@ public class TestCollectionTask extends TaskFactory {
     }
 
     @Override
-    public Task resolve(Project project, Config config, BuildService buildService) {
+    public Task resolve(Project project, Config config) {
         // gather possible inputs so we can get the test summary file
         // we assume here that the user will correctly depend on the junit apt, might revise this later
         Input apt = input(project, OutputTypes.BYTECODE).filter(TEST_SUMMARY_JSON, TEST_SUITE);
