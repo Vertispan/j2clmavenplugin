@@ -512,12 +512,14 @@ public class TestMojo extends AbstractBuildMojo {
             chromeOptions.setHeadless(true);
             LoggingPreferences loggingPreferences = new LoggingPreferences();
             loggingPreferences.enable(LogType.BROWSER, Level.ALL);
-            chromeOptions.setCapability("goog:loggingPrefs",
-                    loggingPreferences);
+            chromeOptions.setCapability("goog:loggingPrefs", loggingPreferences);
             WebDriver driver = new ChromeDriver(chromeOptions);
             return driver;
         } else if ("htmlunit".equalsIgnoreCase(webdriver)){
-            return new HtmlUnitDriver(BrowserVersion.BEST_SUPPORTED, true);
+            HtmlUnitDriver driver = new HtmlUnitDriver(BrowserVersion.BEST_SUPPORTED, true);
+            driver.getWebClient().getOptions().setFetchPolyfillEnabled(true);
+            driver.getWebClient().getOptions().setProxyPolyfillEnabled(true);
+            return driver;
         }
 
         throw new MojoExecutionException("webdriver type not found: " + webdriver);

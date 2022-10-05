@@ -57,11 +57,14 @@
                     <execution>
                         <goals>
                             <goal>build</goal>
-                            <!-- Tests have to be run by hand for now, htmlunit doesnt support fetch -->
-                            <!--<goal>test</goal>-->
+                            <goal>test</goal>
                         </goals>
                     </execution>
                 </executions>
+                <configuration>
+                    <!-- htmlunit requires output transpiled down to remove es2015 class -->
+                    <compilationLevel>ADVANCED</compilationLevel>
+                </configuration>
             </plugin>
         </plugins>
         <pluginManagement>
