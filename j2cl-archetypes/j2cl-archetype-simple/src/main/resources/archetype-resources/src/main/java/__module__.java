@@ -3,7 +3,9 @@ package ${package};
 import elemental2.dom.DomGlobal;
 import elemental2.dom.HTMLButtonElement;
 import elemental2.dom.HTMLDivElement;
+import jsinterop.annotations.JsType;
 
+@JsType
 public class ${module} {
 
     public static final String HELLO_WORLD = "Hello J2CL world!";
