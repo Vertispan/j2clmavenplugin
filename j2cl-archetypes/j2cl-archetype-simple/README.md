@@ -3,7 +3,7 @@
 ```
 mvn archetype:generate -DarchetypeGroupId=com.vertispan.j2cl.archetypes \
 -DarchetypeArtifactId=j2cl-archetype-simple \
--DarchetypeVersion=0.19
+-DarchetypeVersion=0.20
 ```
 
 This project is a simple html page, with a css file, and a single Java class. It is _not_ a good

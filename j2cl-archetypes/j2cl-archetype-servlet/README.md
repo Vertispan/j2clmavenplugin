@@ -3,7 +3,7 @@
 ```
 mvn archetype:generate -DarchetypeGroupId=com.vertispan.j2cl.archetypes \
 -DarchetypeArtifactId=j2cl-archetype-servlet \
--DarchetypeVersion=0.19
+-DarchetypeVersion=0.20
 ```
 
 Creates two Java modules, one for the server, and one for the client. The server module uses Jakarta
