@@ -6,7 +6,7 @@
   <parent>
     <groupId>com.vertispan.j2cl</groupId>
     <artifactId>j2cl-tools</artifactId>
-    <version>0.20-SNAPSHOT</version>
+    <version>0.21-SNAPSHOT</version>
   </parent>
   <groupId>com.vertispan.j2cl.archetypes</groupId>
   <artifactId>j2cl-archetypes-parent</artifactId>
