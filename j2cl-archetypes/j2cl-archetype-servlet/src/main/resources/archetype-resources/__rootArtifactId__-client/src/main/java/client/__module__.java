@@ -7,8 +7,10 @@ import elemental2.dom.HTMLButtonElement;
 import elemental2.dom.HTMLDivElement;
 import elemental2.dom.Response;
 import elemental2.promise.Promise;
+import jsinterop.annotations.JsType;
 import jsinterop.base.Js;
 
+@JsType
 public class ${module} {
 
     public void onModuleLoad() {

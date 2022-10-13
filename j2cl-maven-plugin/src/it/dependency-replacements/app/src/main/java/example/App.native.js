@@ -1,4 +1,4 @@
 setTimeout(function() {
-  var app = App.$create__();
-  app.m_onModuleLoad__();
+  var app = new App();
+  app.onModuleLoad();
 }, 0);
