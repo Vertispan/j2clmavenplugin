@@ -67,7 +67,7 @@ UnescapedAndEscapedCheck.prototype.test10 = function(_arg) {
 }
 UnescapedAndEscapedCheck.prototype.test14 = function(_arg) {
     /** @desc test14 */
-    var MSG_test14 = goog.getMsg('<div id="div1"><ph name="arg" >QWERTY</ph><div id="div2"><div id="div3">RRRRRRR{$arg}></div><ph name="arg" /><div id="div4"></div></div></div><ph name="arg" >QWERTY</ph>', { arg: _arg }, { unescapeHtmlEntities: true });
+    var MSG_test14 = goog.getMsg('<div id="div1"><div id="div2"><div id="div3">RRRRRRR{$arg}</div><div id="div4"></div></div></div>', { arg: _arg }, { unescapeHtmlEntities: true });
     return MSG_test14;
 }
 UnescapedAndEscapedCheck.prototype.test12 = function() {
@@ -119,6 +119,6 @@ UnescapedAndEscapedCheck.prototype.test23 = function() {
 }
 UnescapedAndEscapedCheck.prototype.test24 = function(_arg) {
     /** @desc test24 */
-    var MSG_test24 = goog.getMsg('<div id="div21"><ph name="arg" >QWERTY</ph><div id="div22"><div id="div23">RRRRRRR{$arg}></div><ph name="arg" /><div id="div4"></div></div></div><ph name="arg" >QWERTY</ph>', { arg: _arg });
+    var MSG_test24 = goog.getMsg('<div id="div21"><div id="div22"><div id="div23">RRRRRRR{$arg}></div><div id="div4"></div></div></div>', { arg: _arg });
     return MSG_test24;
 }
