@@ -1,28 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE translationbundle SYSTEM "translationbundle.dtd">
 <translationbundle lang="zr">
-<translation id="4742452010097733918" key="MSG_test16">&amp;&lt;div id="<ph name="arg" />"&gt;@html&lt;/div&gt;</translation>
+<translation id="27520426704677856" key="MSG_test16">&amp;&lt;div id="<ph name="ARG" />"&gt;@TranslationKey&lt;/div&gt;</translation>
 <translation id="5239899114386960184" key="MSG_test15">7128890306670950348232162507662243061846645994402114603180927379544880168678174568758504050459062584</translation>
-<translation id="697297417597591992" key="MSG_test14"><div id="div1"><ph name="arg" >QWERTY</ph><div id="div2"><div id="div3">RRRRRRR<ph name="arg" />></div><ph name="arg" /><div id="div4"></div></div></div><ph name="arg" >QWERTY</ph></translation>
+<translation id="2841178766671502228" key="MSG_test14"><div id="div1"><div id="div2"><div id="div3">RRRRRRR<ph name="ARG" />></div><div id="div4"></div></div></div></translation>
 <translation id="4233183787965272225" key="MSG_test13"><div>TranslationKey</div></translation>
 <translation id="5412072274885443540" key="MSG_test12"><div id="div1"><div id="div2"><div id="div3"></div><div id="div4"></div></div></div></translation>
-<translation id="4752126598376771799" key="MSG_test11"><div id="WOW">3<ph name="arg" />-!!!!!!!!!!!!!!!!!</div></translation>
-<translation id="4492681358248353397" key="MSG_test10"><div id="someId">some content<br /><a href="#someRef"><ph name="arg" /></a>,</div></translation>
-<translation id="2229643870789073703" key="MSG_test19"><div id="_this">!@#$%^*(((</div><ph name="arg" />&amp;<ph name="arg1" />@#$%^&amp;*(<div><ph name="arg2" /></div></translation>
-<translation id="1229564021721293798" key="MSG_test18"><div id="_this">!@#$%^*(((</div><ph name="arg" />&amp;<ph name="arg1" /></translation>
-<translation id="2900389126453297230" key="MSG_test17"><br/><ph name="var1" /><div id="this">inner text <ph name="var2" /></div></translation>
-<translation id="6170601192182203917" key="MSG_test24"><div id="div21"><ph name="arg" >QWERTY</ph><div id="div22"><div id="div23">RRRRRRR<ph name="arg" />></div><ph name="arg" /><div id="div4"></div></div></div><ph name="arg" >QWERTY</ph></translation>
-<translation id="5184964137868820908" key="MSG_test">@TranslationKey <ph name="arg" /> !</translation>
+<translation id="4752126598376771799" key="MSG_test11"><div id="WOW">3<ph name="ARG" />-!!!!!!!!!!!!!!!!!</div></translation>
+<translation id="4492681358248353397" key="MSG_test10"><div id="someId">some content<br /><a href="#someRef"><ph name="ARG" /></a>,</div></translation>
+<translation id="1391302081867720438" key="MSG_test19"><div id="_this">!@#$%^*(((</div><ph name="ARG" />&amp;<ph name="ARG_1" />@#$%^&amp;*(<div><ph name="ARG_2" /></div></translation>
+<translation id="2914279206672532761" key="MSG_test18"><div id="_this">!@#$%^*(((</div><ph name="ARG" />&amp;<ph name="ARG_1" /></translation>
+<translation id="2226608549296982457" key="MSG_test17"><br/><ph name="VAR_1" /><div id="this">inner text <ph name="VAR_1" /></div></translation>
+<translation id="8699661356225008038" key="MSG_test24"><div id="div21"><div id="div22"><div id="div23">RRRRRRR<ph name="ARG" />></div><div id="div4"></div></div></div></translation>
 <translation id="5189061904651423544" key="MSG_test23"><div>inner content</div></translation>
 <translation id="3487678007941343414" key="MSG_test22"><div id="div21"><div id="div22"><div id="div23"></div><div id="div14"></div></div></div></translation>
-<translation id="5894618059679288493" key="MSG_test21"><div id="div_id">3<ph name="arg" />-!!!!!!!!!!!!!!!!!</div></translation>
-<translation id="1015888639313922027" key="MSG_test20"><div id="_someId">some content<br /><a href="#someRef"><ph name="arg" /></a>,</div></translation>
-<translation id="8032699395332764804" key="MSG_test4">Tests run: <ph name="arg" />, Failures: <ph name="arg1" />, Errors: <ph name="arg2" />, Skipped: <ph name="arg3" />, Time elapsed: <ph name="arg4" /> sec</translation>
-<translation id="2349148280787774231" key="MSG_test5"><ph name="arg" />TranslationKey<ph name="arg1" />TranslationKey<ph name="arg2" /></translation>
-<translation id="5175118693699419081" key="MSG_test2"><ph name="arg" /></translation>
-<translation id="2698988680495768021" key="MSG_test3"><ph name="arg" /><ph name="arg1" /></translation>
-<translation id="5272744262012758584" key="MSG_test8"><div id="this">!@#$%^*(((</div><ph name="arg" />&amp;<ph name="arg1" /></translation>
-<translation id="3659453875216323304" key="MSG_test9"><div id="this">!@#$%^*(((</div><ph name="arg" />&amp;<ph name="arg1" />@#$%^&amp;*(<div><ph name="arg2" /></div></translation>
-<translation id="6465596505499156479" key="MSG_test6"><br/><ph name="arg" /><div id="this">TranslationKey<ph name="arg1" /></div></translation>
-<translation id="493720895808226691" key="MSG_test7"><ph name="arg" />&amp;<ph name="arg1" /></translation>
+<translation id="5894618059679288493" key="MSG_test21"><div id="div_id">3<ph name="ARG" />-!!!!!!!!!!!!!!!!!</div></translation>
+<translation id="1015888639313922027" key="MSG_test20"><div id="_someId">some content<br /><a href="#someRef"><ph name="ARG" /></a>,</div></translation>
+<translation id="748752621205106921" key="MSG_test4">Tests run: <ph name="ARG" />, Failures: <ph name="ARG_1" />, Errors: <ph name="ARG_2" />, Skipped: <ph name="ARG_3" />, Time elapsed: <ph name="ARG_4" /> sec</translation>
+<translation id="3621527412868015753" key="MSG_test5"><ph name="ARG" />TranslationKey<ph name="ARG_1" />TranslationKey<ph name="ARG_2" /></translation>
+<translation id="5175118693699419081" key="MSG_test2"><ph name="ARG" /></translation>
+<translation id="1988925295903748923" key="MSG_test3"><ph name="ARG" /><ph name="ARG_1" /></translation>
+<translation id="2599463310121848456" key="MSG_test8"><div id="this">!@#$%^*(((</div><ph name="ARG" />&amp;<ph name="ARG_1" /></translation>
+<translation id="156287313520269524" key="MSG_test9"><div id="this">!@#$%^*(((</div><ph name="ARG" />&amp;<ph name="ARG_1" />@#$%^&amp;*(<div><ph name="ARG_2" /></div></translation>
+<translation id="7719232164350395647" key="MSG_test6"><br/><ph name="ARG" /><div id="this">TranslationKey<ph name="ARG_1" /></div></translation>
+<translation id="6424028081266745217" key="MSG_test7"><ph name="ARG" />&amp;<ph name="ARG_1" /></translation>
 </translationbundle>

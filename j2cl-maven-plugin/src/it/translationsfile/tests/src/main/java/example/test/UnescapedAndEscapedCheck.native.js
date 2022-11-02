@@ -12,7 +12,7 @@ UnescapedAndEscapedCheck.prototype.test2 = function(_arg) {
 
 UnescapedAndEscapedCheck.prototype.test7 = function(_arg,_arg1) {
     /** @desc test7 */
-    var MSG_test7 = goog.getMsg('{$arg}&amp;{$arg1}', { arg1: _arg1, arg: _arg }, { unescapeHtmlEntities: true });
+    var MSG_test7 = goog.getMsg('{$arg}&amp;{$arg_1}', { arg_1: _arg1, arg: _arg }, { unescapeHtmlEntities: true });
     return MSG_test7;
 }
 UnescapedAndEscapedCheck.prototype.test11 = function(_arg) {
@@ -22,27 +22,27 @@ UnescapedAndEscapedCheck.prototype.test11 = function(_arg) {
 }
 UnescapedAndEscapedCheck.prototype.test6 = function(_arg,_arg1) {
     /** @desc test6 */
-    var MSG_test6 = goog.getMsg('<br/>{$arg}<div id="this">TranslationKey{$arg1}</div>', { arg1: _arg1,arg: _arg },{ unescapeHtmlEntities: true });
+    var MSG_test6 = goog.getMsg('<br/>{$arg}<div id="this">TranslationKey{$arg_1}</div>', { arg_1: _arg1,arg: _arg },{ unescapeHtmlEntities: true });
     return MSG_test6;
 }
 UnescapedAndEscapedCheck.prototype.test9 = function(_arg,_arg1,_arg2) {
     /** @desc test9 */
-    var MSG_test9 = goog.getMsg('<div id="this">!@#$%^*(((</div>{$arg}&amp;{$arg1}@#$%^&amp;*(<div>{$arg2}</div>', { arg2: _arg2,arg1: _arg1,arg: _arg },{ unescapeHtmlEntities: true });
+    var MSG_test9 = goog.getMsg('<div id="this">!@#$%^*(((</div>{$arg}&amp;{$arg_1}@#$%^&amp;*(<div>{$arg_2}</div>', { arg_2: _arg2,arg_1: _arg1,arg: _arg },{ unescapeHtmlEntities: true });
     return MSG_test9;
 }
 UnescapedAndEscapedCheck.prototype.test5 = function(_arg,_arg1,_arg2) {
     /** @desc test5 */
-    var MSG_test5 = goog.getMsg('{$arg}TranslationKey{$arg1}TranslationKey{$arg2}', { arg2: _arg2,arg1: _arg1,arg: _arg });
+    var MSG_test5 = goog.getMsg('{$arg}TranslationKey{$arg_1}TranslationKey{$arg_2}', { arg_2: _arg2,arg_1: _arg1,arg: _arg });
     return MSG_test5;
 }
 UnescapedAndEscapedCheck.prototype.test3 = function(_arg,_arg1) {
     /** @desc test3 */
-    var MSG_test3 = goog.getMsg('{$arg}{$arg1}', { arg1: _arg1,arg: _arg });
+    var MSG_test3 = goog.getMsg('{$arg}{$arg_1}', { arg_1: _arg1,arg: _arg });
     return MSG_test3;
 }
 UnescapedAndEscapedCheck.prototype.test8 = function(_arg,_arg1) {
     /** @desc test8 */
-    var MSG_test8 = goog.getMsg('<div id="this">!@#$%^*(((</div>{$arg}&amp;{$arg1}', { arg1: _arg1,arg: _arg },{ unescapeHtmlEntities: true });
+    var MSG_test8 = goog.getMsg('<div id="this">!@#$%^*(((</div>{$arg}&amp;{$arg_1}', { arg_1: _arg1,arg: _arg },{ unescapeHtmlEntities: true });
     return MSG_test8;
 }
 UnescapedAndEscapedCheck.prototype.test16 = function(_arg) {
@@ -57,7 +57,7 @@ UnescapedAndEscapedCheck.prototype.test15 = function() {
 }
 UnescapedAndEscapedCheck.prototype.test4 = function(_arg,_arg1,_arg2,_arg3,_arg4) {
     /** @desc test4 */
-    var MSG_test4 = goog.getMsg('Tests run: {$arg}, Failures: {$arg1}, Errors: {$arg2}, Skipped: {$arg3}, Time elapsed: {$arg4} sec', { arg3: _arg3,arg2: _arg2,arg4: _arg4,arg1: _arg1,arg: _arg });
+    var MSG_test4 = goog.getMsg('Tests run: {$arg}, Failures: {$arg_1}, Errors: {$arg_2}, Skipped: {$arg_3}, Time elapsed: {$arg_4} sec', { arg_3: _arg3,arg_2: _arg2,arg_4: _arg4,arg_1: _arg1,arg: _arg });
     return MSG_test4;
 }
 UnescapedAndEscapedCheck.prototype.test10 = function(_arg) {
@@ -67,7 +67,7 @@ UnescapedAndEscapedCheck.prototype.test10 = function(_arg) {
 }
 UnescapedAndEscapedCheck.prototype.test14 = function(_arg) {
     /** @desc test14 */
-    var MSG_test14 = goog.getMsg('<div id="div1"><ph name="arg" >QWERTY</ph><div id="div2"><div id="div3">RRRRRRR{$arg}></div><ph name="arg" /><div id="div4"></div></div></div><ph name="arg" >QWERTY</ph>', { arg: _arg }, { unescapeHtmlEntities: true });
+    var MSG_test14 = goog.getMsg('<div id="div1"><div id="div2"><div id="div3">RRRRRRR{$arg}</div><div id="div4"></div></div></div>', { arg: _arg }, { unescapeHtmlEntities: true });
     return MSG_test14;
 }
 UnescapedAndEscapedCheck.prototype.test12 = function() {
@@ -83,17 +83,17 @@ UnescapedAndEscapedCheck.prototype.test13 = function() {
 
 UnescapedAndEscapedCheck.prototype.test17 = function(_var1,_var2) {
     /** @desc test17 */
-    var MSG_test17 = goog.getMsg('<br/>{$var1}<div id="this">inner text {$var2}</div>', { var2: _var2,var1: _var1 });
+    var MSG_test17 = goog.getMsg('<br/>{$var_1}<div id="this">inner text {$var_2}</div>', { var_2: _var2,var_1: _var1 });
     return MSG_test17;
 }
 UnescapedAndEscapedCheck.prototype.test18 = function(_arg,_arg1) {
     /** @desc test18 */
-    var MSG_test18 = goog.getMsg('<div id="_this">!@#$%^*(((</div>{$arg}&amp;{$arg1}', { arg1: _arg1,arg: _arg });
+    var MSG_test18 = goog.getMsg('<div id="_this">!@#$%^*(((</div>{$arg}&amp;{$arg_1}', { arg_1: _arg1,arg: _arg });
     return MSG_test18;
 }
 UnescapedAndEscapedCheck.prototype.test19 = function(_arg,_arg1,_arg2) {
     /** @desc test19 */
-    var MSG_test19 = goog.getMsg('<div id="_this">!@#$%^*(((</div>{$arg}&amp;{$arg1}@#$%^&amp;*(<div>{$arg2}</div>', { arg2: _arg2,arg1: _arg1,arg: _arg });
+    var MSG_test19 = goog.getMsg('<div id="_this">!@#$%^*(((</div>{$arg}&amp;{$arg_1}@#$%^&amp;*(<div>{$arg_2}</div>', { arg_2: _arg2,arg_1: _arg1,arg: _arg });
     return MSG_test19;
 }
 
@@ -119,6 +119,6 @@ UnescapedAndEscapedCheck.prototype.test23 = function() {
 }
 UnescapedAndEscapedCheck.prototype.test24 = function(_arg) {
     /** @desc test24 */
-    var MSG_test24 = goog.getMsg('<div id="div21"><ph name="arg" >QWERTY</ph><div id="div22"><div id="div23">RRRRRRR{$arg}></div><ph name="arg" /><div id="div4"></div></div></div><ph name="arg" >QWERTY</ph>', { arg: _arg });
+    var MSG_test24 = goog.getMsg('<div id="div21"><div id="div22"><div id="div23">RRRRRRR{$arg}></div><div id="div4"></div></div></div>', { arg: _arg });
     return MSG_test24;
 }

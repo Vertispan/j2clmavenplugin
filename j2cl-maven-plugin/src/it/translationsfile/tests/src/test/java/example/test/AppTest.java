@@ -26,7 +26,7 @@ public class AppTest {
             assertEquals("<div id=\"WOW\">3TranslationService-!!!!!!!!!!!!!!!!!</div>", impl.test11("TranslationService"));
             assertEquals("<div id=\"div1\"><div id=\"div2\"><div id=\"div3\"/><div id=\"div4\"/></div></div>", impl.test12());
             assertEquals("<div>TranslationKey</div>", impl.test13());
-            assertEquals("<div id=\"div1\">TranslationServiceQWERTY<div id=\"div2\"><div id=\"div3\">RRRRRRRTranslationService></div>TranslationService<div id=\"div4\"/></div></div>TranslationServiceQWERTY", impl.test14("TranslationService"));
+            assertEquals("<div id=\"div1\"><div id=\"div2\"><div id=\"div3\">RRRRRRRTranslationService</div><div id=\"div4\"></div></div></div>", impl.test14("TranslationService"));
             assertEquals("7128890306670950348232162507662243061846645994402114603180927379544880168678174568758504050459062584", impl.test15());
             assertEquals("&<div id=\"my_widget\">@TranslationKey</div>", impl.test16("my_widget"));
 
@@ -38,7 +38,7 @@ public class AppTest {
             assertEquals("&lt;div id=&quot;div_id&quot;&gt;3my_widget-!!!!!!!!!!!!!!!!!&lt;/div&gt;", impl.test21("my_widget"));
             assertEquals("&lt;div id=&quot;div21&quot;&gt;&lt;div id=&quot;div22&quot;&gt;&lt;div id=&quot;div23&quot;/&gt;&lt;div id=&quot;div14&quot;/&gt;&lt;/div&gt;&lt;/div&gt;", impl.test22());
             assertEquals("&lt;div&gt;inner content&lt;/div&gt;", impl.test23());
-            assertEquals("&lt;div id=&quot;div21&quot;&gt;my_widgetQWERTY&lt;div id=&quot;div22&quot;&gt;&lt;div id=&quot;div23&quot;&gt;RRRRRRRmy_widget&gt;&lt;/div&gt;my_widget&lt;div id=&quot;div4&quot;/&gt;&lt;/div&gt;&lt;/div&gt;my_widgetQWERTY", impl.test24("my_widget"));
+            assertEquals("&lt;div id=&quot;div21&quot;&gt;&lt;div id=&quot;div22&quot;&gt;&lt;div id=&quot;div23&quot;&gt;RRRRRRRmy_widget&gt;&lt;/div&gt;&lt;div id=&quot;div4&quot;/&gt;&lt;/div&gt;&lt;/div&gt;", impl.test24("my_widget"));
 
         } else {
             assertEquals(ValueHolder.getExpectedValue(), TranslationService.format());
