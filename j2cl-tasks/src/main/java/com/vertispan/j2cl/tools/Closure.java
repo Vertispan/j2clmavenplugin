@@ -153,6 +153,13 @@ public class Closure {
             jscompArgs.add("IIFE");
         }
 
+        if (compilationLevel == CompilationLevel.BUNDLE) {
+            // avoid injecting libraries, the runtime will be added as part of the BundleJarTask step in the
+            // initial download
+            jscompArgs.add("--inject_libraries");
+            jscompArgs.add("false");
+        }
+
         for (String entrypoint : entrypoints) {
             jscompArgs.add("--entry_point");
             jscompArgs.add(entrypoint);

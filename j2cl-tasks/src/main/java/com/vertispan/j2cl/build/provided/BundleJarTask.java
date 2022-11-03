@@ -3,6 +3,7 @@ package com.vertispan.j2cl.build.provided;
 import com.google.auto.service.AutoService;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.javascript.jscomp.deps.ClosureBundler;
 import com.vertispan.j2cl.build.task.*;
 import com.vertispan.j2cl.tools.Closure;
 import org.apache.commons.io.FileUtils;
@@ -145,11 +146,17 @@ public class BundleJarTask extends TaskFactory {
                             "  elt.async = false;\n" +
                             "  document.head.appendChild(elt);\n" +
                             "});" + "})();";
+
+                    // Closure bundler runtime
+                    StringBuilder runtime = new StringBuilder();
+                    new ClosureBundler().appendRuntimeTo(runtime);
+
                     Files.write(initialScriptFile.toPath(), Arrays.asList(
                             defineLine,
                             intro,
                             scriptsArray,
-                            outro
+                            outro,
+                            runtime
                     ));
                 } catch (IOException e) {
                     throw new UncheckedIOException("Failed to write html import file", e);
