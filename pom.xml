@@ -88,7 +88,7 @@
 
     <!-- Builder dependencies versions -->
     <j2cl.version>0.11-SNAPSHOT</j2cl.version>
-    <closure.compiler.unshaded.version>HEAD-SNAPSHOT</closure.compiler.unshaded.version>
+    <closure.compiler.unshaded.version>v20221102-1</closure.compiler.unshaded.version>
     <commons.codec.version>1.11</commons.codec.version>
     <commons.io.version>2.7</commons.io.version>
 
