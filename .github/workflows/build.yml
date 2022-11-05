@@ -35,17 +35,13 @@ jobs:
 
     strategy:
       matrix:
-        mvn: ['3.8.5', '3.6.3', '3.5.4', '3.3.9', '3.2.5']
+        mvn: ['3.8.6', '3.6.3', '3.5.4', '3.3.9', '3.2.5']
         java: ['11']
-        include: # Confirm that old java works in the oldest maven, and that newest maven supports 8-current
-          - mvn: '3.2.5'
-            java: '8'
-          - mvn: '3.8.5'
-            java: '8'
-            #TODO j2clmavenplugin#159 - re-enable this when the integration tests run cleanly in Java 17+
-#          - mvn: '3.8.5'
+#        include: # Confirm that old java works in the oldest maven, and that newest maven supports 8-current
+#            #TODO j2clmavenplugin#159 - re-enable this when the integration tests run cleanly in Java 17+
+#          - mvn: '3.8.6'
 #            java: '17'
-#          - mvn: '3.8.5'
+#          - mvn: '3.8.6'
 #            java: '18'
     steps:
       - name: Checkout
