@@ -340,6 +340,9 @@
             <configuration>
               <rules>
                 <dependencyConvergence/>
+                <requireJavaVersion>
+                  <version>[11,)</version>
+                </requireJavaVersion>
               </rules>
             </configuration>
             <goals>
