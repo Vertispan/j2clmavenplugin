@@ -1,7 +1,7 @@
 defaults: &defaults
     working_directory: ~/repo
     docker:
-      - image: circleci/openjdk:8-jdk-stretch
+      - image: cimg/openjdk:11.0
     filters:
       branches:
         only:
