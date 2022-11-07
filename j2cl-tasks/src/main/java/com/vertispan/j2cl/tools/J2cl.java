@@ -1,5 +1,6 @@
 package com.vertispan.j2cl.tools;
 
+import com.google.common.collect.ImmutableList;
 import com.google.j2cl.common.OutputUtils;
 import com.google.j2cl.common.SourceUtils;
 import com.google.j2cl.common.Problems;
@@ -11,6 +12,7 @@ import com.vertispan.j2cl.build.task.BuildLog;
 
 import javax.annotation.Nonnull;
 import java.io.File;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -44,6 +46,8 @@ public class J2cl {
                     .setOutput(output)
                     .setSources(sourcesToCompile)
                     .setNativeSources(nativeSources)
+                    .setKotlinCommonSources(Collections.emptyList())
+                    .setKotlincOptions(ImmutableList.of())
                     .build();
 
             log.debug(options.toString());
