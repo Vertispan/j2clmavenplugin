@@ -2,7 +2,14 @@ package com.vertispan.j2cl.build.provided;
 
 import com.google.auto.service.AutoService;
 import com.google.j2cl.common.SourceUtils;
-import com.vertispan.j2cl.build.task.*;
+import com.vertispan.j2cl.build.BuildService;
+import com.vertispan.j2cl.build.ChangedAcceptor;
+import com.vertispan.j2cl.build.task.CachedPath;
+import com.vertispan.j2cl.build.task.Config;
+import com.vertispan.j2cl.build.task.Input;
+import com.vertispan.j2cl.build.task.OutputTypes;
+import com.vertispan.j2cl.build.task.Project;
+import com.vertispan.j2cl.build.task.TaskFactory;
 import com.vertispan.j2cl.tools.J2cl;
 
 import java.io.File;
@@ -37,6 +44,7 @@ public class J2clTask extends TaskFactory {
 
     @Override
     public Task resolve(Project project, Config config) {
+        boolean incremental = config.getIncremental();
         // J2CL is only interested in .java and .native.js files in our own sources
         Input ownJavaSources = input(project, OutputTypes.STRIPPED_SOURCES).filter(JAVA_SOURCES, NATIVE_JS_SOURCES);
         List<Input> ownNativeJsSources = Collections.singletonList(input(project, OutputTypes.BYTECODE).filter(NATIVE_JS_SOURCES));
@@ -51,9 +59,14 @@ public class J2clTask extends TaskFactory {
 
         File bootstrapClasspath = config.getBootstrapClasspath();
         List<File> extraClasspath = config.getExtraClasspath();
-        return context -> {
-            if (ownJavaSources.getFilesAndHashes().isEmpty()) {
-                return;// nothing to do
+        return (context) -> {
+            List<CachedPath> javaFiles = ownJavaSources.getFilesAndHashes()
+                                               .stream()
+                                               .filter( new ChangedAcceptor((com.vertispan.j2cl.build.Project) project, context.getBuildService()))
+                                               .collect(Collectors.toList());
+
+            if (javaFiles.isEmpty()) {
+                return;// no work to do
             }
             List<File> classpathDirs = Stream.concat(
                     classpathHeaders.stream().flatMap(i -> i.getParentPaths().stream().map(Path::toFile)),
@@ -61,18 +74,41 @@ public class J2clTask extends TaskFactory {
             )
                     .collect(Collectors.toList());
 
+            if (incremental) {
+                BuildService buildService = context.getBuildService();
+                Path bytecodePath = buildService.getDiskCache().getLastSuccessfulDirectory(new com.vertispan.j2cl.build.Input((com.vertispan.j2cl.build.Project) project,
+                                                                                                                              OutputTypes.BYTECODE));
+
+                Path transpiledPath = buildService.getDiskCache().getLastSuccessfulDirectory(new com.vertispan.j2cl.build.Input((com.vertispan.j2cl.build.Project) project,
+                        OutputTypes.TRANSPILED_JS));
+
+                if(transpiledPath != null) {
+                    buildService.copyAndDeleteFiles((com.vertispan.j2cl.build.Project) project, OutputTypes.TRANSPILED_JS, context.outputPath());
+                }
+
+                if (bytecodePath != null) {
+                    classpathDirs.add(bytecodePath.resolve("results").toFile());
+                }
+            }
+
             J2cl j2cl = new J2cl(classpathDirs, bootstrapClasspath, context.outputPath().toFile(), context);
 
             // TODO convention for mapping to original file paths, provide FileInfo out of Inputs instead of Paths,
             //      automatically relativized?
-            List<SourceUtils.FileInfo> javaSources = ownJavaSources.getFilesAndHashes()
+            List<SourceUtils.FileInfo> javaSources = javaFiles
                     .stream()
                     .filter(e -> JAVA_SOURCES.matches(e.getSourcePath()))
                     .map(p -> SourceUtils.FileInfo.create(p.getAbsolutePath().toString(), p.getSourcePath().toString()))
                     .collect(Collectors.toList());
+
+            javaSources.forEach(f -> {
+                context.debug("Compiling " + f.sourcePath());
+            });
+
             List<SourceUtils.FileInfo> nativeSources = ownNativeJsSources.stream().flatMap(i ->
                     i.getFilesAndHashes()
                             .stream())
+                    .filter( new ChangedAcceptor((com.vertispan.j2cl.build.Project) project, context.getBuildService()))
                     .filter(e -> NATIVE_JS_SOURCES.matches(e.getSourcePath()))
                     .map(p -> SourceUtils.FileInfo.create(p.getAbsolutePath().toString(), p.getSourcePath().toString()))
                     .collect(Collectors.toList());

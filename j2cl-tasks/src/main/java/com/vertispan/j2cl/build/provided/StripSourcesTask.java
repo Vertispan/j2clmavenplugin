@@ -7,7 +7,6 @@ import com.vertispan.j2cl.tools.GwtIncompatiblePreprocessor;
 
 import java.nio.file.PathMatcher;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @AutoService(TaskFactory.class)
 public class StripSourcesTask extends TaskFactory {

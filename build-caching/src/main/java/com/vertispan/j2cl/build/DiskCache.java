@@ -2,15 +2,19 @@ package com.vertispan.j2cl.build;
 
 import com.vertispan.j2cl.build.impl.CollectedTaskInputs;
 import com.vertispan.j2cl.build.task.CachedPath;
+import com.vertispan.j2cl.build.task.OutputTypes;
 import io.methvin.watcher.PathUtils;
 import io.methvin.watcher.hashing.FileHash;
 import io.methvin.watcher.hashing.FileHasher;
 import io.methvin.watchservice.MacOSXListeningWatchService;
 import io.methvin.watchservice.WatchablePath;
+import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.io.Writer;
+import java.nio.charset.Charset;
 import java.nio.file.WatchService;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -54,8 +58,8 @@ public abstract class DiskCache {
             return taskOutput;
         }
 
-        public void markSuccess() {
-            markFinished(this);
+        public void markSuccess(Input input) {
+            markFinished(input, this);
             runningTasks.remove(taskDir);
         }
         public void markFailure() {
@@ -79,6 +83,11 @@ public abstract class DiskCache {
 
     protected final File cacheDir;
     private final Executor executor;
+    protected BuildService buildService;
+
+    public void setBuildService(BuildService buildService) {
+        this.buildService = buildService;
+    }
     /**
      * A single watch service to monitor all changes to the cache dir, under the assumption that
      * the entire cache directory is on a single filesystem.
@@ -90,6 +99,7 @@ public abstract class DiskCache {
     private final Thread watchThread = new Thread(this::checkForWork, "DiskCacheThread");
     private Map<Path, TaskOutput> knownOutputs = new ConcurrentHashMap<>();
     private Map<Input, TaskOutput> lastSuccessfulOutputs = new ConcurrentHashMap<>();
+    protected Map<Input, Path> lastSuccessfulTaskDir = new ConcurrentHashMap<>();
 
     private final Map<Path, Path> knownMarkers = new ConcurrentHashMap<>();
     private final Map<Path, Set<PendingCacheResult>> taskFutures = new ConcurrentHashMap<>();
@@ -113,6 +123,10 @@ public abstract class DiskCache {
 
         watchThread.start();
         livenessThread.start();
+    }
+
+    public Path getLastSuccessfulDirectory(Input input) {
+        return this.lastSuccessfulTaskDir.get(input);
     }
 
     private void checkForWork() {
@@ -213,6 +227,10 @@ public abstract class DiskCache {
         /** Hash of the file, so we can notice changes, or hash the tree.  */
         private final FileHash hash;
 
+        private long time;
+
+        private boolean propagate;
+
         public CacheEntry(Path sourcePath, Path absoluteParent, FileHash hash) {
             if (sourcePath.isAbsolute()) {
                 this.sourcePath = absoluteParent.relativize(sourcePath);
@@ -221,7 +239,17 @@ public abstract class DiskCache {
             }
             this.absoluteParent = absoluteParent;
             this.hash = hash;
+            try {
+                Path path  = absoluteParent.resolve(sourcePath);
+                if ( Files.exists(path)) {
+                    time = Files.getLastModifiedTime(path).toMillis();
+                }
+            } catch (IOException e) {
+                throw new RuntimeException("Unable to read Timestamp: for " + this + "\n"  + e);
+            }
         }
+
+
 
         @Override
         public Path getSourcePath() {
@@ -240,6 +268,11 @@ public abstract class DiskCache {
         @Override
         public FileHash getHash() {
             return hash;
+        }
+
+        @Override
+        public long getLastModifiedTime() {
+            return time;
         }
 
         @Override
@@ -274,6 +307,14 @@ public abstract class DiskCache {
                     ", absoluteParent=" + absoluteParent +
                     ", hash=" + hash +
                     '}';
+        }
+
+        public boolean isPropagate() {
+            return propagate;
+        }
+
+        public void setPropagate(boolean propagate) {
+            this.propagate = propagate;
         }
     }
 
@@ -449,6 +490,7 @@ public abstract class DiskCache {
                 // caller can begin work right away
                 Files.createDirectory(outputDir);
                 Files.createFile(logFile(taskDir));
+                Files.createDirectory(taskDir.resolve("status"));
                 cancelable.ready();
                 return;
             }
@@ -526,9 +568,14 @@ public abstract class DiskCache {
         return watchable.register(this.service, StandardWatchEventKinds.ENTRY_CREATE);
     }
 
-    public void markFinished(CacheResult successfulResult) {
+    public void markFinished(Input input, CacheResult successfulResult) {
         try {
-            this.knownOutputs.put(successfulResult.taskDir, makeOutput(successfulResult.taskDir));
+            TaskOutput output = makeOutput(successfulResult.taskDir);
+            this.lastSuccessfulTaskDir.put(input, successfulResult.taskDir);
+            this.knownOutputs.put(successfulResult.taskDir, output);
+            if (input.getOutputType().equals(OutputTypes.TRANSPILED_JS)) {
+                buildService.writeFilesDat(input.getProject());
+            }
             Files.createFile(successMarker(successfulResult.taskDir));
         } catch (IOException ioException) {
             //TODO need to basically stop everything if we can't write files to cache
@@ -544,6 +591,11 @@ public abstract class DiskCache {
             //TODO need to basically stop everything if we can't write files to cache
             throw new UncheckedIOException(ioException);
         }
+    }
+
+
+    public BuildService buildService() {
+        return buildService;
     }
 
 }

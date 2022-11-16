@@ -48,4 +48,6 @@ public interface Config {
      */
     Path getWebappDirectory();
 
+    boolean getIncremental();
+
 }

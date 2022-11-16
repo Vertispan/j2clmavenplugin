@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.vertispan.j2cl.build.BuildService;
+
 /**
  * A task describes the type of output it provides, and for a given project will provide the
  * inputs it needs (its "dependencies", for want of a better phrase), and a way to start the

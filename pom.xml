@@ -107,6 +107,7 @@
     <commons.lang3.version>3.8.1</commons.lang3.version>
     <google.turbine.version>v20220503-1</google.turbine.version>
     <slf4j.api.version>1.7.5</slf4j.api.version>
+    <jspecify.version>0.2.0</jspecify.version>
 
     <!-- Test goal -->
     <selenium.version>3.141.59</selenium.version>
@@ -227,6 +228,11 @@
             <artifactId>gson</artifactId>
           </exclusion>
         </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>org.jspecify</groupId>
+        <artifactId>jspecify</artifactId>
+        <version>${jspecify.version}</version>
       </dependency>
       <dependency>
         <groupId>commons-codec</groupId>

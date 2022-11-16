@@ -214,4 +214,9 @@ public class PropertyTrackingConfig implements Config {
         }
         return Paths.get(s);
     }
+
+    @Override
+    public boolean getIncremental() {
+        return Boolean.parseBoolean(getString("incremental"));
+    }
 }

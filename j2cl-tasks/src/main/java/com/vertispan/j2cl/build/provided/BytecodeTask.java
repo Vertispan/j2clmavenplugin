@@ -2,16 +2,24 @@ package com.vertispan.j2cl.build.provided;
 
 import com.google.auto.service.AutoService;
 import com.google.j2cl.common.SourceUtils;
+import com.vertispan.j2cl.build.BuildService;
+import com.vertispan.j2cl.build.DiskCache;
+import com.vertispan.j2cl.build.incremental.BuildMapBuilder;
 import com.vertispan.j2cl.build.task.*;
 import com.vertispan.j2cl.tools.Javac;
+import javassist.ClassPool;
+import javassist.NotFoundException;
 
 import javax.annotation.Nullable;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
+import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -46,6 +54,8 @@ public class BytecodeTask extends TaskFactory {
 
     @Override
     public Task resolve(Project project, Config config) {
+        boolean incremental = config.getIncremental();
+
         if (!project.hasSourcesMapped()) {
             // instead, copy the bytecode+resources out of the jar so it can be used by downstream bytecode/apt tasks
             Input existingUnpackedBytecode = input(project, OutputTypes.INPUT_SOURCES);
@@ -102,6 +112,41 @@ public class BytecodeTask extends TaskFactory {
                 } catch (Exception exception) {
                     exception.printStackTrace();
                     throw exception;
+                }
+
+                if (incremental) {
+
+                    Path bytecodePath = context.getBuildService().getDiskCache().getLastSuccessfulDirectory(new com.vertispan.j2cl.build.Input((com.vertispan.j2cl.build.Project) project,
+                            OutputTypes.BYTECODE));
+
+                    BuildMapBuilder builder = new BuildMapBuilder(context.outputPath());
+
+                    ClassPool pool = new ClassPool(null);
+                    pool.appendSystemPath();
+                    pool.appendClassPath(classOutputDir.getAbsolutePath());
+
+                    Files.walk(classOutputDir.toPath())
+                            .filter(Files::isRegularFile)
+                            .filter(JAVA_BYTECODE::matches)
+                            .forEach(p -> {
+                                String className = classOutputDir.toPath()
+                                        .relativize(p)
+                                        .toString()
+                                        .replace(".class", "")
+                                        .replace("/", ".");
+                                try {
+                                    String javaFile = classOutputDir.toPath().relativize(p).toString().replaceAll("\\.class", ".java");
+                                    Path file = inputSources.getFilesAndHashes()
+                                            .stream()
+                                            .filter(f -> f.getSourcePath().toString().equals(javaFile))
+                                            .findFirst()
+                                            .orElseThrow(() -> new RuntimeException("No source file found for " + javaFile))
+                                            .getAbsolutePath();
+                                    builder.addClass(pool.get(className), file);
+                                } catch (NotFoundException e) {
+                                    throw new RuntimeException(e);
+                                }
+                            });
                 }
             }
 
