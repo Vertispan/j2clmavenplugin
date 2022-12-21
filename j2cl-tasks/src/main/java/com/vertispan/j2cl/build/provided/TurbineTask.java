@@ -31,7 +31,7 @@ public class TurbineTask extends JavacTask {
 
     @Override
     public String getTaskName() {
-        return "turbine";
+        return "default";
     }
 
     @Override
