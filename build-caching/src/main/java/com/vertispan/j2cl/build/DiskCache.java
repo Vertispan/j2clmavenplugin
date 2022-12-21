@@ -1,5 +1,7 @@
 package com.vertispan.j2cl.build;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.vertispan.j2cl.build.impl.CollectedTaskInputs;
 import com.vertispan.j2cl.build.task.CachedPath;
 import io.methvin.watcher.PathUtils;
@@ -22,9 +24,10 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
+import java.util.stream.Collectors;
 
 /**
- * Manages the cached task inputs and outputs.
+ * Manages the cached task inputs and outputs, without direct knowledge of the project or task apis.
  */
 public abstract class DiskCache {
     private static final boolean IS_MAC = System.getProperty("os.name").toLowerCase().contains("mac");
@@ -36,6 +39,10 @@ public abstract class DiskCache {
 
         public CacheResult(Path taskDir) {
             this.taskDir = taskDir;
+        }
+
+        public Path taskDir() {
+            return taskDir;
         }
 
         public Path logFile() {
@@ -52,6 +59,10 @@ public abstract class DiskCache {
                 throw new IllegalStateException("Output not yet ready for " + taskDir);
             }
             return taskOutput;
+        }
+
+        public Path cachedSummary() {
+            return DiskCache.this.cacheSummary(taskDir);
         }
 
         public void markSuccess() {
@@ -340,33 +351,39 @@ public abstract class DiskCache {
         }
     }
 
-    protected String taskSummaryContents(CollectedTaskInputs inputs) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Cache summary for ");
-        String projectName = inputs.getProject().getKey();
-        sb.append(projectName);
+    private String taskSummaryContents(CollectedTaskInputs inputs) {
+        TaskSummaryDiskFormat src = new TaskSummaryDiskFormat();
+        src.setProjectKey(inputs.getProject().getKey());
+        src.setOutputType(inputs.getTaskFactory().getOutputType());
+        src.setTaskImpl(inputs.getTaskFactory().getClass().getName());
+        src.setTaskImplVersion(inputs.getTaskFactory().getVersion());
 
-        sb.append("\nTask name ").append(inputs.getTaskFactory().getTaskName());
-        sb.append("\nImplemented by ").append(inputs.getTaskFactory().getClass().toString());
-        sb.append(" version ").append(inputs.getTaskFactory().getVersion());
+        src.setInputs(inputs.getInputs().stream()
+                .map(Input::makeDiskFormat)
+                .collect(Collectors.groupingBy(i -> i.getProjectKey() + "-" + i.getOutputType()))
+                .values().stream()
+                .map(list -> {
+                    TaskSummaryDiskFormat.InputDiskFormat result = new TaskSummaryDiskFormat.InputDiskFormat();
+                    result.setProjectKey(list.get(0).getProjectKey());
+                    result.setOutputType(list.get(0).getOutputType());
 
-        sb.append("\n\nInputs:");
-        for (Input input : inputs.getInputs()) {
-            input.updateHashSummary(sb);
-        }
+                    result.setFileHashes(
+                            list.stream().flatMap(i -> i.getFileHashes().entrySet().stream())
+                                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (left, right) -> {
+                                        if (left.equals(right)) {
+                                            return left;
+                                        }
+                                        throw new IllegalStateException("Two hashes for one file! " + left + " vs " + right);
+                                    }))
+                    );
 
+                    return result;
+                })
+                .collect(Collectors.toList()));
 
-        sb.append("\n\nConfigs:");
-        for (Map.Entry<String, String> entry : inputs.getUsedConfigs().entrySet()) {
-            sb.append("\n\t").append(entry.getKey()).append(" = ");
-            if (entry.getValue() == null) {
-                sb.append("null");
-            } else {
-                sb.append("\"").append(entry.getValue()).append("\"");
-            }
-        }
+        src.setConfigs(inputs.getUsedConfigs());
 
-        return sb.toString();
+        return new GsonBuilder().serializeNulls().setPrettyPrinting().create().toJson(src);
     }
 
     protected abstract Path taskDir(String projectName, String hashString, String outputType);
@@ -378,9 +395,13 @@ public abstract class DiskCache {
     protected abstract Path cacheSummary(Path taskDir);
 
     interface Listener {
+        /** Ready for the current listener to do the work */
         void onReady(CacheResult result);
+        /** Someone else did it, but failed for some reason, not re-runnable */
         void onFailure(CacheResult result);
+        /** Someone else tried to do it, but ran into an error, possibly recoverable if we try again */
         void onError(Throwable throwable);
+        /** Someone else finished it, successfully, notify listeners */
         void onSuccess(CacheResult result);
     }
     public class PendingCacheResult implements Cancelable {
@@ -583,6 +604,15 @@ public abstract class DiskCache {
             //TODO need to basically stop everything if we can't write files to cache
             throw new UncheckedIOException(ioException);
         }
+    }
+
+    public Optional<CacheResult> getCacheResult(Path taskDir) {
+        if (Files.exists(taskDir) || Files.exists(successMarker(taskDir))) {
+            CacheResult result = new CacheResult(taskDir);
+            knownOutputs.computeIfAbsent(taskDir, this::makeOutput);
+            return Optional.of(result);
+        }
+        return Optional.empty();
     }
 
 }

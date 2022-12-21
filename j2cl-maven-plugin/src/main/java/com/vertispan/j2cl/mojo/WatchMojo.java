@@ -3,6 +3,7 @@ package com.vertispan.j2cl.mojo;
 import com.vertispan.j2cl.build.BuildService;
 import com.vertispan.j2cl.build.DefaultDiskCache;
 import com.vertispan.j2cl.build.DiskCache;
+import com.vertispan.j2cl.build.LocalProjectBuildCache;
 import com.vertispan.j2cl.build.Project;
 import com.vertispan.j2cl.build.TaskRegistry;
 import com.vertispan.j2cl.build.TaskScheduler;
@@ -196,7 +197,7 @@ public class WatchMojo extends AbstractBuildMojo {
         addShutdownHook(executor, diskCache);
 
         MavenLog mavenLog = new MavenLog(getLog());
-        TaskScheduler taskScheduler = new TaskScheduler(executor, diskCache, mavenLog);
+        TaskScheduler taskScheduler = new TaskScheduler(executor, diskCache, new LocalProjectBuildCache(localBuildCache, diskCache), mavenLog);
 
         // TODO support individual task registries per execution
         TaskRegistry taskRegistry = createTaskRegistry();

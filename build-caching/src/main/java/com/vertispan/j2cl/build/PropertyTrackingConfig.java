@@ -214,4 +214,11 @@ public class PropertyTrackingConfig implements Config {
         }
         return Paths.get(s);
     }
+
+    @Override
+    public boolean isIncrementalEnabled() {
+        // TODO once we have awesome tests for this, consider skipping the cache. Could be dangerous,
+        //      in the case of externally provided buggy tasks.
+        return getString("incrementalEnabled").equalsIgnoreCase("true");
+    }
 }

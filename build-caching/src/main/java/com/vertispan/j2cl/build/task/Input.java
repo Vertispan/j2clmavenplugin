@@ -3,6 +3,7 @@ package com.vertispan.j2cl.build.task;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.util.Collection;
+import java.util.Optional;
 
 public interface Input {
     /**
@@ -22,6 +23,21 @@ public interface Input {
      * Gets the current files of this input and their hashes that match the filters.
      */
     Collection<? extends CachedPath> getFilesAndHashes();
+
+    Collection<? extends ChangedCachedPath> getChanges();
+
+    interface ChangedCachedPath {
+        enum ChangeType {
+            ADDED,
+            REMOVED,
+            MODIFIED;
+        }
+        ChangeType changeType();
+
+        Path getSourcePath();
+
+        Optional<Path> getNewAbsolutePath();
+    }
 
     /**
      * Public API for tasks.

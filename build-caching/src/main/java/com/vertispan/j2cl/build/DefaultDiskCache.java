@@ -55,6 +55,6 @@ public class DefaultDiskCache extends DiskCache {
 
     @Override
     protected Path cacheSummary(Path taskDir) {
-        return taskDir.resolve("cacheSummary.txt");
+        return taskDir.resolve("cacheSummary.json");
     }
 }

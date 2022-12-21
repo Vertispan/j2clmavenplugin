@@ -16,6 +16,9 @@ public abstract class AbstractCacheMojo extends AbstractMojo {
     @Parameter(defaultValue = "${project.build.directory}/gwt3BuildCache", required = true, property = "gwt3.cache.dir")
     private File gwt3BuildCacheDir;
 
+    @Parameter(defaultValue = "${project.build.directory}/j2cl-maven-plugin-local-cache", required = true)
+    protected File localBuildCache;
+
     protected Path getCacheDir() {
         PluginDescriptor pluginDescriptor = (PluginDescriptor) getPluginContext().get("pluginDescriptor");
         String pluginVersion = pluginDescriptor.getVersion();
