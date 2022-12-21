@@ -1,8 +1,5 @@
 package com.vertispan.j2cl.build;
 
-import io.methvin.watcher.hashing.Murmur3F;
-
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.util.*;
