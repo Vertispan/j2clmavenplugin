@@ -158,7 +158,7 @@ public class ClosureTask extends TaskFactory {
         List<Input> jsSources = Stream.concat(jsFromJavaProjects, jsFromJsZips)
                 // Only include the JS and externs
                 .map(i -> i.filter(PLAIN_JS_SOURCES, EXTERNS))
-                .collect(Collectors.toList());
+                .collect(Collectors.toUnmodifiableList());
 
         List<Input> outputToCopy = Stream.concat(
                 Stream.of(project),
@@ -167,7 +167,7 @@ public class ClosureTask extends TaskFactory {
                 // Only need to consider the original inputs and generated sources,
                 // J2CL won't contribute this kind of sources
                 .map(p -> input(p, OutputTypes.BYTECODE).filter(COPIED_OUTPUT))
-                .collect(Collectors.toList());
+                .collect(Collectors.toUnmodifiableList());
 
         // grab configs we plan to use
         String compilationLevelConfig = config.getCompilationLevel();
@@ -187,7 +187,7 @@ public class ClosureTask extends TaskFactory {
                 .map(p -> input(p, OutputTypes.BYTECODE))
                 // Only include the .xtb
                 .map(i -> i.filter(XTB))
-                .collect(Collectors.toList());
+                .collect(Collectors.toUnmodifiableList());
 
         boolean checkAssertions = config.getCheckAssertions();
         boolean rewritePolyfills = config.getRewritePolyfills();
@@ -224,7 +224,7 @@ public class ClosureTask extends TaskFactory {
                                     .flatMap(Collection::stream)
                                     .map(CachedPath::getSourcePath)
                                     .map(Path::toString)
-                                    .collect(Collectors.toList())
+                                    .collect(Collectors.toUnmodifiableList())
                     );
                 } else {
                     // For other modes, we're already asking closure to get work done, let's

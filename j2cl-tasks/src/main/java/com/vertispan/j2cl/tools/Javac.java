@@ -59,7 +59,11 @@ public class Javac {
 
     public boolean compile(List<FileInfo> modifiedJavaFiles) {
         // preCompile java files with javac into classesDir
-        Iterable<? extends JavaFileObject> modifiedFileObjects = fileManager.getJavaFileObjectsFromStrings(modifiedJavaFiles.stream().map(FileInfo::sourcePath).collect(Collectors.toList()));
+        Iterable<? extends JavaFileObject> modifiedFileObjects = fileManager.getJavaFileObjectsFromStrings(
+                modifiedJavaFiles.stream()
+                        .map(FileInfo::sourcePath)
+                        .collect(Collectors.toUnmodifiableList())
+        );
         //TODO pass-non null for "classes" to properly kick apt?
         //TODO consider a different classpath for this tasks, so as to not interfere with everything else?
 

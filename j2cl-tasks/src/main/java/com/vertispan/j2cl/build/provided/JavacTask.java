@@ -44,7 +44,7 @@ public class JavacTask extends TaskFactory {
                 .map(inputs(OutputTypes.STRIPPED_BYTECODE_HEADERS))
                 // we only want bytecode _changes_, but we'll use the whole dir
                 .map(input -> input.filter(JAVA_BYTECODE))
-                .collect(Collectors.toList());
+                .collect(Collectors.toUnmodifiableList());
 
         File bootstrapClasspath = config.getBootstrapClasspath();
         List<File> extraClasspath = config.getExtraClasspath();
@@ -53,10 +53,12 @@ public class JavacTask extends TaskFactory {
                 return;// no work to do
             }
 
-            List<File> classpathDirs = Stream.concat(classpathHeaders.stream().map(Input::getParentPaths).flatMap(Collection::stream).map(Path::toFile),
-                    extraClasspath.stream()).collect(Collectors.toList());
+            List<File> classpathDirs = Stream.concat(
+                    classpathHeaders.stream().map(Input::getParentPaths).flatMap(Collection::stream).map(Path::toFile),
+                    extraClasspath.stream()
+            ).collect(Collectors.toUnmodifiableList());
 
-            List<File> sourcePaths = ownSources.getParentPaths().stream().map(Path::toFile).collect(Collectors.toList());
+            List<File> sourcePaths = ownSources.getParentPaths().stream().map(Path::toFile).collect(Collectors.toUnmodifiableList());
             Javac javac = new Javac(context, null, sourcePaths, classpathDirs, context.outputPath().toFile(), bootstrapClasspath);
 
             // TODO convention for mapping to original file paths, provide FileInfo out of Inputs instead of Paths,
@@ -64,7 +66,7 @@ public class JavacTask extends TaskFactory {
             List<SourceUtils.FileInfo> sources = ownSources.getFilesAndHashes()
                     .stream()
                     .map(p -> SourceUtils.FileInfo.create(p.getAbsolutePath().toString(), p.getSourcePath().toString()))
-                    .collect(Collectors.toList());
+                    .collect(Collectors.toUnmodifiableList());
 
             javac.compile(sources);
         };

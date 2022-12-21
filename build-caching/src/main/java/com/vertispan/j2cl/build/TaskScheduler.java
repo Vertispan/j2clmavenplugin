@@ -92,7 +92,10 @@ public class TaskScheduler {
             if (isCanceled.get()) {
                 return Collections.emptyList();
             }
-            return work.entrySet().stream().filter(e -> e.getValue() == TaskState.PENDING).map(Map.Entry::getKey).collect(Collectors.toList());
+            return work.entrySet().stream()
+                    .filter(e -> e.getValue() == TaskState.PENDING)
+                    .map(Map.Entry::getKey)
+                    .collect(Collectors.toUnmodifiableList());
         }
 
         public void cancelPending() {
@@ -177,11 +180,8 @@ public class TaskScheduler {
             listener.onSuccess();
             return;
         }
-        // Filter based on work which has no dependencies in this batch.
-        List<CollectedTaskInputs> copy = tasks.pendingList();
-
-        // iterating a copy in case something is removed while we're in here - at the time we were called it was important
-        copy.forEach(taskDetails -> {
+        // Filter based on work which has no currently pending dependencies
+        tasks.pendingList().forEach(taskDetails -> {
             synchronized (ready) {
                 if (ready.contains(taskDetails.getAsInput())) {
                     // work is already done

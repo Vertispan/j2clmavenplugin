@@ -32,7 +32,7 @@ public class J2cl {
                 .setBackend(Backend.CLOSURE)
                 .setClasspaths(Stream.concat(Stream.of(bootstrap), strippedClasspath.stream())
                         .map(File::getAbsolutePath)
-                        .collect(Collectors.toList())
+                        .collect(Collectors.toUnmodifiableList())
                 )
                 .setEmitReadableLibraryInfo(false)
                 .setEmitReadableSourceMap(false)

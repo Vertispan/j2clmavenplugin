@@ -52,7 +52,7 @@ public abstract class TaskFactory {
         return dependencies.stream()
                 .filter(d -> ((com.vertispan.j2cl.build.Dependency) d).belongsToScope(scope))
                 .map(Dependency::getProject)
-                .collect(Collectors.toList());
+                .collect(Collectors.toUnmodifiableList());
     }
 
     /**

@@ -47,7 +47,7 @@ public class J2clTask extends TaskFactory {
                 .map(inputs(OutputTypes.STRIPPED_BYTECODE_HEADERS))
                 // we only want bytecode _changes_, but we'll use the whole dir
                 .map(input -> input.filter(JAVA_BYTECODE))
-                .collect(Collectors.toList());
+                .collect(Collectors.toUnmodifiableList());
 
         File bootstrapClasspath = config.getBootstrapClasspath();
         List<File> extraClasspath = config.getExtraClasspath();
@@ -59,7 +59,7 @@ public class J2clTask extends TaskFactory {
                     classpathHeaders.stream().flatMap(i -> i.getParentPaths().stream().map(Path::toFile)),
                     extraClasspath.stream()
             )
-                    .collect(Collectors.toList());
+                    .collect(Collectors.toUnmodifiableList());
 
             J2cl j2cl = new J2cl(classpathDirs, bootstrapClasspath, context.outputPath().toFile(), context);
 
@@ -69,13 +69,13 @@ public class J2clTask extends TaskFactory {
                     .stream()
                     .filter(e -> JAVA_SOURCES.matches(e.getSourcePath()))
                     .map(p -> SourceUtils.FileInfo.create(p.getAbsolutePath().toString(), p.getSourcePath().toString()))
-                    .collect(Collectors.toList());
+                    .collect(Collectors.toUnmodifiableList());
             List<SourceUtils.FileInfo> nativeSources = ownNativeJsSources.stream().flatMap(i ->
                     i.getFilesAndHashes()
                             .stream())
                     .filter(e -> NATIVE_JS_SOURCES.matches(e.getSourcePath()))
                     .map(p -> SourceUtils.FileInfo.create(p.getAbsolutePath().toString(), p.getSourcePath().toString()))
-                    .collect(Collectors.toList());
+                    .collect(Collectors.toUnmodifiableList());
 
             // TODO when we make j2cl incremental we'll consume the provided sources and hashes (the "values" in the
             //      maps above), and diff them against the previous compile

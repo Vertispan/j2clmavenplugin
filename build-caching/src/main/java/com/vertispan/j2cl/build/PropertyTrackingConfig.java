@@ -36,6 +36,11 @@ public class PropertyTrackingConfig implements Config {
             public String getName() {
                 return getPath().substring(getPath().lastIndexOf('.'));
             }
+
+            @Override
+            public String toString() {
+                return getClass().getSimpleName() + " path=" + getPath();
+            }
         }
         ConfigNode findNode(String path);
     }
@@ -126,7 +131,7 @@ public class PropertyTrackingConfig implements Config {
         if (entrypoint == null) {
             return Collections.emptyList();
         }
-        return entrypoint.getChildren().stream().map(this::useStringConfig).collect(Collectors.toList());
+        return entrypoint.getChildren().stream().map(this::useStringConfig).collect(Collectors.toUnmodifiableList());
     }
 
     @Override
@@ -188,7 +193,15 @@ public class PropertyTrackingConfig implements Config {
         if (extraClasspath == null) {
             return Collections.emptyList();
         }
-        return extraClasspath.getChildren().stream().map(this::useFileConfig).collect(Collectors.toList());
+        return extraClasspath.getChildren().stream()
+                .map(node -> {
+                    File file = useFileConfig(node);
+                    if (file == null) {
+                        throw new IllegalStateException("Can't use a null file on the classpath " + node);
+                    }
+                    return file;
+                })
+                .collect(Collectors.toUnmodifiableList());
     }
 
     @Override

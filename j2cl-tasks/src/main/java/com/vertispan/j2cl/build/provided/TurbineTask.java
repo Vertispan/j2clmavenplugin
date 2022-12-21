@@ -54,7 +54,7 @@ public class TurbineTask extends JavacTask {
         List<Input> compileClasspath = scope(project.getDependencies(), Dependency.Scope.COMPILE).stream()
                 .map(p -> input(p, OutputTypes.STRIPPED_BYTECODE_HEADERS))
                 .map(input -> input.filter(JAVA_BYTECODE))
-                .collect(Collectors.toList());
+                .collect(Collectors.toUnmodifiableList());
 
         return context -> {
 
@@ -71,7 +71,7 @@ public class TurbineTask extends JavacTask {
                     .stream()
                     .map(p -> SourceUtils.FileInfo.create(p.getAbsolutePath().toString(), p.getSourcePath().toString()))
                     .map(SourceUtils.FileInfo::sourcePath)
-                    .collect(Collectors.toList());
+                    .collect(Collectors.toUnmodifiableList());
 
             try {
                 Main.Result result = Main.compile(

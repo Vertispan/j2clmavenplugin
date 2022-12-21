@@ -76,14 +76,14 @@ public interface TranslationsFileProcessor {
 
         @Override
         public Optional<File> getTranslationsFile(List<Input> inputs, TaskContext context) {
-            List<File> temp = inputs.stream()
+            List<File> xtbFiles = inputs.stream()
                     .map(Input::getFilesAndHashes)
                     .flatMap(Collection::stream)
                     .map(CachedPath::getAbsolutePath)
                     .map(Path::toFile)
-                    .collect(Collectors.toList());
+                    .collect(Collectors.toUnmodifiableList());
 
-            if (temp.isEmpty()) {
+            if (xtbFiles.isEmpty()) {
                 context.warn("no .xtb files was found");
             }
 
@@ -102,7 +102,7 @@ public interface TranslationsFileProcessor {
                 HashMap<String, Set<NodeList>> suitableFiles = new HashMap<>();
                 Set<String> locales = locales(locale);
 
-                for (File xtb : temp) {
+                for (File xtb : xtbFiles) {
                     Document doc = db.parse(xtb);
                     doc.getDocumentElement().normalize();
                     NodeList translationbundleNode = doc.getElementsByTagName("translationbundle");
