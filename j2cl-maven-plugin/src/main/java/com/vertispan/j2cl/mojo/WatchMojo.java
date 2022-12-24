@@ -272,7 +272,14 @@ public class WatchMojo extends AbstractBuildMojo {
         WatchService watchService = new WatchService(buildService, executor, mavenLog);
         try {
             // trigger initial changes, and start up watching for future ones to rebuild
-            watchService.watch(builtProjects.values().stream().filter(Project::hasSourcesMapped).collect(Collectors.toMap(Function.identity(), p -> p.getSourceRoots().stream().map(Paths::get).collect(Collectors.toList()))));
+            watchService.watch(
+                    builtProjects.values().stream()
+                            .filter(Project::hasSourcesMapped)
+                            .collect(Collectors.toMap(
+                                    Function.identity(),
+                                    p -> p.getSourceRoots().stream().map(Paths::get).collect(Collectors.toUnmodifiableList())
+                            ))
+            );
         } catch (IOException ioException) {
             throw new MojoExecutionException("Error when watching projects", ioException);
         }

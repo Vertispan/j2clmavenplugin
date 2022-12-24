@@ -63,7 +63,7 @@ public class Input implements com.vertispan.j2cl.build.task.Input {
         public Collection<DiskCache.CacheEntry> getFilesAndHashes() {
             return wrapped.getFilesAndHashes().stream()
                     .filter(entry -> Arrays.stream(filters).anyMatch(f -> f.matches(entry.getSourcePath())))
-                    .collect(Collectors.toList());
+                    .collect(Collectors.toUnmodifiableList());
         }
 
         @Override

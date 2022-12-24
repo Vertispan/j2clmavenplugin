@@ -58,7 +58,7 @@ public class ClosureBundleTask extends TaskFactory {
                             input(project, OutputTypes.BYTECODE)
                     )
                     .map(i -> i.filter(ClosureTask.PLAIN_JS_SOURCES))
-                    .collect(Collectors.toList());
+                    .collect(Collectors.toUnmodifiableList());
         }
 
         return context -> {
@@ -98,7 +98,7 @@ public class ClosureBundleTask extends TaskFactory {
                                     .flatMap(Collection::stream)
                                     .map(CachedPath::getSourcePath)
                                     .map(Path::toString)
-                                    .collect(Collectors.toList())
+                                    .collect(Collectors.toUnmodifiableList())
                     ),
                     sources,
                     Collections.emptyList(),

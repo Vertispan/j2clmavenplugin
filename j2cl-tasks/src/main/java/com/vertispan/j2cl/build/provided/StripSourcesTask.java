@@ -41,7 +41,7 @@ public class StripSourcesTask extends TaskFactory {
             preprocessor.preprocess(
                     inputSources.getFilesAndHashes().stream()
                             .map(p -> SourceUtils.FileInfo.create(p.getAbsolutePath().toString(), p.getSourcePath().toString()))
-                            .collect(Collectors.toList())
+                            .collect(Collectors.toUnmodifiableList())
             );
         };
     }

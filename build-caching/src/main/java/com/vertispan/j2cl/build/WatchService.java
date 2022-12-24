@@ -45,14 +45,11 @@ public class WatchService {
             paths.forEach(path -> pathToProjects.put(path, project));
         });
         directoryWatcher = DirectoryWatcher.builder()
-                .paths(sourcePathsToWatch.values().stream().flatMap(List::stream).collect(Collectors.toList()))
-                .listener(new DirectoryChangeListener() {
-                    @Override
-                    public void onEvent(DirectoryChangeEvent event) throws IOException {
-                        if (!event.isDirectory()) {
-                            Path rootPath = event.rootPath();
-                            update(pathToProjects.get(rootPath), rootPath, rootPath.relativize(event.path()), event.eventType(), event.hash());
-                        }
+                .paths(sourcePathsToWatch.values().stream().flatMap(List::stream).collect(Collectors.toUnmodifiableList()))
+                .listener(event -> {
+                    if (!event.isDirectory()) {
+                        Path rootPath = event.rootPath();
+                        update(pathToProjects.get(rootPath), rootPath, rootPath.relativize(event.path()), event.eventType(), event.hash());
                     }
                 })
                 .build();
