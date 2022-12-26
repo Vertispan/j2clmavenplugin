@@ -19,5 +19,22 @@
                 <directory>src/main/java</directory>
             </resource>
         </resources>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>javacc-maven-plugin</artifactId>
+                <version>3.0.1</version>
+                <configuration>
+                    <jdkVersion>1.8</jdkVersion>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>javacc</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
     </build>
 </project>

@@ -1,0 +1,36 @@
+options {
+  LOOKAHEAD = 1;
+  CHOICE_AMBIGUITY_CHECK = 2;
+  OTHER_AMBIGUITY_CHECK = 1;
+  STATIC = true;
+  DEBUG_PARSER = false;
+  DEBUG_LOOKAHEAD = false;
+  JAVA_TEMPLATE_TYPE = "modern";
+}
+
+PARSER_BEGIN(BasicParser)
+
+package com.example;
+
+public class BasicParser {
+
+  public static void parse(String content) throws ParseException {
+    BasicParser parser = new BasicParser(content);
+    parser.Input();
+  }
+
+}
+
+PARSER_END(BasicParser)
+
+void Input() :
+{}
+{
+  MatchedBraces() ("\n"|"\r")* <EOF>
+}
+
+void MatchedBraces() :
+{}
+{
+  "{" [ MatchedBraces() ] "}"
+}
