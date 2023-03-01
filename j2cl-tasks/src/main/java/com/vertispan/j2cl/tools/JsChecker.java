@@ -56,7 +56,10 @@ public class JsChecker {
         compiler.disableThreads();
         Result result = compiler.compile(
                 Collections.emptyList(),
-                jsInputs.stream().map(SourceUtils.FileInfo::sourcePath).map(SourceFile::fromFile).collect(Collectors.toList()),
+                jsInputs.stream()
+                        .map(SourceUtils.FileInfo::sourcePath)
+                        .map(SourceFile::fromFile)
+                        .collect(Collectors.toUnmodifiableList()),
                 options);
 
         if (!result.success) {

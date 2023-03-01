@@ -70,7 +70,7 @@ public class BytecodeTask extends TaskFactory {
         List<Input> bytecodeClasspath = scope(project.getDependencies(), com.vertispan.j2cl.build.task.Dependency.Scope.COMPILE)
                 .stream()
                 .map(inputs(OutputTypes.BYTECODE))
-                .collect(Collectors.toList());
+                .collect(Collectors.toUnmodifiableList());
 
         File bootstrapClasspath = config.getBootstrapClasspath();
         List<File> extraClasspath = config.getExtraClasspath();
@@ -81,9 +81,9 @@ public class BytecodeTask extends TaskFactory {
                 List<File> classpathDirs = Stream.concat(
                         bytecodeClasspath.stream().map(Input::getParentPaths).flatMap(Collection::stream).map(Path::toFile),
                         extraClasspath.stream()
-                ).collect(Collectors.toList());
+                ).collect(Collectors.toUnmodifiableList());
 
-                List<File> sourcePaths = inputDirs.getParentPaths().stream().map(Path::toFile).collect(Collectors.toList());
+                List<File> sourcePaths = inputDirs.getParentPaths().stream().map(Path::toFile).collect(Collectors.toUnmodifiableList());
                 File generatedClassesDir = getGeneratedClassesDir(context);
                 File classOutputDir = context.outputPath().toFile();
                 Javac javac = new Javac(context, generatedClassesDir, sourcePaths, classpathDirs, classOutputDir, bootstrapClasspath);
@@ -93,7 +93,7 @@ public class BytecodeTask extends TaskFactory {
                 List<SourceUtils.FileInfo> sources = inputSources.getFilesAndHashes()
                         .stream()
                         .map(p -> SourceUtils.FileInfo.create(p.getAbsolutePath().toString(), p.getSourcePath().toString()))
-                        .collect(Collectors.toList());
+                        .collect(Collectors.toUnmodifiableList());
 
                 try {
                     if (!javac.compile(sources)) {

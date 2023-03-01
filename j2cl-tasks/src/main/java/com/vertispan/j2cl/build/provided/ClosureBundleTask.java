@@ -87,7 +87,7 @@ public class ClosureBundleTask extends TaskFactory {
                             input(project, OutputTypes.BYTECODE)
                     )
                     .map(i -> i.filter(ClosureTask.PLAIN_JS_SOURCES))
-                    .collect(Collectors.toList());
+                    .collect(Collectors.toUnmodifiableList());
         }
 
         // Consider treating this always as true, since the build doesnt get more costly to be incremental
@@ -105,7 +105,7 @@ public class ClosureBundleTask extends TaskFactory {
             String outputFile = closureOutputDir + "/" + fileNameKey + ".js";
 
             Path outputFilePath = Paths.get(outputFile);
-            if (!js.stream().map(Input::getFilesAndHashes).flatMap(Collection::stream).findAny().isPresent()) {
+            if (js.stream().map(Input::getFilesAndHashes).flatMap(Collection::stream).findAny().isEmpty()) {
                 // if there are no js sources, write an empty file and exit
                 Files.createFile(outputFilePath);
                 return;// nothing to do
@@ -114,7 +114,7 @@ public class ClosureBundleTask extends TaskFactory {
             // copy the sources locally so that we can create usable sourcemaps
             //TODO consider a soft link
             File sources = new File(closureOutputDir, Closure.SOURCES_DIRECTORY_NAME);
-            for (Path path : js.stream().map(Input::getParentPaths).flatMap(Collection::stream).collect(Collectors.toList())) {
+            for (Path path : js.stream().map(Input::getParentPaths).flatMap(Collection::stream).collect(Collectors.toUnmodifiableList())) {
                 FileUtils.copyDirectory(path.toFile(), sources);
             }
 
@@ -193,7 +193,7 @@ public class ClosureBundleTask extends TaskFactory {
                                     .map(Input::getParentPaths)
                                     .flatMap(Collection::stream)
                                     .map(Path::toString)
-                                    .collect(Collectors.toList())),
+                                    .collect(Collectors.toUnmodifiableList())),
                             ImmutableMap.of()
                     ),
                     ""
@@ -223,7 +223,7 @@ public class ClosureBundleTask extends TaskFactory {
                  BufferedWriter jsonOut = new BufferedWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8))) {
                 List<DependencyInfoFormat> jsonList = sorter.getSortedList().stream()
                         .map(DependencyInfoFormat::new)
-                        .collect(Collectors.toList());
+                        .collect(Collectors.toUnmodifiableList());
                 gson.toJson(jsonList, jsonOut);
             }
 

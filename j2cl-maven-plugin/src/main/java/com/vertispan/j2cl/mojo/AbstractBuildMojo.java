@@ -344,7 +344,7 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
                     )
                             .distinct()
                             .filter(withSourceRootFilter())
-                            .collect(Collectors.toList())
+                            .collect(Collectors.toUnmodifiableList())
             );
         } else {
             project.setSourceRoots(Collections.singletonList(artifact.getFile().toString()));

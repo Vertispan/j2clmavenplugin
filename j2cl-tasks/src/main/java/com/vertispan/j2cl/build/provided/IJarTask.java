@@ -20,7 +20,7 @@ public class IJarTask extends TaskFactory {
 
     @Override
     public String getTaskName() {
-        return "default";
+        return "original-bytecode";
     }
 
     @Override
