@@ -44,7 +44,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -123,19 +122,18 @@ public class ClosureBundleTask extends TaskFactory {
 
             if (incrementalEnabled && context.lastSuccessfulOutput().isPresent()) {
                 // collect any dep info from disk for existing files
-                Map<String, DependencyInfoAndSource> depInfoMap = new HashMap<>();
+                final Map<String, DependencyInfoAndSource> depInfoMap;
                 Path lastOutput = context.lastSuccessfulOutput().get();
                 try (InputStream inputStream = Files.newInputStream(lastOutput.resolve("depInfo.json"))) {
                     Type listType = new TypeToken<List<DependencyInfoFormat>>() {
                     }.getType();
                     List<DependencyInfoFormat> deps = gson.fromJson(new BufferedReader(new InputStreamReader(inputStream)), listType);
-                    depInfoMap.putAll(
-                            deps.stream()
-                                    .map(info -> new DependencyInfoAndSource(info, () -> {
-                                return Files.readString(lastOutput.resolve(Closure.SOURCES_DIRECTORY_NAME).resolve(info.getName()));
-                            }))
-                                    .collect(Collectors.toMap(DependencyInfo::getName, Function.identity()))
-                    );
+                    depInfoMap = deps.stream()
+                            .map(info -> new DependencyInfoAndSource(
+                                    info,
+                                    () -> Files.readString(lastOutput.resolve(Closure.SOURCES_DIRECTORY_NAME).resolve(info.getName())))
+                            )
+                            .collect(Collectors.toMap(DependencyInfo::getName, Function.identity()));
                 }
 
                 // create new dep info for any added/modified file
@@ -182,7 +180,6 @@ public class ClosureBundleTask extends TaskFactory {
 
 
             // TODO optional/stretch-goal find first change in the list, so we can keep old prefix of bundle output
-
 
             // rebundle all (optional: remaining) files using this already handled sort
             ClosureBundler bundler = new ClosureBundler(Transpiler.NULL, new BaseTranspiler(
