@@ -6,11 +6,8 @@ import com.vertispan.j2cl.build.task.*;
 import com.vertispan.j2cl.tools.J2cl;
 
 import java.io.File;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -52,80 +49,12 @@ public class J2clTask extends TaskFactory {
                 .map(input -> input.filter(JAVA_BYTECODE))
                 .collect(Collectors.toUnmodifiableList());
 
-        Input ownStrippedBytecode = null;
-        //TODO api question, do we not allow incremental builds of external deps?
-        boolean incrementalEnabled = config.isIncrementalEnabled();
-        if (incrementalEnabled && project.hasSourcesMapped()) {
-            ownStrippedBytecode = input(project, OutputTypes.STRIPPED_BYTECODE_HEADERS).filter(JAVA_BYTECODE);
-        }
-
         File bootstrapClasspath = config.getBootstrapClasspath();
         List<File> extraClasspath = config.getExtraClasspath();
         return context -> {
             if (ownJavaSources.getFilesAndHashes().isEmpty()) {
                 return;// nothing to do
             }
-
-            nope:
-            if (false && context.lastSuccessfulOutput().isPresent()) {
-                if (!incrementalEnabled || !project.hasSourcesMapped()) {
-                    break nope;
-                }
-                // maybe attempt incremental...
-                Path previousBuildData = context.lastSuccessfulOutput().get().resolve("build.data");
-
-                for (Input classpathHeader : classpathHeaders) {
-                    if (!classpathHeader.getChanges().isEmpty()) {
-                        break nope;
-                    }
-                }
-
-                //... do things, copying old JS that still matches current inputs, don't copy files that match deleted inputs,
-                //    recompile files that match changed inputs or have changed dependencies
-
-                // For all files that actually exist today, try to copy their old output to our new output path
-                // This will get all existing output files (note that we might still rebuild them), and skip "removed" files
-                // (since they aren't in the current list of getFilesAndHashes(), but "added" files will result in an error
-                for (CachedPath file : ownJavaSources.getFilesAndHashes()) {
-                    for (Path existing : expandToExistingFiles(previousBuildData, file.getSourcePath())) {
-                        // TODO make sure it exists before copying - it might be a new file and not exist
-                        Files.copy(context.lastSuccessfulOutput().get().resolve(existing), context.outputPath().resolve(existing));
-                    }
-                }
-
-                // TODO deal with native sources changing
-
-                List<Path> myJavaSourcesThatHaveToBeRebuilt = new ArrayList<>();
-                for (Input.ChangedCachedPath change : ownJavaSources.getChanges()) {
-                    switch (change.changeType()) {
-                        case ADDED:
-                            //noop, already didn't exist
-                            myJavaSourcesThatHaveToBeRebuilt.add(change.getSourcePath());
-                            break;
-                        case REMOVED:
-                            //noop, wasn't copied
-                            //TODO anything that used to (transitively or without changes) depend on this must be rebuilt!
-                            myJavaSourcesThatHaveToBeRebuilt.addAll(findFilesThatDependedOnPath(previousBuildData, change.getSourcePath()));
-                            break;
-                        case MODIFIED:
-                            //delete old output for this file since we must rebuild
-                            for (Path existing : expandToExistingFiles(previousBuildData, change.getSourcePath())) {
-                                Files.delete(existing);
-                            }
-                            // TODO expand the set of files that were modified because this was modified
-                            myJavaSourcesThatHaveToBeRebuilt.add(change.getSourcePath());
-                            myJavaSourcesThatHaveToBeRebuilt.addAll(findFilesThatDependedOnPath(previousBuildData, change.getSourcePath()));
-                            break;
-                    }
-                }
-
-                // Run J2CL with
-                //  * mySourcesThatHaveToBeRebuilt
-                //  * any native sources that applied to those, or were changed
-                //  * existing classpath, plus OUR OWN CURRENT SOURCES
-                return;
-            }
-
             List<File> classpathDirs = Stream.concat(
                     classpathHeaders.stream().flatMap(i -> i.getParentPaths().stream().map(Path::toFile)),
                     extraClasspath.stream()
@@ -154,13 +83,5 @@ public class J2clTask extends TaskFactory {
                 throw new IllegalStateException("Error while running J2CL");
             }
         };
-    }
-
-    private Collection<Path> findFilesThatDependedOnPath(Path previousBuildData, Path sourcePath) {
-        return null;
-    }
-
-    private List<Path> expandToExistingFiles(Path previousBuildData, Path file) {
-        return null;
     }
 }
