@@ -3,7 +3,6 @@ package com.vertispan.j2cl.build;
 import com.google.gson.Gson;
 import com.vertispan.j2cl.build.impl.CollectedTaskInputs;
 import com.vertispan.j2cl.build.task.BuildLog;
-import com.vertispan.j2cl.build.task.CachedPath;
 import com.vertispan.j2cl.build.task.OutputTypes;
 import com.vertispan.j2cl.build.task.TaskFactory;
 import com.vertispan.j2cl.build.task.TaskContext;
@@ -27,9 +26,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static com.vertispan.j2cl.build.task.Input.ChangedCachedPath.ChangeType.ADDED;
-import static com.vertispan.j2cl.build.task.Input.ChangedCachedPath.ChangeType.MODIFIED;
-import static com.vertispan.j2cl.build.task.Input.ChangedCachedPath.ChangeType.REMOVED;
+import static com.vertispan.j2cl.build.task.ChangedCachedPath.ChangeType.ADDED;
+import static com.vertispan.j2cl.build.task.ChangedCachedPath.ChangeType.MODIFIED;
+import static com.vertispan.j2cl.build.task.ChangedCachedPath.ChangeType.REMOVED;
 
 /**
  * Decides how much work to do, and when. Naive implementation just has a threadpool and does as much work
@@ -240,7 +239,7 @@ public class TaskScheduler {
                                 }
 
                                 return input.getFilesAndHashes().stream()
-                                        .map(entry -> new ChangedCachedPath(ADDED, entry.getSourcePath(), entry)).collect(Collectors.toList());
+                                        .map(entry -> new ChangedCachedPath(ADDED, entry.getSourcePath(), entry)).collect(Collectors.toUnmodifiableList());
                             });
                         }
                         taskDetails.getTask().execute(new TaskContext(result.outputDir(), log, latestResult.map(DiskCache.CacheResult::outputDir).orElse(null)));
@@ -403,7 +402,7 @@ public class TaskScheduler {
         });
     }
 
-    private List<ChangedCachedPath> diff(Map<String, CachedPath> currentFiles, Map<String, String> previousFiles) {
+    private List<ChangedCachedPath> diff(Map<String, DiskCache.CacheEntry> currentFiles, Map<String, String> previousFiles) {
         List<ChangedCachedPath> changes = new ArrayList<>();
         Set<String> added = new HashSet<>(currentFiles.keySet());
         added.removeAll(previousFiles.keySet());
@@ -417,7 +416,7 @@ public class TaskScheduler {
             changes.add(new ChangedCachedPath(REMOVED, Paths.get(removedPath), null));
         });
 
-        Map<String, CachedPath> changed = new HashMap<>(currentFiles);
+        Map<String, DiskCache.CacheEntry> changed = new HashMap<>(currentFiles);
         changed.keySet().removeAll(added);
         changed.forEach((possiblyModifiedPath, entry) -> {
             if (!entry.getHash().asString().equals(previousFiles.get(possiblyModifiedPath))) {

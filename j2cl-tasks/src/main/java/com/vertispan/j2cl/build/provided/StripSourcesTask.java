@@ -48,11 +48,11 @@ public class StripSourcesTask extends TaskFactory {
                         Function.identity()
                 ));
                 //only process changed files, copy unchanged ones
-                for (Input.ChangedCachedPath change : inputSources.getChanges()) {
+                for (ChangedCachedPath change : inputSources.getChanges()) {
                     // remove the file, since it was changed in some way
                     unmodified.remove(change.getSourcePath());
 
-                    if (change.changeType() != Input.ChangedCachedPath.ChangeType.REMOVED) {
+                    if (change.changeType() != ChangedCachedPath.ChangeType.REMOVED) {
                         // track the files we actually need to process
                         filesToProcess.add(makeFileInfo(change));
                     }
@@ -71,7 +71,7 @@ public class StripSourcesTask extends TaskFactory {
         };
     }
 
-    private SourceUtils.FileInfo makeFileInfo(Input.ChangedCachedPath change) {
+    private SourceUtils.FileInfo makeFileInfo(ChangedCachedPath change) {
         assert change.getNewAbsolutePath().isPresent() : "Can't make a FileInfo if it no longer exists";
         return SourceUtils.FileInfo.create(change.getNewAbsolutePath().get().toString(), change.getSourcePath().toString());
     }

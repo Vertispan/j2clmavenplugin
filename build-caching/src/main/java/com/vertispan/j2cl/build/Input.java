@@ -1,5 +1,7 @@
 package com.vertispan.j2cl.build;
 
+import com.vertispan.j2cl.build.task.ChangedCachedPath;
+
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.util.*;
@@ -86,7 +88,7 @@ public class Input implements com.vertispan.j2cl.build.task.Input {
         public Collection<? extends ChangedCachedPath> getChanges() {
             return wrapped.getChanges().stream()
                     .filter(entry -> Arrays.stream(filters).anyMatch(f -> f.matches(entry.getSourcePath())))
-                    .collect(Collectors.toList());
+                    .collect(Collectors.toUnmodifiableList());
         }
 
         @Override
@@ -124,7 +126,7 @@ public class Input implements com.vertispan.j2cl.build.task.Input {
     }
 
     /**
-     * Internal API
+     * Internal API.
      *
      * Once a task is finished, we can let it be used by other tasks as an input. In
      * order for those tasks to execute incrementally, each particular Input must
@@ -136,6 +138,11 @@ public class Input implements com.vertispan.j2cl.build.task.Input {
         this.buildSpecificChanges = buildSpecificChanges;
     }
 
+    /**
+     * Internal API.
+     *
+     * Creates a simple payload that describes this input, so it can be written to disk.
+     */
     public TaskSummaryDiskFormat.InputDiskFormat makeDiskFormat() {
         TaskSummaryDiskFormat.InputDiskFormat out = new TaskSummaryDiskFormat.InputDiskFormat();
 

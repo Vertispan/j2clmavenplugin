@@ -3,7 +3,6 @@ package com.vertispan.j2cl.build.task;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.util.Collection;
-import java.util.Optional;
 
 public interface Input {
     /**
@@ -24,20 +23,12 @@ public interface Input {
      */
     Collection<? extends CachedPath> getFilesAndHashes();
 
+    /**
+     * Public API for tasks.
+     *
+     * Gets the changed files of this input, with a path for the old and new file, and type of change.
+     */
     Collection<? extends ChangedCachedPath> getChanges();
-
-    interface ChangedCachedPath {
-        enum ChangeType {
-            ADDED,
-            REMOVED,
-            MODIFIED;
-        }
-        ChangeType changeType();
-
-        Path getSourcePath();
-
-        Optional<Path> getNewAbsolutePath();
-    }
 
     /**
      * Public API for tasks.

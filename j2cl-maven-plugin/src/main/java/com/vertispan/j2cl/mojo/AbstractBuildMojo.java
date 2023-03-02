@@ -85,7 +85,7 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
     @Parameter(defaultValue = "AVOID_MAVEN")
     private AnnotationProcessorMode annotationProcessorMode;
 
-    @Parameter(defaultValue = "true")
+    @Parameter(defaultValue = "false", property = "j2cl.incremental")
     private boolean incrementalEnabled;
 
     private List<DependencyReplacement> defaultDependencyReplacements = Arrays.asList(

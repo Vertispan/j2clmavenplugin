@@ -18,6 +18,7 @@ import com.google.javascript.jscomp.parsing.parser.FeatureSet;
 import com.google.javascript.jscomp.transpile.BaseTranspiler;
 import com.google.javascript.jscomp.transpile.Transpiler;
 import com.vertispan.j2cl.build.task.CachedPath;
+import com.vertispan.j2cl.build.task.ChangedCachedPath;
 import com.vertispan.j2cl.build.task.Config;
 import com.vertispan.j2cl.build.task.Input;
 import com.vertispan.j2cl.build.task.OutputTypes;
@@ -138,8 +139,8 @@ public class ClosureBundleTask extends TaskFactory {
 
                 // create new dep info for any added/modified file
                 for (Input jsInput : js) {
-                    for (Input.ChangedCachedPath change : jsInput.getChanges()) {
-                        if (change.changeType() == Input.ChangedCachedPath.ChangeType.REMOVED) {
+                    for (ChangedCachedPath change : jsInput.getChanges()) {
+                        if (change.changeType() == ChangedCachedPath.ChangeType.REMOVED) {
                             depInfoMap.remove(change.getSourcePath().toString());
                         } else {
                             // ADD or MODIFY

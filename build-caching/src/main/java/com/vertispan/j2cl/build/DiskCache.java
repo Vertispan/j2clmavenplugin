@@ -1,6 +1,5 @@
 package com.vertispan.j2cl.build;
 
-import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.vertispan.j2cl.build.impl.CollectedTaskInputs;
 import com.vertispan.j2cl.build.task.CachedPath;
@@ -248,7 +247,9 @@ public abstract class DiskCache {
             return absoluteParent.resolve(sourcePath);
         }
 
-        @Override
+        /**
+         * Internal API, as this is not at this time used by any caller.
+         */
         public FileHash getHash() {
             return hash;
         }
@@ -379,7 +380,7 @@ public abstract class DiskCache {
 
                     return result;
                 })
-                .collect(Collectors.toList()));
+                .collect(Collectors.toUnmodifiableList()));
 
         src.setConfigs(inputs.getUsedConfigs());
 

@@ -1,20 +1,22 @@
 package com.vertispan.j2cl.build;
 
 import com.vertispan.j2cl.build.task.CachedPath;
-import com.vertispan.j2cl.build.task.Input;
 
 import java.nio.file.Path;
 import java.util.Optional;
 
-public class ChangedCachedPath implements Input.ChangedCachedPath {
+/**
+ * Implementation of the ChangedCachedPath interface.
+ */
+public class ChangedCachedPath implements com.vertispan.j2cl.build.task.ChangedCachedPath {
     private final ChangeType type;
     private final Path sourcePath;
-    private final Optional<CachedPath> newIfAny;
+    private final CachedPath newIfAny;
 
     public ChangedCachedPath(ChangeType type, Path sourcePath, CachedPath newPath) {
         this.type = type;
         this.sourcePath = sourcePath;
-        this.newIfAny = Optional.ofNullable(newPath);
+        this.newIfAny = newPath;
     }
 
     @Override
@@ -29,6 +31,6 @@ public class ChangedCachedPath implements Input.ChangedCachedPath {
 
     @Override
     public Optional<Path> getNewAbsolutePath() {
-        return newIfAny.map(CachedPath::getAbsolutePath);
+        return Optional.ofNullable(newIfAny).map(CachedPath::getAbsolutePath);
     }
 }
