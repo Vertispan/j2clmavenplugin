@@ -225,10 +225,25 @@ public class TaskScheduler {
 
                         Optional<DiskCache.CacheResult> latestResult = buildCache.getLatestResult(taskDetails.getProject(), taskDetails.getTaskFactory().getOutputType());
                         final TaskSummaryDiskFormat taskSummaryDiskFormat = latestResult.map(TaskScheduler.this::getTaskSummary).orElse(null);
-                        // deserialize its inputs list and use its outputs below
-                        for (Input input : taskDetails.getInputs()) {
-                            input.setBuildSpecificChanges(() -> {
-                                if (latestResult.isPresent() && taskSummaryDiskFormat != null) {
+
+                        if (taskSummaryDiskFormat == null) {
+                            latestResult = Optional.empty();
+                        }
+
+
+                        // Update any existing input to reflect what has changed
+                        if (latestResult.isPresent()) {
+                            for (TaskSummaryDiskFormat.InputDiskFormat onDiskInput : taskSummaryDiskFormat.getInputs()) {
+                                // if this input is not present any more, we cannot build incrementally
+                                if (taskDetails.getInputs().stream().noneMatch(currentInput ->
+                                        currentInput.getProject().getKey().equals(onDiskInput.getProjectKey())
+                                                && currentInput.getOutputType().equals(onDiskInput.getOutputType())
+                                )) {
+                                    latestResult = Optional.empty();
+                                }
+                            }
+                            for (Input input : taskDetails.getInputs()) {
+                                input.setBuildSpecificChanges(() -> {
                                     Optional<TaskSummaryDiskFormat.InputDiskFormat> prevInput = taskSummaryDiskFormat.getInputs().stream()
                                             .filter(i -> i.getProjectKey().equals(input.getProject().getKey()))
                                             .filter(i -> i.getOutputType().equals(input.getOutputType()))
@@ -236,12 +251,21 @@ public class TaskScheduler {
                                     if (prevInput.isPresent()) {
                                         return diff(input.getFilesAndHashes().stream().collect(Collectors.toMap(e -> e.getSourcePath().toString(), Function.identity())), prevInput.get().getFileHashes());
                                     }
-                                }
 
-                                return input.getFilesAndHashes().stream()
-                                        .map(entry -> new ChangedCachedPath(ADDED, entry.getSourcePath(), entry)).collect(Collectors.toUnmodifiableList());
-                            });
+                                    return input.getFilesAndHashes().stream()
+                                            .map(entry -> new ChangedCachedPath(ADDED, entry.getSourcePath(), entry)).collect(Collectors.toUnmodifiableList());
+                                });
+                            }
+                        } else {
+                            for (Input input : taskDetails.getInputs()) {
+                                input.setBuildSpecificChanges(() ->
+                                        input.getFilesAndHashes().stream()
+                                                .map(entry -> new ChangedCachedPath(ADDED, entry.getSourcePath(), entry))
+                                                .collect(Collectors.toUnmodifiableList())
+                                );
+                            }
                         }
+
                         taskDetails.getTask().execute(new TaskContext(result.outputDir(), log, latestResult.map(DiskCache.CacheResult::outputDir).orElse(null)));
                         if (Thread.currentThread().isInterrupted()) {
                             // Tried and failed to be canceled, so even though we were successful, some files might

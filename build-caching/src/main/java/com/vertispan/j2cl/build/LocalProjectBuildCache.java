@@ -6,6 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Optional;
 
 public class LocalProjectBuildCache {
@@ -25,7 +26,7 @@ public class LocalProjectBuildCache {
             Files.createDirectories(localTaskDir);
             Files.write(localTaskDir.resolve(timestamp), Collections.singleton(taskDir.toString()));
 
-            Files.list(localTaskDir).sorted().skip(5).forEach(old -> {
+            Files.list(localTaskDir).sorted(Comparator.<Path>naturalOrder().reversed()).skip(5).forEach(old -> {
                 try {
                     Files.delete(old);
                 } catch (IOException e) {
@@ -44,7 +45,7 @@ public class LocalProjectBuildCache {
     public Optional<DiskCache.CacheResult> getLatestResult(Project project, String task) {
         try {
             Path taskDir = cacheDir.toPath().resolve(project.getKey()).resolve(task);
-            Optional<Path> latest = Files.list(taskDir).sorted().findFirst();
+            Optional<Path> latest = Files.list(taskDir).max(Comparator.naturalOrder());
             if (latest.isPresent()) {
                 String path = Files.readAllLines(latest.get()).get(0);
 

@@ -135,7 +135,7 @@ public class Input implements com.vertispan.j2cl.build.task.Input {
      * executes.
      */
     public void setBuildSpecificChanges(BuildSpecificChanges buildSpecificChanges) {
-        this.buildSpecificChanges = buildSpecificChanges;
+        this.buildSpecificChanges = BuildSpecificChanges.memoize(buildSpecificChanges);
     }
 
     /**
