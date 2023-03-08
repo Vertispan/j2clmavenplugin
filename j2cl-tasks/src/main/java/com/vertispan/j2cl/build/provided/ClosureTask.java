@@ -172,7 +172,7 @@ public class ClosureTask extends TaskFactory {
         // grab configs we plan to use
         CompilationLevel compilationLevel = CompilationLevel.fromString(config.getCompilationLevel());
         if (compilationLevel == null) {
-            throw new NullPointerException("Unrecognized compilationLevel: " + config.getCompilationLevel());
+            throw new IllegalArgumentException("Unrecognized compilationLevel: " + config.getCompilationLevel());
         }
 
         String initialScriptFilename = config.getInitialScriptFilename();
