@@ -61,7 +61,7 @@ public class BundleJarTask extends TaskFactory {
         // our own JS after any dependencies that will be included have already loaded.
         List<Input> sourceOrder = new ArrayList<>();
         Set<String> pendingProjectKeys = jsSources.stream().map(i -> i.getProject().getKey()).collect(Collectors.toSet());
-        List<Input> remaining = jsSources.stream().sorted(Comparator.comparing(i -> i.getProject().getDependencies().size())).collect(Collectors.toUnmodifiableList());
+        List<Input> remaining = jsSources.stream().sorted(Comparator.comparing(i -> i.getProject().getDependencies().size())).collect(Collectors.toList());
         while (!remaining.isEmpty()) {
             for (Iterator<Input> iterator = remaining.iterator(); iterator.hasNext(); ) {
                 Input input = iterator.next();
