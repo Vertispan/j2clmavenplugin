@@ -170,7 +170,11 @@ public class ClosureTask extends TaskFactory {
                 .collect(Collectors.toUnmodifiableList());
 
         // grab configs we plan to use
-        String compilationLevelConfig = config.getCompilationLevel();
+        CompilationLevel compilationLevel = CompilationLevel.fromString(config.getCompilationLevel());
+        if (compilationLevel == null) {
+            throw new IllegalArgumentException("Unrecognized compilationLevel: " + config.getCompilationLevel());
+        }
+
         String initialScriptFilename = config.getInitialScriptFilename();
         Map<String, String> configDefines = config.getDefines();
         DependencyOptions.DependencyMode dependencyMode = DependencyOptions.DependencyMode.valueOf(config.getDependencyMode());
@@ -200,8 +204,6 @@ public class ClosureTask extends TaskFactory {
                 Closure closureCompiler = new Closure(context);
 
                 File closureOutputDir = context.outputPath().toFile();
-
-                CompilationLevel compilationLevel = CompilationLevel.fromString(compilationLevelConfig);
 
                 // set up a source directory to build from, and to make sourcemaps work
                 // TODO move logic to the "post" phase to decide whether or not to copy the sourcemap dir
