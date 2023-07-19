@@ -22,7 +22,7 @@ public class LocalProjectBuildCache {
     public void markLocalSuccess(Project project, String task, Path taskDir) {
         String timestamp = String.valueOf(System.currentTimeMillis());
         try {
-            Path localTaskDir = cacheDir.toPath().resolve(project.getKey()).resolve(task);
+            Path localTaskDir = cacheDir.toPath().resolve(project.getKey().replaceAll("[^\\-_a-zA-Z0-9.]", "-")).resolve(task);
             Files.createDirectories(localTaskDir);
             Files.write(localTaskDir.resolve(timestamp), Collections.singleton(taskDir.toString()));
 
@@ -44,7 +44,7 @@ public class LocalProjectBuildCache {
 
     public Optional<DiskCache.CacheResult> getLatestResult(Project project, String task) {
         try {
-            Path taskDir = cacheDir.toPath().resolve(project.getKey()).resolve(task);
+            Path taskDir = cacheDir.toPath().resolve(project.getKey().replaceAll("[^\\-_a-zA-Z0-9.]", "-")).resolve(task);
             Optional<Path> latest = Files.list(taskDir).max(Comparator.naturalOrder());
             if (latest.isPresent()) {
                 String path = Files.readAllLines(latest.get()).get(0);
