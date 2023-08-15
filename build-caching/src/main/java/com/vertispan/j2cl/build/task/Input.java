@@ -26,6 +26,13 @@ public interface Input {
     /**
      * Public API for tasks.
      *
+     * Gets the changed files of this input, with a path for the old and new file, and type of change.
+     */
+    Collection<? extends ChangedCachedPath> getChanges();
+
+    /**
+     * Public API for tasks.
+     *
      * Gets the source directories that contain the files offered by this input. Use
      * caution when calling this, as it might contain files that were already filtered
      * out, so could result in inconsistent cache output.

@@ -77,7 +77,7 @@ public class PropertyTrackingConfig implements Config {
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to hash file contents " + value, e);
         }
-        useKey(node.getPath(), hash);
+        useKey(node.getPath(), "File with hash " + hash);
         return value;
     }
     private void useKey(String path, String value) {
@@ -226,5 +226,12 @@ public class PropertyTrackingConfig implements Config {
             throw new IllegalStateException("Could not get value of '"+configNode.getPath()+"' from pom.xml in <configuration>");
         }
         return Paths.get(s);
+    }
+
+    @Override
+    public boolean isIncrementalEnabled() {
+        // TODO once we have awesome tests for this, consider skipping the cache. Could be dangerous,
+        //      in the case of externally provided buggy tasks.
+        return getString("incrementalEnabled").equalsIgnoreCase("true");
     }
 }

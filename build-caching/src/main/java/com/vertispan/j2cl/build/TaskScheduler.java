@@ -1,5 +1,6 @@
 package com.vertispan.j2cl.build;
 
+import com.google.gson.Gson;
 import com.vertispan.j2cl.build.impl.CollectedTaskInputs;
 import com.vertispan.j2cl.build.task.BuildLog;
 import com.vertispan.j2cl.build.task.OutputTypes;
@@ -7,12 +8,16 @@ import com.vertispan.j2cl.build.task.TaskFactory;
 import com.vertispan.j2cl.build.task.TaskContext;
 
 import java.io.FileNotFoundException;
-import java.nio.file.Path;
+import java.io.FileReader;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
@@ -20,6 +25,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import static com.vertispan.j2cl.build.task.ChangedCachedPath.ChangeType.ADDED;
+import static com.vertispan.j2cl.build.task.ChangedCachedPath.ChangeType.MODIFIED;
+import static com.vertispan.j2cl.build.task.ChangedCachedPath.ChangeType.REMOVED;
 
 /**
  * Decides how much work to do, and when. Naive implementation just has a threadpool and does as much work
@@ -32,6 +41,7 @@ import java.util.stream.Collectors;
 public class TaskScheduler {
     private final Executor executor;
     private final DiskCache diskCache;
+    private final LocalProjectBuildCache buildCache;
     private final BuildLog buildLog;
 
     // This is technically incorrect, but covers the current use cases, and should fail loudly if this assumption
@@ -50,14 +60,15 @@ public class TaskScheduler {
      *
      * Caller is responsible for shutting down the executor service - canceling ongoing work
      * should be supported, but presently isn't.
-     *
-     * @param executor executor to submit work to, to be performed off thread
+     *  @param executor executor to submit work to, to be performed off thread
      * @param diskCache cache to read results from, and save new results to
+     * @param buildCache
      * @param buildLog log to write details to about work being performed
      */
-    public TaskScheduler(Executor executor, DiskCache diskCache, BuildLog buildLog) {
+    public TaskScheduler(Executor executor, DiskCache diskCache, LocalProjectBuildCache buildCache, BuildLog buildLog) {
         this.executor = executor;
         this.diskCache = diskCache;
+        this.buildCache = buildCache;
         this.buildLog = buildLog;
     }
 
@@ -211,7 +222,51 @@ public class TaskScheduler {
                     }
                     try {
                         long start = System.currentTimeMillis();
-                        taskDetails.getTask().execute(new TaskContext(result.outputDir(), log));
+
+                        Optional<DiskCache.CacheResult> latestResult = buildCache.getLatestResult(taskDetails.getProject(), taskDetails.getTaskFactory().getOutputType());
+                        final TaskSummaryDiskFormat taskSummaryDiskFormat = latestResult.map(TaskScheduler.this::getTaskSummary).orElse(null);
+
+                        if (taskSummaryDiskFormat == null) {
+                            latestResult = Optional.empty();
+                        }
+
+
+                        // Update any existing input to reflect what has changed
+                        if (latestResult.isPresent()) {
+                            for (TaskSummaryDiskFormat.InputDiskFormat onDiskInput : taskSummaryDiskFormat.getInputs()) {
+                                // if this input is not present any more, we cannot build incrementally
+                                if (taskDetails.getInputs().stream().noneMatch(currentInput ->
+                                        currentInput.getProject().getKey().equals(onDiskInput.getProjectKey())
+                                                && currentInput.getOutputType().equals(onDiskInput.getOutputType())
+                                )) {
+                                    latestResult = Optional.empty();
+                                }
+                            }
+                            for (Input input : taskDetails.getInputs()) {
+                                input.setBuildSpecificChanges(() -> {
+                                    Optional<TaskSummaryDiskFormat.InputDiskFormat> prevInput = taskSummaryDiskFormat.getInputs().stream()
+                                            .filter(i -> i.getProjectKey().equals(input.getProject().getKey()))
+                                            .filter(i -> i.getOutputType().equals(input.getOutputType()))
+                                            .findAny();
+                                    if (prevInput.isPresent()) {
+                                        return diff(input.getFilesAndHashes().stream().collect(Collectors.toMap(e -> e.getSourcePath().toString(), Function.identity())), prevInput.get().getFileHashes());
+                                    }
+
+                                    return input.getFilesAndHashes().stream()
+                                            .map(entry -> new ChangedCachedPath(ADDED, entry.getSourcePath(), entry)).collect(Collectors.toUnmodifiableList());
+                                });
+                            }
+                        } else {
+                            for (Input input : taskDetails.getInputs()) {
+                                input.setBuildSpecificChanges(() ->
+                                        input.getFilesAndHashes().stream()
+                                                .map(entry -> new ChangedCachedPath(ADDED, entry.getSourcePath(), entry))
+                                                .collect(Collectors.toUnmodifiableList())
+                                );
+                            }
+                        }
+
+                        taskDetails.getTask().execute(new TaskContext(result.outputDir(), log, latestResult.map(DiskCache.CacheResult::outputDir).orElse(null)));
                         if (Thread.currentThread().isInterrupted()) {
                             // Tried and failed to be canceled, so even though we were successful, some files might
                             // have been deleted. Continue deleting contents
@@ -222,6 +277,7 @@ public class TaskScheduler {
                         if (elapsedMillis > 5) {
                             buildLog.info("Finished " + taskDetails.getDebugName() + " in " + elapsedMillis + "ms");
                         }
+                        buildCache.markLocalSuccess(taskDetails.getProject(), taskDetails.getTaskFactory().getOutputType(), result.taskDir());
                         result.markSuccess();
 
                     } catch (Throwable exception) {
@@ -324,9 +380,10 @@ public class TaskScheduler {
                         // When something finishes, remove it from the various dependency lists and see if we can run the loop again with more work.
                         // Presently this could be called multiple times, so we check if already removed
                         if (tasks.complete(taskDetails)) {
+                            TaskOutput output = cacheResult.output();
                             for (Input input : allInputs.computeIfAbsent(taskDetails.getAsInput(), ignore -> Collections.emptyList())) {
                                 // since we don't support running more than one thing at a time, this will not change data out from under a running task
-                                input.setCurrentContents(cacheResult.output());
+                                input.setCurrentContents(output);
                                 //TODO This maybe can race with the check on line 84, and we break since the input isn't ready yet
                             }
 
@@ -349,7 +406,9 @@ public class TaskScheduler {
                     try {
                         //TODO Make sure that we want to write this to _only_ the current log, and not also to any file
                         //TODO Also be sure to write a prefix automatically
-                        ((TaskFactory.FinalOutputTask) taskDetails.getTask()).finish(new TaskContext(cacheResult.outputDir(), buildLog));
+
+                        // TODO also consider if lastSuccessfulPath should be null for final tasks
+                        ((TaskFactory.FinalOutputTask) taskDetails.getTask()).finish(new TaskContext(cacheResult.outputDir(), buildLog, null));
                         buildLog.info("Finished final task " + taskDetails.getDebugName() + " in " + (System.currentTimeMillis() - start) + "ms");
                     } catch (Throwable t) {
                         buildLog.error("FAILED   " + taskDetails.getDebugName() + " in " + (System.currentTimeMillis() - start) + "ms",t);
@@ -365,5 +424,38 @@ public class TaskScheduler {
                 }
             });
         });
+    }
+
+    private List<ChangedCachedPath> diff(Map<String, DiskCache.CacheEntry> currentFiles, Map<String, String> previousFiles) {
+        List<ChangedCachedPath> changes = new ArrayList<>();
+        Set<String> added = new HashSet<>(currentFiles.keySet());
+        added.removeAll(previousFiles.keySet());
+        added.forEach(newPath -> {
+            changes.add(new ChangedCachedPath(ADDED, Paths.get(newPath), currentFiles.get(newPath)));
+        });
+
+        Set<String> removed = new HashSet<>(previousFiles.keySet());
+        removed.removeAll(currentFiles.keySet());
+        removed.forEach(removedPath -> {
+            changes.add(new ChangedCachedPath(REMOVED, Paths.get(removedPath), null));
+        });
+
+        Map<String, DiskCache.CacheEntry> changed = new HashMap<>(currentFiles);
+        changed.keySet().removeAll(added);
+        changed.forEach((possiblyModifiedPath, entry) -> {
+            if (!entry.getHash().asString().equals(previousFiles.get(possiblyModifiedPath))) {
+                changes.add(new ChangedCachedPath(MODIFIED, Paths.get(possiblyModifiedPath), entry));
+            }
+        });
+
+        return changes;
+    }
+
+    private TaskSummaryDiskFormat getTaskSummary(DiskCache.CacheResult latestResult) {
+        try {
+            return new Gson().fromJson(new FileReader(latestResult.cachedSummary().toFile()), TaskSummaryDiskFormat.class);
+        } catch (FileNotFoundException ex) {
+            return null;
+        }
     }
 }

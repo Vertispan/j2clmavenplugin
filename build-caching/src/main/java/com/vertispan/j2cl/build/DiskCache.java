@@ -1,30 +1,32 @@
 package com.vertispan.j2cl.build;
 
+import com.google.gson.GsonBuilder;
 import com.vertispan.j2cl.build.impl.CollectedTaskInputs;
 import com.vertispan.j2cl.build.task.CachedPath;
 import io.methvin.watcher.PathUtils;
 import io.methvin.watcher.hashing.FileHash;
 import io.methvin.watcher.hashing.FileHasher;
+import io.methvin.watcher.hashing.Murmur3F;
 import io.methvin.watchservice.MacOSXListeningWatchService;
 import io.methvin.watchservice.WatchablePath;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.WatchService;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
-import java.time.temporal.TemporalAmount;
-import java.time.temporal.TemporalUnit;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
+import java.util.stream.Collectors;
 
 /**
- * Manages the cached task inputs and outputs.
+ * Manages the cached task inputs and outputs, without direct knowledge of the project or task apis.
  */
 public abstract class DiskCache {
     private static final boolean IS_MAC = System.getProperty("os.name").toLowerCase().contains("mac");
@@ -36,6 +38,10 @@ public abstract class DiskCache {
 
         public CacheResult(Path taskDir) {
             this.taskDir = taskDir;
+        }
+
+        public Path taskDir() {
+            return taskDir;
         }
 
         public Path logFile() {
@@ -52,6 +58,10 @@ public abstract class DiskCache {
                 throw new IllegalStateException("Output not yet ready for " + taskDir);
             }
             return taskOutput;
+        }
+
+        public Path cachedSummary() {
+            return DiskCache.this.cacheSummary(taskDir);
         }
 
         public void markSuccess() {
@@ -237,7 +247,9 @@ public abstract class DiskCache {
             return absoluteParent.resolve(sourcePath);
         }
 
-        @Override
+        /**
+         * Internal API, as this is not at this time used by any caller.
+         */
         public FileHash getHash() {
             return hash;
         }
@@ -340,16 +352,57 @@ public abstract class DiskCache {
         }
     }
 
-    protected abstract Path taskDir(CollectedTaskInputs inputs);
+    private String taskSummaryContents(CollectedTaskInputs inputs) {
+        TaskSummaryDiskFormat src = new TaskSummaryDiskFormat();
+        src.setProjectKey(inputs.getProject().getKey());
+        src.setOutputType(inputs.getTaskFactory().getOutputType());
+        src.setTaskImpl(inputs.getTaskFactory().getClass().getName());
+        src.setTaskImplVersion(inputs.getTaskFactory().getVersion());
+
+        src.setInputs(inputs.getInputs().stream()
+                .map(Input::makeDiskFormat)
+                .collect(Collectors.groupingBy(i -> i.getProjectKey() + "-" + i.getOutputType()))
+                .values().stream()
+                .map(list -> {
+                    TaskSummaryDiskFormat.InputDiskFormat result = new TaskSummaryDiskFormat.InputDiskFormat();
+                    result.setProjectKey(list.get(0).getProjectKey());
+                    result.setOutputType(list.get(0).getOutputType());
+
+                    result.setFileHashes(
+                            list.stream().flatMap(i -> i.getFileHashes().entrySet().stream())
+                                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (left, right) -> {
+                                        if (left.equals(right)) {
+                                            return left;
+                                        }
+                                        throw new IllegalStateException("Two hashes for one file! " + left + " vs " + right);
+                                    }))
+                    );
+
+                    return result;
+                })
+                .collect(Collectors.toUnmodifiableList()));
+
+        src.setConfigs(inputs.getUsedConfigs());
+
+        return new GsonBuilder().serializeNulls().setPrettyPrinting().create().toJson(src);
+    }
+
+    protected abstract Path taskDir(String projectName, String hashString, String outputType);
+
     protected abstract Path successMarker(Path taskDir);
     protected abstract Path failureMarker(Path taskDir);
     protected abstract Path logFile(Path taskDir);
     protected abstract Path outputDir(Path taskDir);
+    protected abstract Path cacheSummary(Path taskDir);
 
     interface Listener {
+        /** Ready for the current listener to do the work */
         void onReady(CacheResult result);
+        /** Someone else did it, but failed for some reason, not re-runnable */
         void onFailure(CacheResult result);
+        /** Someone else tried to do it, but ran into an error, possibly recoverable if we try again */
         void onError(Throwable throwable);
+        /** Someone else finished it, successfully, notify listeners */
         void onSuccess(CacheResult result);
     }
     public class PendingCacheResult implements Cancelable {
@@ -431,7 +484,14 @@ public abstract class DiskCache {
      */
     public void waitForTask(CollectedTaskInputs taskDetails, Listener listener) {
         assert taskDetails.getInputs().stream().allMatch(Input::hasContents);
-        final Path taskDir = taskDir(taskDetails);
+
+        Murmur3F murmur3F = new Murmur3F();
+        byte[] taskSummaryContents = taskSummaryContents(taskDetails).getBytes(StandardCharsets.UTF_8);
+        murmur3F.update(taskSummaryContents);
+        String hashString = murmur3F.getValueHexString();
+
+        final Path taskDir = taskDir(taskDetails.getProject().getKey(), hashString, taskDetails.getTaskFactory().getOutputType());
+
         PendingCacheResult cancelable = new PendingCacheResult(taskDir, listener);
         taskFutures.computeIfAbsent(taskDir, ignore -> Collections.newSetFromMap(new ConcurrentHashMap<>())).add(cancelable);
         try {
@@ -449,6 +509,7 @@ public abstract class DiskCache {
                 // caller can begin work right away
                 Files.createDirectory(outputDir);
                 Files.createFile(logFile(taskDir));
+                Files.write(cacheSummary(taskDir), taskSummaryContents);
                 cancelable.ready();
                 return;
             }
@@ -544,6 +605,15 @@ public abstract class DiskCache {
             //TODO need to basically stop everything if we can't write files to cache
             throw new UncheckedIOException(ioException);
         }
+    }
+
+    public Optional<CacheResult> getCacheResult(Path taskDir) {
+        if (Files.exists(taskDir) || Files.exists(successMarker(taskDir))) {
+            CacheResult result = new CacheResult(taskDir);
+            knownOutputs.computeIfAbsent(taskDir, this::makeOutput);
+            return Optional.of(result);
+        }
+        return Optional.empty();
     }
 
 }

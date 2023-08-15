@@ -234,7 +234,7 @@ public class ClosureTask extends TaskFactory {
                     js = Closure.mapFromInputs(jsSources);
                 }
                 if (sources != null) {
-                    for (Path path : jsSources.stream().map(Input::getParentPaths).flatMap(Collection::stream).collect(Collectors.toList())) {
+                    for (Path path : jsSources.stream().map(Input::getParentPaths).flatMap(Collection::stream).collect(Collectors.toUnmodifiableList())) {
                         FileUtils.copyDirectory(path.toFile(), sources);
                     }
                 }
