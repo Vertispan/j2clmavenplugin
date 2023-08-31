@@ -7,7 +7,7 @@
     <parent>
         <groupId>com.vertispan.j2cl</groupId>
         <artifactId>j2cl-tools</artifactId>
-        <version>0.21-SNAPSHOT</version>
+        <version>0.22-SNAPSHOT</version>
     </parent>
     <artifactId>j2cl-tasks</artifactId>
 
