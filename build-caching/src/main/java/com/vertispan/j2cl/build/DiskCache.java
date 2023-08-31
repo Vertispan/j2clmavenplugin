@@ -170,6 +170,10 @@ public abstract class DiskCache {
         } catch (IOException e) {
             // disaster, can't interact with the cache, stop and give up
             // TODO mark all pending work as canceled?
+        } catch (ClosedWatchServiceException e) {
+            // This is purely noise in the log and doesn't indicate an actual
+            // error, so it can be safely ignored. Please see:
+            // https://github.com/Vertispan/j2clmavenplugin/issues/188
         }
     }
 
