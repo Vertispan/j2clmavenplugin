@@ -1,7 +1,5 @@
 package com.vertispan.j2cl.build.task;
 
-import io.methvin.watcher.hashing.FileHash;
-
 import java.nio.file.Path;
 
 /**
@@ -18,9 +16,4 @@ public interface CachedPath {
      * The absolute path to the file on disk.
      */
     Path getAbsolutePath();
-
-    /**
-     * The current hash of the file, can be used to diff old and new inputs to see which specific paths changed.
-     */
-    FileHash getHash();
 }

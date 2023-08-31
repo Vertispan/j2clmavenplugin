@@ -29,28 +29,8 @@ public class DefaultDiskCache extends DiskCache {
     }
 
     @Override
-    protected Path taskDir(CollectedTaskInputs inputs) {
-        String projectName = inputs.getProject().getKey();
-        Murmur3F hash = new Murmur3F();
-
-        hash.update(inputs.getTaskFactory().getClass().toString().getBytes(StandardCharsets.UTF_8));
-        hash.update(inputs.getTaskFactory().getTaskName().getBytes(StandardCharsets.UTF_8));
-        hash.update(inputs.getTaskFactory().getVersion().getBytes(StandardCharsets.UTF_8));
-
-        for (Input input : inputs.getInputs()) {
-            input.updateHash(hash);
-        }
-
-        for (Map.Entry<String, String> entry : inputs.getUsedConfigs().entrySet()) {
-            hash.update(entry.getKey().getBytes(StandardCharsets.UTF_8));
-            if (entry.getValue() == null) {
-                hash.update(0);
-            } else {
-                hash.update(entry.getValue().getBytes(StandardCharsets.UTF_8));
-            }
-        }
-
-        return cacheDir.toPath().resolve(projectName.replaceAll("[^\\-_a-zA-Z0-9.]", "-")).resolve(hash.getValueHexString() + "-" + inputs.getTaskFactory().getOutputType());
+    protected Path taskDir(String projectName, String hashString, String outputType) {
+        return cacheDir.toPath().resolve(projectName.replaceAll("[^\\-_a-zA-Z0-9.]", "-")).resolve(hashString + "-" + outputType);
     }
 
     @Override
@@ -71,5 +51,10 @@ public class DefaultDiskCache extends DiskCache {
     @Override
     protected Path outputDir(Path taskDir) {
         return taskDir.resolve("results");
+    }
+
+    @Override
+    protected Path cacheSummary(Path taskDir) {
+        return taskDir.resolve("cacheSummary.json");
     }
 }

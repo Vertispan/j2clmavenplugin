@@ -48,4 +48,17 @@ public interface Config {
      */
     Path getWebappDirectory();
 
+    /**
+     * Allow tasks to know if they need to do the work to build incrementally. Tasks
+     * should decide for themselves what inputs they might need or what work they
+     * might do based on this, plus if sources of a given project are mapped or not.
+     * <p></p>
+     * For example, if incremental is cheap, might as well always do it, if not, only
+     * do it if all markers suggest it is a good idea. However, if this flag is false,
+     * incremental should never be attempted (could be a bug in it, etc).
+     *
+     * @return true if incremental is enabled, false if it should be skipped
+     */
+    boolean isIncrementalEnabled();
+
 }

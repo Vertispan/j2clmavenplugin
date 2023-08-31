@@ -1,8 +1,7 @@
 package com.vertispan.j2cl.build;
 
-import io.methvin.watcher.hashing.Murmur3F;
+import com.vertispan.j2cl.build.task.ChangedCachedPath;
 
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.util.*;
@@ -18,10 +17,29 @@ import java.util.stream.Collectors;
  * interested in, and take the hash of the hashes to represent
  */
 public class Input implements com.vertispan.j2cl.build.task.Input {
+    public interface BuildSpecificChanges {
+        List<? extends ChangedCachedPath> compute();
+        static BuildSpecificChanges memoize(BuildSpecificChanges changes) {
+            return new BuildSpecificChanges() {
+                private List<ChangedCachedPath> results;
+                @Override
+                public List<ChangedCachedPath> compute() {
+                    if (results == null) {
+                        List<? extends ChangedCachedPath> computed = changes.compute();
+                        assert computed != null;
+                        results = new ArrayList<>(computed);
+                    }
+
+                    return results;
+                }
+            };
+        }
+    }
     private final Project project;
     private final String outputType;
 
     private TaskOutput contents;
+    private BuildSpecificChanges buildSpecificChanges;
 
     public Input(Project project, String outputType) {
         this.project = project;
@@ -67,6 +85,13 @@ public class Input implements com.vertispan.j2cl.build.task.Input {
         }
 
         @Override
+        public Collection<? extends ChangedCachedPath> getChanges() {
+            return wrapped.getChanges().stream()
+                    .filter(entry -> Arrays.stream(filters).anyMatch(f -> f.matches(entry.getSourcePath())))
+                    .collect(Collectors.toUnmodifiableList());
+        }
+
+        @Override
         public com.vertispan.j2cl.build.task.Project getProject() {
             return wrapped.getProject();
         }
@@ -103,16 +128,36 @@ public class Input implements com.vertispan.j2cl.build.task.Input {
     /**
      * Internal API.
      *
-     * Updates the given hash object with the filtered file inputs - their paths and their
-     * hashes, so that if files are moved or changed we change the hash value, but we don't
-     * re-hash each file every time we ask.
+     * Once a task is finished, we can let it be used by other tasks as an input. In
+     * order for those tasks to execute incrementally, each particular Input must
+     * only have changed relative to the last time that its owner task ran successfully.
+     * Instead of being set all at once, this is re-assigned before each task actually
+     * executes.
      */
-    public void updateHash(Murmur3F hash) {
-        for (DiskCache.CacheEntry fileAndHash : getFilesAndHashes()) {
-            hash.update(fileAndHash.getSourcePath().toString().getBytes(StandardCharsets.UTF_8));
-            hash.update(fileAndHash.getHash().asBytes());
-        }
+    public void setBuildSpecificChanges(BuildSpecificChanges buildSpecificChanges) {
+        this.buildSpecificChanges = BuildSpecificChanges.memoize(buildSpecificChanges);
     }
+
+    /**
+     * Internal API.
+     *
+     * Creates a simple payload that describes this input, so it can be written to disk.
+     */
+    public TaskSummaryDiskFormat.InputDiskFormat makeDiskFormat() {
+        TaskSummaryDiskFormat.InputDiskFormat out = new TaskSummaryDiskFormat.InputDiskFormat();
+
+        out.setProjectKey(getProject().getKey());
+        out.setOutputType(getOutputType());
+
+        out.setFileHashes(getFilesAndHashes().stream().collect(Collectors.toMap(
+                e -> e.getSourcePath().toString(),
+                e -> e.getHash().asString()
+        )));
+
+        return out;
+    }
+
+
 
     @Override
     public Project getProject() {
@@ -137,6 +182,14 @@ public class Input implements com.vertispan.j2cl.build.task.Input {
             throw new NullPointerException("Contents not yet provided " + this);
         }
         return contents.filesAndHashes();
+    }
+
+    @Override
+    public Collection<? extends ChangedCachedPath> getChanges() {
+        if (buildSpecificChanges == null) {
+            throw new NullPointerException("Changes not yet provided " + this);
+        }
+        return buildSpecificChanges.compute();
     }
 
     @Override

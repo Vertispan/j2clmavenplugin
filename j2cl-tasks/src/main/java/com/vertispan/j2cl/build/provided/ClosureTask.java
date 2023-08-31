@@ -170,7 +170,11 @@ public class ClosureTask extends TaskFactory {
                 .collect(Collectors.toUnmodifiableList());
 
         // grab configs we plan to use
-        String compilationLevelConfig = config.getCompilationLevel();
+        CompilationLevel compilationLevel = CompilationLevel.fromString(config.getCompilationLevel());
+        if (compilationLevel == null) {
+            throw new IllegalArgumentException("Unrecognized compilationLevel: " + config.getCompilationLevel());
+        }
+
         String initialScriptFilename = config.getInitialScriptFilename();
         Map<String, String> configDefines = config.getDefines();
         DependencyOptions.DependencyMode dependencyMode = DependencyOptions.DependencyMode.valueOf(config.getDependencyMode());
@@ -201,8 +205,6 @@ public class ClosureTask extends TaskFactory {
 
                 File closureOutputDir = context.outputPath().toFile();
 
-                CompilationLevel compilationLevel = CompilationLevel.fromString(compilationLevelConfig);
-
                 // set up a source directory to build from, and to make sourcemaps work
                 // TODO move logic to the "post" phase to decide whether or not to copy the sourcemap dir
                 String jsOutputDir = new File(closureOutputDir + "/" + initialScriptFilename).getParent();
@@ -232,7 +234,7 @@ public class ClosureTask extends TaskFactory {
                     js = Closure.mapFromInputs(jsSources);
                 }
                 if (sources != null) {
-                    for (Path path : jsSources.stream().map(Input::getParentPaths).flatMap(Collection::stream).collect(Collectors.toList())) {
+                    for (Path path : jsSources.stream().map(Input::getParentPaths).flatMap(Collection::stream).collect(Collectors.toUnmodifiableList())) {
                         FileUtils.copyDirectory(path.toFile(), sources);
                     }
                 }

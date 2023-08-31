@@ -85,6 +85,9 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
     @Parameter(defaultValue = "AVOID_MAVEN")
     private AnnotationProcessorMode annotationProcessorMode;
 
+    @Parameter(defaultValue = "false", property = "j2cl.incremental")
+    private boolean incrementalEnabled;
+
     private List<DependencyReplacement> defaultDependencyReplacements = Arrays.asList(
             new DependencyReplacement("com.google.jsinterop:base", "com.vertispan.jsinterop:base:" + Versions.VERTISPAN_JSINTEROP_BASE_VERSION),
             new DependencyReplacement("org.realityforge.com.google.jsinterop:base", "com.vertispan.jsinterop:base:" + Versions.VERTISPAN_JSINTEROP_BASE_VERSION),
