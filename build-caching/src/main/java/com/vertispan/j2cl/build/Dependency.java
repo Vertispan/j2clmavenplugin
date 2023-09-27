@@ -65,12 +65,9 @@ public class Dependency implements com.vertispan.j2cl.build.task.Dependency {
     @Override
     public boolean isAPT() {
         if (isAPT.isEmpty()) {
-            if (project.isJsZip()) {
+            if (jar == null || project.isJsZip() || project.hasSourcesMapped()) {
                 isAPT = Optional.of(false);
                 return false;
-            }
-            if (jar == null) {
-                this.isAPT = Optional.of(false);
             } else if (jar.exists()) {
                try(ZipFile zipFile = new ZipFile(jar)) {
                     ZipEntry entry = zipFile.getEntry("META-INF/services/javax.annotation.processing.Processor");
