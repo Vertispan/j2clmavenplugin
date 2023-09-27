@@ -10,8 +10,11 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -67,13 +70,21 @@ public class BytecodeTask extends TaskFactory {
         // be if we had built a jar
         Input resources = input(project, OutputTypes.INPUT_SOURCES).filter(NOT_BYTECODE);
 
-        List<Input> bytecodeClasspath = scope(project.getDependencies(), com.vertispan.j2cl.build.task.Dependency.Scope.COMPILE)
+        List<Input> bytecodeClasspath = scope(project.getDependencies().stream().filter(dependency -> !dependency.isAPT()).collect(Collectors.toSet()),
+                com.vertispan.j2cl.build.task.Dependency.Scope.COMPILE)
                 .stream()
                 .map(inputs(OutputTypes.BYTECODE))
                 .collect(Collectors.toUnmodifiableList());
 
         File bootstrapClasspath = config.getBootstrapClasspath();
-        List<File> extraClasspath = config.getExtraClasspath();
+        List<File> extraClasspath = new ArrayList<>(config.getExtraClasspath());
+        Set<String> processors = new HashSet<>();
+        project.getDependencies().stream().filter(Dependency::isAPT)
+                .forEach(d -> {
+                    processors.addAll(d.getProcessors());
+                    extraClasspath.add(d.getJar());
+                });
+
         return context -> {
             if (!inputSources.getFilesAndHashes().isEmpty()) {
                 // At least one .java file in sources, compile it (otherwise skip this and just copy resource)
@@ -86,7 +97,7 @@ public class BytecodeTask extends TaskFactory {
                 List<File> sourcePaths = inputDirs.getParentPaths().stream().map(Path::toFile).collect(Collectors.toUnmodifiableList());
                 File generatedClassesDir = getGeneratedClassesDir(context);
                 File classOutputDir = context.outputPath().toFile();
-                Javac javac = new Javac(context, generatedClassesDir, sourcePaths, classpathDirs, classOutputDir, bootstrapClasspath);
+                Javac javac = new Javac(context, generatedClassesDir, sourcePaths, classpathDirs, classOutputDir, bootstrapClasspath, processors);
 
                 // TODO convention for mapping to original file paths, provide FileInfo out of Inputs instead of Paths,
                 //      automatically relativized?

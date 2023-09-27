@@ -8,8 +8,11 @@ import com.vertispan.j2cl.tools.Javac;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -39,7 +42,7 @@ public class JavacTask extends TaskFactory {
         // emits only stripped bytecode, so we're not worried about anything other than .java files to compile and .class on the classpath
         Input ownSources = input(project, OutputTypes.STRIPPED_SOURCES).filter(JAVA_SOURCES);
 
-        List<Input> classpathHeaders = scope(project.getDependencies(), com.vertispan.j2cl.build.task.Dependency.Scope.COMPILE)
+        List<Input> classpathHeaders = scope(project.getDependencies().stream().filter(dependency -> !dependency.isAPT()).collect(Collectors.toSet()), com.vertispan.j2cl.build.task.Dependency.Scope.COMPILE)
                 .stream()
                 .map(inputs(OutputTypes.STRIPPED_BYTECODE_HEADERS))
                 // we only want bytecode _changes_, but we'll use the whole dir
@@ -47,7 +50,13 @@ public class JavacTask extends TaskFactory {
                 .collect(Collectors.toUnmodifiableList());
 
         File bootstrapClasspath = config.getBootstrapClasspath();
-        List<File> extraClasspath = config.getExtraClasspath();
+        List<File> extraClasspath = new ArrayList<>(config.getExtraClasspath());
+        Set<String> processors = new HashSet<>();
+        project.getDependencies().stream().filter(Dependency::isAPT)
+                .forEach(d -> {
+                    processors.addAll(d.getProcessors());
+                    extraClasspath.add(d.getJar());
+                });
         return context -> {
             if (ownSources.getFilesAndHashes().isEmpty()) {
                 return;// no work to do
@@ -59,7 +68,7 @@ public class JavacTask extends TaskFactory {
             ).collect(Collectors.toUnmodifiableList());
 
             List<File> sourcePaths = ownSources.getParentPaths().stream().map(Path::toFile).collect(Collectors.toUnmodifiableList());
-            Javac javac = new Javac(context, null, sourcePaths, classpathDirs, context.outputPath().toFile(), bootstrapClasspath);
+            Javac javac = new Javac(context, null, sourcePaths, classpathDirs, context.outputPath().toFile(), bootstrapClasspath, processors);
 
             // TODO convention for mapping to original file paths, provide FileInfo out of Inputs instead of Paths,
             //      automatically relativized?

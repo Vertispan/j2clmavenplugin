@@ -328,6 +328,7 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
             Dependency dep = new Dependency();
             dep.setProject(child);
             dep.setScope(translateScope(mavenDependency.getScope()));
+            dep.setJar(mavenDependency.getFile());
             dependencies.add(dep);
         }
         project.setDependencies(dependencies);
@@ -406,7 +407,7 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
     protected Predicate<String> withSourceRootFilter() {
         return path -> new File(path).exists() &&
             !(annotationProcessorMode.pluginShouldExcludeGeneratedAnnotationsDir()
-                && (path.endsWith("generated-test-sources" + File.separator + "test-annotations") || 
+                && (path.endsWith("generated-test-sources" + File.separator + "test-annotations") ||
                     path.endsWith("generated-sources" + File.separator + "annotations")));
     }
 
