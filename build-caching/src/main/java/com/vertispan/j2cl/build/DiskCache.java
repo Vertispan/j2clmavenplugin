@@ -171,6 +171,10 @@ public abstract class DiskCache {
             // disaster, can't interact with the cache, stop and give up
             // TODO mark all pending work as canceled?
         } catch (ClosedWatchServiceException e) {
+            if(!livenessThread.getState().equals(Thread.State.TERMINATED)) {
+                 throw new Error(e);
+            }
+
             // This is purely noise in the log and doesn't indicate an actual
             // error, so it can be safely ignored. Please see:
             // https://github.com/Vertispan/j2clmavenplugin/issues/188
