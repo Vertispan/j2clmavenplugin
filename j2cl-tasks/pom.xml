@@ -78,7 +78,7 @@
         </dependency>
 
         <dependency>
-            <groupId>com.vertispan.turbine</groupId>
+            <groupId>com.google.turbine</groupId>
             <artifactId>turbine</artifactId>
             <exclusions>
                 <exclusion>
