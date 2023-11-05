@@ -87,8 +87,8 @@
     <maven.gpg.plugin.version>1.6</maven.gpg.plugin.version>
 
     <!-- Builder dependencies versions -->
-    <j2cl.version>0.11.0-9336533b6</j2cl.version>
-    <closure.compiler.unshaded.version>v20221102-1</closure.compiler.unshaded.version>
+    <j2cl.version>v20230718-1</j2cl.version>
+    <closure.compiler.unshaded.version>v20230411-1</closure.compiler.unshaded.version>
     <commons.codec.version>1.11</commons.codec.version>
     <commons.io.version>2.7</commons.io.version>
 
@@ -115,7 +115,7 @@
     <jetty.version>9.4.43.v20210629</jetty.version>
 
     <!-- Required core j2cl dependencies -->
-    <vertispan.jsinterop.base.version>1.0.0-1</vertispan.jsinterop.base.version>
+    <vertispan.jsinterop.base.version>1.0.1-1</vertispan.jsinterop.base.version>
 
     <!-- Configurations -->
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

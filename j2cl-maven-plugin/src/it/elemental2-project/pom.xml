@@ -7,7 +7,7 @@
     <version>1.0</version>
 
     <properties>
-        <elemental2.version>1.1.0</elemental2.version>
+        <elemental2.version>1.2.1</elemental2.version>
     </properties>
 
     <dependencies>

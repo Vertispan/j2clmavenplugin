@@ -29,7 +29,7 @@ public class GwtIncompatiblePreprocessor {
         Problems problems = new Problems();
 
         try (OutputUtils.Output output = OutputUtils.initOutput(outputDirectory.toPath(), problems)) {
-            GwtIncompatibleStripper.preprocessFiles(unprocessedFiles, output, problems);
+            GwtIncompatibleStripper.preprocessFiles(unprocessedFiles, output, problems, "GwtIncompatible");
 
             if (problems.hasErrors()) {
                 throw new IllegalStateException(problems.getErrors().toString());

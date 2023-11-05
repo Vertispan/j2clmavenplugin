@@ -46,9 +46,9 @@ public class J2cl {
                     .setOutput(output)
                     .setSources(sourcesToCompile)
                     .setNativeSources(nativeSources)
-                    .setKotlinCommonSources(Collections.emptyList())
                     .setKotlincOptions(ImmutableList.of())
-                    .build();
+                    .setWasmEntryPointStrings(ImmutableList.of())
+                    .build(problems);
 
             log.debug(options.toString());
 
