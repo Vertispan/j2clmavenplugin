@@ -241,7 +241,7 @@ public class ClosureBundleTask extends TaskFactory {
     public interface SourceSupplier {
         String get() throws IOException;
     }
-    public static class DependencyInfoAndSource extends DependencyInfo.Base {
+    public static class DependencyInfoAndSource implements DependencyInfo {
         private final DependencyInfo delegate;
         private final SourceSupplier sourceSupplier;
 
@@ -291,11 +291,6 @@ public class ClosureBundleTask extends TaskFactory {
         }
 
         @Override
-        public boolean isModule() {
-            return delegate.isModule();
-        }
-
-        @Override
         public boolean isEs6Module() {
             return delegate.isEs6Module();
         }
@@ -316,7 +311,7 @@ public class ClosureBundleTask extends TaskFactory {
         }
     }
 
-    public static class DependencyInfoFormat extends DependencyInfo.Base {
+    public static class DependencyInfoFormat implements DependencyInfo {
         private String name;
 //        private String pathRelativeToClosureBase = name;
         private List<String> provides;
