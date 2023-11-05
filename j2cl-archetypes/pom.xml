@@ -16,9 +16,8 @@
   <description>Maven project archetypes for using J2CL</description>
 
   <properties>
-    <!-- Continue defaulting to 1.8 until we have good support for 11 -->
-    <maven.compiler.target>1.8</maven.compiler.target>
-    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>11</maven.compiler.target>
+    <maven.compiler.source>11</maven.compiler.source>
   </properties>
 
   <build>
