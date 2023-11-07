@@ -101,7 +101,7 @@
     <plexus.utils.version>3.1.0</plexus.utils.version>
     <plexus.classworlds.version>2.5.2</plexus.classworlds.version>
     <plexus.interpolation.version>1.25</plexus.interpolation.version>
-    <guava.version>31.1-jre</guava.version>
+    <guava.version>32.0.0-jre</guava.version>
     <error.prone.annotations.version>2.1.3</error.prone.annotations.version>
     <jsr305.version>3.0.2</jsr305.version>
     <commons.lang3.version>3.8.1</commons.lang3.version>
