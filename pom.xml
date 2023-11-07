@@ -112,7 +112,7 @@
     <selenium.version>3.141.59</selenium.version>
     <selenium.htmlunit.version>2.65.0</selenium.htmlunit.version>
     <jsoup.version>1.14.2</jsoup.version>
-    <jetty.version>9.4.43.v20210629</jetty.version>
+    <jetty.version>9.4.51.v20230217</jetty.version>
 
     <!-- Required core j2cl dependencies -->
     <vertispan.jsinterop.base.version>1.0.1-1</vertispan.jsinterop.base.version>
