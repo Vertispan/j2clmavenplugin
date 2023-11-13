@@ -3,6 +3,7 @@ package com.vertispan.j2cl.build.provided;
 import com.google.auto.service.AutoService;
 import com.google.common.collect.ImmutableList;
 import com.google.j2cl.common.SourceUtils;
+import com.google.turbine.binder.ClassPathBinder;
 import com.google.turbine.diag.TurbineError;
 import com.google.turbine.main.Main;
 import com.google.turbine.options.TurbineOptions;
@@ -96,6 +97,10 @@ public class TurbineTask extends JavacTask {
         try (ZipInputStream zis = new ZipInputStream(new FileInputStream(zipFile))) {
             ZipEntry zipEntry = zis.getNextEntry();
             while (zipEntry != null) {
+                if(zipEntry.getName().contains(ClassPathBinder.TRANSITIVE_PREFIX)) {
+                    zipEntry = zis.getNextEntry();
+                    continue;
+                }
                 boolean isDirectory = false;
                 if (zipEntry.getName().endsWith(File.separator)) {
                     isDirectory = true;
