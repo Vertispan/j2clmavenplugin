@@ -12,5 +12,5 @@ function lookup(key) {
 /** @define {string} */
 const exampleDefault = goog.define('exampleDefault', 'python$j2cl$service$loader$key');
 function lookupDefault() {
-    return lookup(exampleDefault);
+    return map[exampleDefault]();
 }

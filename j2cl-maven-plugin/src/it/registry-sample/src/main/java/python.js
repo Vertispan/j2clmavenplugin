@@ -13,4 +13,4 @@ function PythonLanguage() {
 PythonLanguage.prototype.getNameStr = function() {
     return "Python";
 };
-register("python$j2cl$service$loader$key", () => new PythonLanguage());
+map.python$j2cl$service$loader$key = () => new PythonLanguage();
