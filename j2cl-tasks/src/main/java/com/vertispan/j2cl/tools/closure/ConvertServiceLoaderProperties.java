@@ -2,12 +2,14 @@ package com.vertispan.j2cl.tools.closure;
 
 import com.google.javascript.jscomp.AbstractCompiler;
 import com.google.javascript.jscomp.CompilerPass;
-import com.google.javascript.jscomp.GatherGetterAndSetterProperties;
 import com.google.javascript.jscomp.NodeTraversal;
 import com.google.javascript.jscomp.parsing.parser.FeatureSet;
 import com.google.javascript.rhino.IR;
 import com.google.javascript.rhino.Node;
+import com.google.javascript.rhino.Token;
 import com.google.javascript.rhino.TokenStream;
+
+import java.util.Objects;
 
 /**
  * Modified copy of ConvertToDottedProperties. Changes from original:
@@ -27,40 +29,35 @@ public class ConvertServiceLoaderProperties extends NodeTraversal.AbstractPostOr
 
     private final AbstractCompiler compiler;
 
-    ConvertServiceLoaderProperties(AbstractCompiler compiler) {
+    public ConvertServiceLoaderProperties(AbstractCompiler compiler) {
         this.compiler = compiler;
     }
 
     @Override
     public void process(Node externs, Node root) {
         NodeTraversal.traverse(compiler, root, this);
-        //TODO consider removing this (or this comment)
-        GatherGetterAndSetterProperties.update(this.compiler, externs, root);
         System.err.println("ConvertServiceLoaderProperties running");
     }
 
     @Override
     public void visit(NodeTraversal t, Node n, Node parent) {
-        switch (n.getToken()) {
-            case OPTCHAIN_GETELEM:
-            case GETELEM:
-                Node left = n.getFirstChild();
-                Node right = left.getNext();
-                if (right.isStringLit() && right.getString().endsWith("$j2cl$service$loader$key") && isValidPropertyName(FeatureSet.ES3, right.getString())) {
-                    left.detach();
-                    right.detach();
-                    Node newGetProp =
-                            n.isGetElem()
-                                    ? IR.getprop(left, right.getString())
-                                    : (n.isOptionalChainStart()
-                                    ? IR.startOptChainGetprop(left, right.getString())
-                                    : IR.continueOptChainGetprop(left, right.getString()));
-                    n.replaceWith(newGetProp);
-                    compiler.reportChangeToEnclosingScope(newGetProp);
-                }
-                break;
-            default:
-                break;
+        if (Objects.requireNonNull(n.getToken()) == Token.OPTCHAIN_GETELEM || n.getToken() == Token.GETELEM) {
+            Node left = n.getFirstChild();
+            Node right = left.getNext();
+            System.err.println(right);
+            if (right.isStringLit() && right.getString().endsWith("$service$loader$key") && isValidPropertyName(FeatureSet.ES3, right.getString())) {
+                left.detach();
+                right.detach();
+
+                Node newGetProp =
+                        n.isGetElem()
+                                ? IR.getprop(left, right.getString())
+                                : (n.isOptionalChainStart()
+                                ? IR.startOptChainGetprop(left, right.getString())
+                                : IR.continueOptChainGetprop(left, right.getString()));
+                n.replaceWith(newGetProp);
+                compiler.reportChangeToEnclosingScope(newGetProp);
+            }
         }
     }
 

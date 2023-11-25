@@ -23,6 +23,8 @@ public class ServiceLoadingPassConfig extends PassConfig.PassConfigDelegate {
     @Override
     protected PassListBuilder getOptimizations() {
         PassListBuilder optimizations = super.getOptimizations();
+//        optimizations.addAfter(convertServiceLoaderProperties, PassNames.PARSE_INPUTS);
+        optimizations.addAfter(convertServiceLoaderProperties, PassNames.NORMALIZE);
         optimizations.addBefore(convertServiceLoaderProperties, PassNames.AFTER_EARLY_OPTIMIZATION_LOOP);
         optimizations.addBefore(convertServiceLoaderProperties, PassNames.AFTER_MAIN_OPTIMIZATIONS);
 //        optimizations.addAfter(convertServiceLoaderProperties, PassNames.PEEPHOLE_OPTIMIZATIONS);
