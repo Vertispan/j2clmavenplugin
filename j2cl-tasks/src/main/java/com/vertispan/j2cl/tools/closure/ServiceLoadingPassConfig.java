@@ -13,7 +13,7 @@ public class ServiceLoadingPassConfig extends PassConfig.PassConfigDelegate {
             PassFactory.builder()
                     .setName("ConvertServiceLoaderProperties")
                     .setRunInFixedPointLoop(true)
-                    .setInternalFactory(ConvertServiceLoaderProperties::new)
+                    .setInternalFactory(InlineServiceLoaderEntries::new)
                     .build();
 
     public ServiceLoadingPassConfig(CompilerOptions options) {
@@ -24,11 +24,10 @@ public class ServiceLoadingPassConfig extends PassConfig.PassConfigDelegate {
     protected PassListBuilder getOptimizations() {
         PassListBuilder optimizations = super.getOptimizations();
 //        optimizations.addAfter(convertServiceLoaderProperties, PassNames.PARSE_INPUTS);
-        optimizations.addAfter(convertServiceLoaderProperties, PassNames.NORMALIZE);
+//        optimizations.addAfter(convertServiceLoaderProperties, PassNames.NORMALIZE);
         optimizations.addBefore(convertServiceLoaderProperties, PassNames.AFTER_EARLY_OPTIMIZATION_LOOP);
         optimizations.addBefore(convertServiceLoaderProperties, PassNames.AFTER_MAIN_OPTIMIZATIONS);
 //        optimizations.addAfter(convertServiceLoaderProperties, PassNames.PEEPHOLE_OPTIMIZATIONS);
-//        optimizations.findByName()
         return optimizations;
     }
 }

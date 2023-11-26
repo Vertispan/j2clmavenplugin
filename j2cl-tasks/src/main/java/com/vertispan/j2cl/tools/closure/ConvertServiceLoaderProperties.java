@@ -44,7 +44,6 @@ public class ConvertServiceLoaderProperties extends NodeTraversal.AbstractPostOr
         if (Objects.requireNonNull(n.getToken()) == Token.OPTCHAIN_GETELEM || n.getToken() == Token.GETELEM) {
             Node left = n.getFirstChild();
             Node right = left.getNext();
-            System.err.println(right);
             if (right.isStringLit() && right.getString().endsWith("$service$loader$key") && isValidPropertyName(FeatureSet.ES3, right.getString())) {
                 left.detach();
                 right.detach();
@@ -61,7 +60,7 @@ public class ConvertServiceLoaderProperties extends NodeTraversal.AbstractPostOr
         }
     }
 
-    private static boolean isValidPropertyName(FeatureSet mode, String name) {
+    public static boolean isValidPropertyName(FeatureSet mode, String name) {
         if (isValidSimpleName(name)) {
             return true;
         } else {

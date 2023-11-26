@@ -13,4 +13,4 @@ function JavaLanguage() {
 JavaLanguage.prototype.getNameStr = function() {
     return "Java";
 };
-map.java$j2cl$service$loader$key =  () => new JavaLanguage();
+register('java', () => new JavaLanguage());
