@@ -9,6 +9,7 @@ import com.vertispan.j2cl.tools.closure.ServiceLoadingPassConfig;
 
 import javax.annotation.Nullable;
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -202,7 +203,6 @@ public class Closure {
             super(args);
             this.compiler = compiler;
             this.compiler.setErrorManager(new SortingErrorManager(Collections.singleton(new LoggingErrorReportGenerator(compiler, log))));
-            this.compiler.setPassConfig(new ServiceLoadingPassConfig(createOptions()));
             this.exportTestFunctions = exportTestFunctions;
             this.checkAssertions = checkAssertions;
             setExitCodeReceiver(exitCode -> {
@@ -227,6 +227,12 @@ public class Closure {
             options.setRemoveJ2clAsserts(!checkAssertions);
 
             return options;
+        }
+
+        @Override
+        protected void setRunOptions(CompilerOptions options) throws IOException {
+            super.setRunOptions(options);
+            this.compiler.setPassConfig(new ServiceLoadingPassConfig(options));
         }
     }
 
