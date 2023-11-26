@@ -46,21 +46,18 @@ public class InlineServiceLoaderEntries extends NodeTraversal.AbstractPostOrderC
 
     @Override
     public void visit(NodeTraversal t, Node n, @Nullable Node parent) {
-//        if (parent == null) {
-//            return;
-//        }
         if (Objects.requireNonNull(n.getToken()) == Token.OPTCHAIN_GETELEM || n.getToken() == Token.GETELEM) {
             Node left = n.getFirstChild();
-            Node right = left.getNext();
+            Node right = Objects.requireNonNull(left.getNext());
             if (right.isStringLit() && right.getString().endsWith(KEY_SUFFIX) && isValidPropertyName(FeatureSet.ES3, right.getString())) {
-                if (parent.getToken() == Token.ASSIGN) {
+                if (Objects.requireNonNull(parent).getToken() == Token.ASSIGN) {
                     // record write
                     System.out.println("write " + compiler.toSource(parent));
                     writes.put(right.getString(), n.getNext().getFirstChild().getNext().getNext().getFirstChild().getFirstChild());
                 } else if (parent.getToken() == Token.CALL) {
                     // record read
                     System.out.println("read " + compiler.toSource(parent));
-                    reads.put(right.getString(), n);
+                    reads.put(right.getString(), parent);
                 } else {
                     t.report(parent, J2CL_VERTISPAN_SERVICELOADER_UNKNOWN_NODE);
                 }
