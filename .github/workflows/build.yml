@@ -39,16 +39,15 @@ jobs:
       matrix:
         mvn: ['3.9.5', '3.8.8', '3.6.3', '3.5.4', '3.3.9', '3.2.5']
         java: ['11']
-#        include: # Confirm that old java works in the oldest maven, and that newest maven supports 8-current
-#            #TODO j2clmavenplugin#159 - re-enable this when the integration tests run cleanly in Java 17+
-#          - mvn: '3.8.8'
-#            java: '17'
-#          - mvn: '3.8.8'
-#            java: '21'
-#          - mvn: '3.9.5'
-#            java: '17'
-#          - mvn: '3.9.5'
-#            java: '21'
+        include: # Confirm that old java works in the oldest maven, and that newest maven supports 11-current
+          - mvn: '3.8.8'
+            java: '17'
+          - mvn: '3.8.8'
+            java: '21'
+          - mvn: '3.9.5'
+            java: '17'
+          - mvn: '3.9.5'
+            java: '21'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
