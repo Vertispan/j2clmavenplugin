@@ -6,12 +6,17 @@ import com.vertispan.j2cl.build.task.*;
 import com.vertispan.j2cl.tools.Javac;
 
 import javax.annotation.Nullable;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -31,6 +36,8 @@ public class BytecodeTask extends TaskFactory {
     public static final PathMatcher JAVA_SOURCES = withSuffix(".java");
     public static final PathMatcher JAVA_BYTECODE = withSuffix(".class");
     public static final PathMatcher NOT_BYTECODE = p -> !JAVA_BYTECODE.matches(p);
+
+    public static final PathMatcher APT_PROCESSOR = p -> p.getFileName().toString().equals("javax.annotation.processing.Processor");
 
     @Override
     public String getOutputType() {
@@ -76,6 +83,13 @@ public class BytecodeTask extends TaskFactory {
                 .map(inputs(OutputTypes.BYTECODE))
                 .collect(Collectors.toUnmodifiableList());
 
+        List<Input> inReactorProcessors = scope(project.getDependencies().stream().filter(dependency -> dependency.getProject().hasSourcesMapped()
+                        && !dependency.getProject().isJsZip()).collect(Collectors.toSet()),
+                com.vertispan.j2cl.build.task.Dependency.Scope.COMPILE)
+                .stream()
+                .map(inputs(OutputTypes.BYTECODE))
+                .collect(Collectors.toUnmodifiableList());
+
         File bootstrapClasspath = config.getBootstrapClasspath();
         List<File> extraClasspath = new ArrayList<>(config.getExtraClasspath());
         Set<String> processors = new HashSet<>();
@@ -86,6 +100,14 @@ public class BytecodeTask extends TaskFactory {
                 });
 
         return context -> {
+            /* we don't know if reactor dependency project is apt, before it's compiled, so we need to check it on the fly
+               1) there are no processors in the project, so we pass empty set to javac, nothing happens
+               2) there are only reactor processors, so we pass empty set to javac, they will be triggered by javac
+               3) thee are both reactor and non-reactor processors, so we pass both to javac via set
+               4) there are only non-reactor processors, we pass them to javac via set
+             */
+            Set<String> aprProcessors = maybeAddInReactorAptProcessor(inReactorProcessors, processors);
+
             if (!inputSources.getFilesAndHashes().isEmpty()) {
                 // At least one .java file in sources, compile it (otherwise skip this and just copy resource)
 
@@ -97,7 +119,7 @@ public class BytecodeTask extends TaskFactory {
                 List<File> sourcePaths = inputDirs.getParentPaths().stream().map(Path::toFile).collect(Collectors.toUnmodifiableList());
                 File generatedClassesDir = getGeneratedClassesDir(context);
                 File classOutputDir = context.outputPath().toFile();
-                Javac javac = new Javac(context, generatedClassesDir, sourcePaths, classpathDirs, classOutputDir, bootstrapClasspath, processors);
+                Javac javac = new Javac(context, generatedClassesDir, sourcePaths, classpathDirs, classOutputDir, bootstrapClasspath, aprProcessors);
 
                 // TODO convention for mapping to original file paths, provide FileInfo out of Inputs instead of Paths,
                 //      automatically relativized?
@@ -129,5 +151,24 @@ public class BytecodeTask extends TaskFactory {
     @Nullable
     protected File getGeneratedClassesDir(TaskContext context) {
         return context.outputPath().toFile();
+    }
+
+    private Set<String> maybeAddInReactorAptProcessor(List<Input> reactorProcessors, Set<String> processors) {
+        if(processors.isEmpty()) {
+            return Collections.emptySet();
+        }
+        Set<String> existingProcessors = new HashSet<>(processors);
+        reactorProcessors.stream().map(input -> input.filter(APT_PROCESSOR))
+                .forEach(input -> input.getFilesAndHashes().forEach(file -> {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file.getAbsolutePath().toFile())))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    existingProcessors.add(line);
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }));
+       return existingProcessors;
     }
 }
