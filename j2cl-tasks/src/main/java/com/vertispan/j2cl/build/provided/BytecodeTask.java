@@ -106,7 +106,7 @@ public class BytecodeTask extends TaskFactory {
                3) thee are both reactor and non-reactor processors, so we pass both to javac via set
                4) there are only non-reactor processors, we pass them to javac via set
              */
-            Set<String> aprProcessors = maybeAddInReactorAptProcessor(inReactorProcessors, processors);
+            Set<String> aptProcessors = maybeAddInReactorAptProcessor(inReactorProcessors, processors);
 
             if (!inputSources.getFilesAndHashes().isEmpty()) {
                 // At least one .java file in sources, compile it (otherwise skip this and just copy resource)
@@ -119,7 +119,7 @@ public class BytecodeTask extends TaskFactory {
                 List<File> sourcePaths = inputDirs.getParentPaths().stream().map(Path::toFile).collect(Collectors.toUnmodifiableList());
                 File generatedClassesDir = getGeneratedClassesDir(context);
                 File classOutputDir = context.outputPath().toFile();
-                Javac javac = new Javac(context, generatedClassesDir, sourcePaths, classpathDirs, classOutputDir, bootstrapClasspath, aprProcessors);
+                Javac javac = new Javac(context, generatedClassesDir, sourcePaths, classpathDirs, classOutputDir, bootstrapClasspath, aptProcessors);
 
                 // TODO convention for mapping to original file paths, provide FileInfo out of Inputs instead of Paths,
                 //      automatically relativized?
