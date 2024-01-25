@@ -1,6 +1,16 @@
 package com.vertispan.j2cl.build;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 /**
  * Represents a set of sources and the dependencies used to build them. The sourceRoots property
@@ -14,6 +24,12 @@ public class Project implements com.vertispan.j2cl.build.task.Project {
     private List<String> sourceRoots;
 
     private boolean isJsZip = false;
+
+    private File jar;
+
+    private Optional<Boolean> isAPT = Optional.empty();
+
+    private Set<String> processors = new HashSet<>();
 
     public Project(String key) {
         this.key = key;
@@ -81,5 +97,55 @@ public class Project implements com.vertispan.j2cl.build.task.Project {
     @Override
     public boolean isJsZip() {
         return isJsZip;
+    }
+
+    /*
+     * This is a bit of a hack, but it's the only way to know if a jar contains APT processors
+     * Note: isAPT() must be called before getProcessors
+     */
+    @Override
+    public boolean isAPT() {
+        if (isAPT.isEmpty()) {
+            if (jar == null || isJsZip() || hasSourcesMapped()) {
+                isAPT = Optional.of(false);
+                return false;
+            } else if (jar.exists()) {
+                try (ZipFile zipFile = new ZipFile(jar)) {
+                    ZipEntry entry = zipFile.getEntry("META-INF/services/javax.annotation.processing.Processor");
+                    if (entry != null) {
+                        this.isAPT = Optional.of(true);
+
+                        try (InputStreamReader inputStreamReader = new InputStreamReader(zipFile.getInputStream(entry), StandardCharsets.UTF_8);
+                             BufferedReader bufferedReader = new BufferedReader(inputStreamReader)) {
+                            bufferedReader.lines().forEach(line -> processors.add(line.trim()));
+                            if (!processors.isEmpty()) {
+                                this.isAPT = Optional.of(true);
+                            }
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    } else {
+                        this.isAPT = Optional.of(false);
+                    }
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+        return isAPT.get();
+    }
+
+    @Override
+    public File getJar() {
+        return jar;
+    }
+
+    public void setJar(File jar) {
+        this.jar = jar;
+    }
+
+    @Override
+    public Set<String> getProcessors() {
+        return processors;
     }
 }

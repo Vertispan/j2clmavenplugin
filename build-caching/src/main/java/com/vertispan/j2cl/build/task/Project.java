@@ -1,6 +1,8 @@
 package com.vertispan.j2cl.build.task;
 
+import java.io.File;
 import java.util.List;
+import java.util.Set;
 
 /**
  *
@@ -19,4 +21,14 @@ public interface Project {
      * @return true if this project should only be used for its JS content, false otherwise
      */
     boolean isJsZip();
+
+    boolean isAPT();
+
+    File getJar();
+
+    /**
+     * @return the set of annotation processors that should be run on this project
+     */
+    Set<String> getProcessors();
+
 }

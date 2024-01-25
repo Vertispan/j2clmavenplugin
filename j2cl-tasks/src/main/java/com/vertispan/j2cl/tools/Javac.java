@@ -47,7 +47,7 @@ public class Javac {
             //java 9+
             javacOptions.add("--release=8");
         }
-        if(!processors.isEmpty()) {
+        if (!processors.isEmpty()) {
             javacOptions.add("-processor");
             javacOptions.add(String.join(",", processors));
         }

@@ -14,6 +14,7 @@ import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -37,7 +38,8 @@ public class BytecodeTask extends TaskFactory {
     public static final PathMatcher JAVA_BYTECODE = withSuffix(".class");
     public static final PathMatcher NOT_BYTECODE = p -> !JAVA_BYTECODE.matches(p);
 
-    public static final PathMatcher APT_PROCESSOR = p -> p.getFileName().toString().equals("javax.annotation.processing.Processor");
+    public static final PathMatcher APT_PROCESSOR = p ->
+                        p.equals(Paths.get("META-INF", "services", "javax.annotation.processing.Processor"));
 
     @Override
     public String getOutputType() {
@@ -77,7 +79,9 @@ public class BytecodeTask extends TaskFactory {
         // be if we had built a jar
         Input resources = input(project, OutputTypes.INPUT_SOURCES).filter(NOT_BYTECODE);
 
-        List<Input> bytecodeClasspath = scope(project.getDependencies().stream().filter(dependency -> !dependency.isAPT()).collect(Collectors.toSet()),
+        List<Input> bytecodeClasspath = scope(project.getDependencies()
+                        .stream()
+                        .filter(dependency -> !dependency.getProject().isAPT()).collect(Collectors.toSet()),
                 com.vertispan.j2cl.build.task.Dependency.Scope.COMPILE)
                 .stream()
                 .map(inputs(OutputTypes.BYTECODE))
@@ -93,10 +97,10 @@ public class BytecodeTask extends TaskFactory {
         File bootstrapClasspath = config.getBootstrapClasspath();
         List<File> extraClasspath = new ArrayList<>(config.getExtraClasspath());
         Set<String> processors = new HashSet<>();
-        project.getDependencies().stream().filter(Dependency::isAPT)
-                .forEach(d -> {
-                    processors.addAll(d.getProcessors());
-                    extraClasspath.add(d.getJar());
+        project.getDependencies().stream().map(d -> d.getProject()).filter(Project::isAPT)
+                .forEach(p -> {
+                    processors.addAll(p.getProcessors());
+                    extraClasspath.add(p.getJar());
                 });
 
         return context -> {
@@ -154,17 +158,14 @@ public class BytecodeTask extends TaskFactory {
     }
 
     private Set<String> maybeAddInReactorAptProcessor(List<Input> reactorProcessors, Set<String> processors) {
-        if(processors.isEmpty()) {
+        if (processors.isEmpty()) {
             return Collections.emptySet();
         }
         Set<String> existingProcessors = new HashSet<>(processors);
         reactorProcessors.stream().map(input -> input.filter(APT_PROCESSOR))
                 .forEach(input -> input.getFilesAndHashes().forEach(file -> {
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file.getAbsolutePath().toFile())))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    existingProcessors.add(line);
-                }
+            try (Stream<String> lines = Files.lines(file.getAbsolutePath())) {
+                lines.forEach(line -> existingProcessors.add(line.trim()));
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
