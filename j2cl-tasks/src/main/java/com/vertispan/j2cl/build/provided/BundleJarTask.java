@@ -74,6 +74,8 @@ public class BundleJarTask extends TaskFactory {
         }
 
         File initialScriptFile = config.getWebappDirectory().resolve(config.getInitialScriptFilename()).toFile();
+        boolean sourcemapsEnabled = config.getSourcemapsEnabled() && !config.getEnableIncrementalSourcemaps();
+
         Map<String, Object> defines = new LinkedHashMap<>(config.getDefines());
 
         List<Input> outputToCopy = Stream.concat(
@@ -113,11 +115,14 @@ public class BundleJarTask extends TaskFactory {
                     Files.copy(bundle.getAbsolutePath(), targetFile, StandardCopyOption.REPLACE_EXISTING);
                 }
 
-                File destSourcesDir = outputDir.toPath().resolve(Closure.SOURCES_DIRECTORY_NAME).toFile();
-                destSourcesDir.mkdirs();
-                for (Path dir : jsSources.stream().map(Input::getParentPaths).flatMap(Collection::stream).map(p -> p.resolve(Closure
-                        .SOURCES_DIRECTORY_NAME)).collect(Collectors.toSet())) {
-                    FileUtils.copyDirectory(dir.toFile(), destSourcesDir);
+                // Copy sources to the output directory, if sourcemaps are enabled and incremental source maps is not.
+                if(sourcemapsEnabled) {
+                    File destSourcesDir = outputDir.toPath().resolve(Closure.SOURCES_DIRECTORY_NAME).toFile();
+                    destSourcesDir.mkdirs();
+                    for (Path dir : jsSources.stream().map(Input::getParentPaths).flatMap(Collection::stream).map(p -> p.resolve(Closure
+                            .SOURCES_DIRECTORY_NAME)).collect(Collectors.toSet())) {
+                        FileUtils.copyDirectory(dir.toFile(), destSourcesDir);
+                    }
                 }
 
                 try {

@@ -92,6 +92,7 @@ public class ClosureBundleTask extends TaskFactory {
 
         // Consider treating this always as true, since the build doesnt get more costly to be incremental
         boolean incrementalEnabled = config.isIncrementalEnabled();
+        boolean enableIncrementalSourcemaps = config.getEnableIncrementalSourcemaps();
 
         Gson gson = new GsonBuilder().setPrettyPrinting().serializeNulls().create();
 
@@ -132,6 +133,7 @@ public class ClosureBundleTask extends TaskFactory {
                     depInfoMap = deps.stream()
                             .map(info -> new DependencyInfoAndSource(
                                     info,
+                                    fileNameKey,
                                     () -> Files.readString(lastOutput.resolve(Closure.SOURCES_DIRECTORY_NAME).resolve(info.getName())))
                             )
                             .collect(Collectors.toMap(DependencyInfo::getName, Function.identity()));
@@ -151,7 +153,7 @@ public class ClosureBundleTask extends TaskFactory {
                             input.setCompiler(jsCompiler);
                             depInfoMap.put(
                                     change.getSourcePath().toString(),
-                                    new DependencyInfoAndSource(input, input::getCode)
+                                    new DependencyInfoAndSource(input, fileNameKey, input::getCode)
                             );
                         }
                     }
@@ -170,8 +172,7 @@ public class ClosureBundleTask extends TaskFactory {
                                 .withOriginalPath(path.getSourcePath().toString())
                                 .build());
                         input.setCompiler(jsCompiler);
-
-                        dependencyInfos.add(new DependencyInfoAndSource(input, input::getCode));
+                        dependencyInfos.add(new DependencyInfoAndSource(input, fileNameKey, input::getCode));
                     }
                 }
             }
@@ -202,6 +203,7 @@ public class ClosureBundleTask extends TaskFactory {
                 for (DependencyInfoAndSource info : sorter.getSortedList()) {
                     String code = info.getSource();
                     String name = info.getName();
+                    String projectName = info.getProject();
 
                     //TODO do we actually need this?
                     if (Compiler.isFillFileName(name) && code.isEmpty()) {
@@ -210,7 +212,8 @@ public class ClosureBundleTask extends TaskFactory {
 
                     // append this file and a comment where it came from
                     bundleOut.append("//").append(name).append("\n");
-                    bundler.withPath(name).withSourceUrl(Closure.SOURCES_DIRECTORY_NAME + "/" + name).appendTo(bundleOut, info, code);
+                    String sourceMapUrl = Closure.SOURCES_DIRECTORY_NAME + (enableIncrementalSourcemaps ? ("/" + projectName) : "") + "/"  + name;
+                    bundler.withPath(name).withSourceUrl(sourceMapUrl).appendTo(bundleOut, info, code);
                     bundleOut.append("\n");
 
                 }
@@ -245,8 +248,11 @@ public class ClosureBundleTask extends TaskFactory {
         private final DependencyInfo delegate;
         private final SourceSupplier sourceSupplier;
 
-        public DependencyInfoAndSource(DependencyInfo delegate, SourceSupplier sourceSupplier) {
+        private final String project;
+
+        public DependencyInfoAndSource(DependencyInfo delegate, String project, SourceSupplier sourceSupplier) {
             this.delegate = delegate;
+            this.project = project.replaceAll("\\.", "-");
             this.sourceSupplier = sourceSupplier;
         }
 
@@ -308,6 +314,10 @@ public class ClosureBundleTask extends TaskFactory {
         @Override
         public boolean getHasNoCompileAnnotation() {
             return delegate.getHasNoCompileAnnotation();
+        }
+
+        public String getProject() {
+            return project;
         }
     }
 
