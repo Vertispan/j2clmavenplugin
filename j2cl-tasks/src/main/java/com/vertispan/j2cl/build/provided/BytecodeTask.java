@@ -92,12 +92,16 @@ public class BytecodeTask extends TaskFactory {
                 com.vertispan.j2cl.build.task.Dependency.Scope.COMPILE)
                 .stream()
                 .map(inputs(OutputTypes.BYTECODE))
+                .map(input -> input.filter(APT_PROCESSOR))
                 .collect(Collectors.toUnmodifiableList());
 
         File bootstrapClasspath = config.getBootstrapClasspath();
         List<File> extraClasspath = new ArrayList<>(config.getExtraClasspath());
         Set<String> processors = new HashSet<>();
-        project.getDependencies().stream().map(d -> d.getProject()).filter(Project::isAPT)
+        project.getDependencies()
+                .stream()
+                .map(d -> d.getProject())
+                .filter(Project::isAPT)
                 .forEach(p -> {
                     processors.addAll(p.getProcessors());
                     extraClasspath.add(p.getJar());
@@ -162,8 +166,7 @@ public class BytecodeTask extends TaskFactory {
             return Collections.emptySet();
         }
         Set<String> existingProcessors = new HashSet<>(processors);
-        reactorProcessors.stream().map(input -> input.filter(APT_PROCESSOR))
-                .forEach(input -> input.getFilesAndHashes().forEach(file -> {
+        reactorProcessors.forEach(input -> input.getFilesAndHashes().forEach(file -> {
             try (Stream<String> lines = Files.lines(file.getAbsolutePath())) {
                 lines.forEach(line -> existingProcessors.add(line.trim()));
             } catch (IOException e) {
