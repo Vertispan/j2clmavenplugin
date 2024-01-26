@@ -98,6 +98,10 @@ public class Project implements com.vertispan.j2cl.build.task.Project {
         return isJsZip;
     }
 
+    /**
+     * If this dependency is a maven external dependency, return the jar file that represents it.
+     * @return File pointing at the jar, or null if this is a maven reactor project.
+     */
     @Override
     public File getJar() {
         return jar;
@@ -107,6 +111,11 @@ public class Project implements com.vertispan.j2cl.build.task.Project {
         this.jar = jar;
     }
 
+    /**
+     *  If this project is a maven external dependency and has an annotation processors in it,
+     *  return the set of declared processors. If this is a maven reactor project (with annotataion processor or not),
+     *  return an empty set.
+     */
     @Override
     public Set<String> getProcessors() {
         if (processors == null) {
