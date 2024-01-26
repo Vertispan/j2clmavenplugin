@@ -22,10 +22,16 @@ public interface Project {
      */
     boolean isJsZip();
 
+    /**
+     * If this dependency is a maven external dependency, return the jar file that represents it.
+     * @return File pointing at the jar, or null if this is a maven reactor project.
+     */
     File getJar();
 
     /**
-     * @return the set of annotation processors that should be run on this project
+     *  If this project is a maven external dependency and has an annotation processors in it,
+     *  return the set of declared processors. If this is a maven reactor project (with annotataion processor or not),
+     *  return an empty set.
      */
     Set<String> getProcessors();
 
