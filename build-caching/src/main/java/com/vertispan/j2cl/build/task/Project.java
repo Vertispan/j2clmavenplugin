@@ -21,9 +21,7 @@ public interface Project {
      * @return true if this project should only be used for its JS content, false otherwise
      */
     boolean isJsZip();
-
-    boolean isAPT();
-
+    
     File getJar();
 
     /**

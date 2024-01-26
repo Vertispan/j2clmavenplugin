@@ -81,7 +81,7 @@ public class BytecodeTask extends TaskFactory {
 
         List<Input> bytecodeClasspath = scope(project.getDependencies()
                         .stream()
-                        .filter(dependency -> !dependency.getProject().isAPT()).collect(Collectors.toSet()),
+                        .filter(dependency -> dependency.getProject().getProcessors().isEmpty()).collect(Collectors.toSet()),
                 com.vertispan.j2cl.build.task.Dependency.Scope.COMPILE)
                 .stream()
                 .map(inputs(OutputTypes.BYTECODE))
@@ -101,7 +101,7 @@ public class BytecodeTask extends TaskFactory {
         project.getDependencies()
                 .stream()
                 .map(d -> d.getProject())
-                .filter(Project::isAPT)
+                .filter(p -> !p.getProcessors().isEmpty())
                 .forEach(p -> {
                     processors.addAll(p.getProcessors());
                     extraClasspath.add(p.getJar());
