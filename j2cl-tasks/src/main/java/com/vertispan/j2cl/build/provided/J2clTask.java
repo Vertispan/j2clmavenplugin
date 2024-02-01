@@ -42,7 +42,9 @@ public class J2clTask extends TaskFactory {
         List<Input> ownNativeJsSources = Collections.singletonList(input(project, OutputTypes.BYTECODE).filter(NATIVE_JS_SOURCES));
 
         // From our classpath, j2cl is only interested in our compile classpath's bytecode
-        List<Input> classpathHeaders = scope(project.getDependencies(), com.vertispan.j2cl.build.task.Dependency.Scope.COMPILE)
+        List<Input> classpathHeaders = scope(project.getDependencies().stream()
+                .filter(dep -> dep.getProject().getProcessors().isEmpty())
+                .collect(Collectors.toSet()), com.vertispan.j2cl.build.task.Dependency.Scope.COMPILE)
                 .stream()
                 .map(inputs(OutputTypes.STRIPPED_BYTECODE_HEADERS))
                 // we only want bytecode _changes_, but we'll use the whole dir

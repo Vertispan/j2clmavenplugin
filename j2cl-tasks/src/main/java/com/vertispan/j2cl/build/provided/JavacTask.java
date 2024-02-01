@@ -9,6 +9,7 @@ import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -59,7 +60,7 @@ public class JavacTask extends TaskFactory {
             ).collect(Collectors.toUnmodifiableList());
 
             List<File> sourcePaths = ownSources.getParentPaths().stream().map(Path::toFile).collect(Collectors.toUnmodifiableList());
-            Javac javac = new Javac(context, null, sourcePaths, classpathDirs, context.outputPath().toFile(), bootstrapClasspath);
+            Javac javac = new Javac(context, null, sourcePaths, classpathDirs, context.outputPath().toFile(), bootstrapClasspath, Collections.emptySet());
 
             // TODO convention for mapping to original file paths, provide FileInfo out of Inputs instead of Paths,
             //      automatically relativized?

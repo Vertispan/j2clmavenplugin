@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -33,7 +34,7 @@ public class Javac {
     StandardJavaFileManager fileManager;
     private DiagnosticCollector<JavaFileObject> listener;
 
-    public Javac(BuildLog log, File generatedClassesPath, List<File> sourcePaths, List<File> classpath, File classesDirFile, File bootstrap) throws IOException {
+    public Javac(BuildLog log, File generatedClassesPath, List<File> sourcePaths, List<File> classpath, File classesDirFile, File bootstrap, Set<String> processors) throws IOException {
         this.log = log;
 //        for (File file : classpath) {
 //            System.out.println(file.getAbsolutePath() + " " + file.exists() + " " + file.isDirectory());
@@ -46,6 +47,11 @@ public class Javac {
             //java 9+
             javacOptions.add("--release=8");
         }
+        if (!processors.isEmpty()) {
+            javacOptions.add("-processor");
+            javacOptions.add(String.join(",", processors));
+        }
+
         compiler = ToolProvider.getSystemJavaCompiler();
         listener = new DiagnosticCollector<>();
         fileManager = compiler.getStandardFileManager(listener, null, null);

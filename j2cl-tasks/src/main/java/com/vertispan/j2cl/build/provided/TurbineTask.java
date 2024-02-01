@@ -52,7 +52,10 @@ public class TurbineTask extends JavacTask {
 
         List<File> extraClasspath = config.getExtraClasspath();
 
-        List<Input> compileClasspath = scope(project.getDependencies(), Dependency.Scope.COMPILE).stream()
+        List<Input> compileClasspath = scope(project.getDependencies().stream()
+                        .filter(dep -> dep.getProject().getProcessors().isEmpty())
+                        .collect(Collectors.toSet()), Dependency.Scope.COMPILE)
+                .stream()
                 .map(p -> input(p, OutputTypes.STRIPPED_BYTECODE_HEADERS))
                 .map(input -> input.filter(JAVA_BYTECODE))
                 .collect(Collectors.toUnmodifiableList());
