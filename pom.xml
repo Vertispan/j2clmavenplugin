@@ -356,6 +356,41 @@
         <artifactId>maven-site-plugin</artifactId>
         <version>3.11.0</version>
       </plugin>
+      <plugin>
+        <groupId>com.mycila</groupId>
+        <artifactId>license-maven-plugin</artifactId>
+        <version>3.0</version>
+        <configuration>
+          <header>LICENSE.header</header>
+          <encoding>${project.build.sourceEncoding}</encoding>
+          <skipExistingHeaders>true</skipExistingHeaders>
+          <mapping>
+            <java>SLASHSTAR_STYLE</java>
+          </mapping>
+          <excludes>
+            <exclude>.github/**</exclude>
+            <exclude>.circleci/**</exclude>
+            <exclude>**/*.md</exclude>
+            <exclude>**/LICENSE</exclude>
+            <exclude>**/LICENSE.header</exclude>
+            <exclude>**/.gitignore</exclude>
+            <exclude>**/src/it/**</exclude>
+            <exclude>**/src/*/resources/**</exclude>
+            <exclude>**/pom.xml</exclude>
+            <exclude>**/.flattened-pom.xml</exclude>
+          </excludes>
+          <properties>
+            <year>${project.inceptionYear}</year>
+          </properties>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
     <pluginManagement>
       <plugins>
