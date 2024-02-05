@@ -130,6 +130,12 @@ public class WatchMojo extends AbstractBuildMojo {
     protected boolean enableSourcemaps;
 
     /**
+     * True to copy only changed source files to the output directory. This is a performance optimization.
+     */
+    @Parameter(defaultValue = "false")
+    protected boolean enableIncrementalSourcemaps;
+
+    /**
      * @deprecated Will be removed in 0.21
      */
     @Deprecated
