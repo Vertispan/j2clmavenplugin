@@ -116,7 +116,7 @@ public class BundleJarTask extends TaskFactory {
                 }
 
                 // Copy sources to the output directory, if sourcemaps are enabled and incremental source maps is not.
-                if(sourcemapsEnabled) {
+                if (sourcemapsEnabled) {
                     File destSourcesDir = outputDir.toPath().resolve(Closure.SOURCES_DIRECTORY_NAME).toFile();
                     destSourcesDir.mkdirs();
                     for (Path dir : jsSources.stream().map(Input::getParentPaths).flatMap(Collection::stream).map(p -> p.resolve(Closure
