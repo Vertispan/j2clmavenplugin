@@ -367,17 +367,11 @@
           <mapping>
             <java>SLASHSTAR_STYLE</java>
           </mapping>
+          <includes>
+            <include>**/*.java</include>
+          </includes>
           <excludes>
-            <exclude>.github/**</exclude>
-            <exclude>.circleci/**</exclude>
-            <exclude>**/*.md</exclude>
-            <exclude>**/LICENSE</exclude>
-            <exclude>**/LICENSE.header</exclude>
-            <exclude>**/.gitignore</exclude>
-            <exclude>**/src/it/**</exclude>
             <exclude>**/src/*/resources/**</exclude>
-            <exclude>**/pom.xml</exclude>
-            <exclude>**/.flattened-pom.xml</exclude>
           </excludes>
           <properties>
             <year>${project.inceptionYear}</year>
