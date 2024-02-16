@@ -26,9 +26,7 @@ import com.vertispan.j2cl.build.task.Input;
 import com.vertispan.j2cl.build.task.OutputTypes;
 import com.vertispan.j2cl.build.task.Project;
 import com.vertispan.j2cl.build.task.TaskFactory;
-import com.vertispan.j2cl.tools.Closure;
 import io.methvin.watcher.hashing.Murmur3F;
-import org.apache.commons.io.FileUtils;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
@@ -115,17 +113,9 @@ public class ClosureBundleTask extends TaskFactory {
                 return;// nothing to do
             }
 
-            // copy the sources locally so that we can create usable sourcemaps
-            //TODO consider a soft link
-            File sources = new File(closureOutputDir, Closure.SOURCES_DIRECTORY_NAME);
-            for (Path path : js.stream().map(Input::getParentPaths).flatMap(Collection::stream).collect(Collectors.toUnmodifiableList())) {
-                FileUtils.copyDirectory(path.toFile(), sources);
-            }
-
             List<DependencyInfoAndSource> dependencyInfos = new ArrayList<>();
             Compiler jsCompiler = new Compiler(System.err);//TODO before merge, write this to the log
 
-            Path sourcesPath = context.outputPath().resolve(Closure.SOURCES_DIRECTORY_NAME);
             if (incrementalEnabled && context.lastSuccessfulOutput().isPresent()) {
                 // collect any dep info from disk for existing files
                 final Map<String, DependencyInfoAndSource> depInfoMap;
@@ -135,9 +125,15 @@ public class ClosureBundleTask extends TaskFactory {
                     }.getType();
                     List<DependencyInfoFormat> deps = gson.fromJson(new BufferedReader(new InputStreamReader(inputStream)), listType);
                     depInfoMap = deps.stream()
-                            .map(info -> new DependencyInfoAndSource(
-                                    info,
-                                    () -> Files.readString(lastOutput.resolve(Closure.SOURCES_DIRECTORY_NAME).resolve(info.getName())))
+                            .map(info -> {
+                                        Path p = js.stream().flatMap(jsInput -> jsInput.getParentPaths().stream())
+                                                .map(parent -> parent.resolve(info.getName()))
+                                                .filter(Files::exists)
+                                                .findFirst().get();
+                                        return new DependencyInfoAndSource(
+                                                p, info,
+                                                () -> Files.readString(p));
+                                    }
                             )
                             .collect(Collectors.toMap(DependencyInfo::getName, Function.identity()));
                 }
@@ -149,14 +145,18 @@ public class ClosureBundleTask extends TaskFactory {
                             depInfoMap.remove(change.getSourcePath().toString());
                         } else {
                             // ADD or MODIFY
+                            Path p = jsInput.getParentPaths().stream()
+                                    .map(parent -> parent.resolve(change.getSourcePath()))
+                                    .filter(Files::exists)
+                                    .findFirst().get();
                             CompilerInput input = new CompilerInput(SourceFile.builder()
-                                    .withPath(sourcesPath.resolve(change.getSourcePath()))
+                                    .withPath(p)
                                     .withOriginalPath(change.getSourcePath().toString())
                                     .build());
                             input.setCompiler(jsCompiler);
                             depInfoMap.put(
                                     change.getSourcePath().toString(),
-                                    new DependencyInfoAndSource(input, input::getCode)
+                                    new DependencyInfoAndSource(p, input, input::getCode)
                             );
                         }
                     }
@@ -170,13 +170,17 @@ public class ClosureBundleTask extends TaskFactory {
                 //non-incremental, read everything
                 for (Input jsInput : js) {
                     for (CachedPath path : jsInput.getFilesAndHashes()) {
+                        Path p = jsInput.getParentPaths().stream()
+                                .map(parent -> parent.resolve(path.getSourcePath()))
+                                .filter(Files::exists)
+                                .findFirst().get();
                         CompilerInput input = new CompilerInput(SourceFile.builder()
-                                .withPath(sourcesPath.resolve(path.getSourcePath()))
+                                .withPath(p)
                                 .withOriginalPath(path.getSourcePath().toString())
                                 .build());
                         input.setCompiler(jsCompiler);
 
-                        dependencyInfos.add(new DependencyInfoAndSource(input, input::getCode));
+                        dependencyInfos.add(new DependencyInfoAndSource(p, input, input::getCode));
                     }
                 }
             }
@@ -212,33 +216,35 @@ public class ClosureBundleTask extends TaskFactory {
                 for (DependencyInfoAndSource info : sorter.getSortedList()) {
                     String code = info.getSource();
                     String name = info.getName();
-                    String sourcemapContents = info.loadSourcemap(sourcesPath);
+                    String sourcemapContents = info.loadSourcemap();
 
                     //TODO do we actually need this?
                     if (Compiler.isFillFileName(name) && code.isEmpty()) {
                         continue;
                     }
 
+                    // Append a note indicating the name of the JS file that will follow
                     writer.append("//").append(name).append("\n");
 
+                    // Immediately before appending the JS file's contents, check which line we're starting at, and
+                    // merge sourcemap contents
                     if (sourcemapContents != null) {
                         sourceMapGenerator.setStartingPosition(writer.getLine(), 0);
                         SourceMapConsumerV3 section = new SourceMapConsumerV3();
                         section.parse(sourcemapContents);
                         section.visitMappings((sourceName, symbolName, sourceStartPosition, startPosition, endPosition) -> sourceMapGenerator.addMapping(Paths.get(name).resolveSibling(sourceName).toString(), symbolName, sourceStartPosition, startPosition, endPosition));
                         for (String source : section.getOriginalSources()) {
-                            String content = Files.readString(sourcesPath.resolve(name).resolveSibling(source));
+                            String content = Files.readString(info.getAbsolutePath().resolveSibling(source));
                             sourceMapGenerator.addSourcesContent(Paths.get(name).resolveSibling(source).toString(), content);
                         }
                     }
 
-                    // append this file and a comment where it came from
+                    // Append the current file
                     bundler.withPath(name).appendTo(writer, info, code);
                     writer.append("\n");
                 }
 
                 // write a reference to our new sourcemaps
-//                writer.append("// " + writer.getLine()).append("\n");
                 writer.append("//# sourceMappingURL=").append(sourcemapOutFileName).append('\n');
             }
 
@@ -324,12 +330,18 @@ public class ClosureBundleTask extends TaskFactory {
         String get() throws IOException;
     }
     public static class DependencyInfoAndSource implements DependencyInfo {
+        private final Path absolutePath;
         private final DependencyInfo delegate;
         private final SourceSupplier sourceSupplier;
 
-        public DependencyInfoAndSource(DependencyInfo delegate, SourceSupplier sourceSupplier) {
+        public DependencyInfoAndSource(Path absolutePath, DependencyInfo delegate, SourceSupplier sourceSupplier) {
+            this.absolutePath = absolutePath;
             this.delegate = delegate;
             this.sourceSupplier = sourceSupplier;
+        }
+
+        public Path getAbsolutePath() {
+            return absolutePath;
         }
 
         public String getSource() throws IOException {
@@ -392,7 +404,7 @@ public class ClosureBundleTask extends TaskFactory {
             return delegate.getHasNoCompileAnnotation();
         }
 
-        public String loadSourcemap(Path outPath) throws IOException {
+        public String loadSourcemap() throws IOException {
             String sourceMappingUrlMarker = "//# sourceMappingURL=";
             int offset = getSource().lastIndexOf(sourceMappingUrlMarker);
             if (offset == -1) {
@@ -400,7 +412,7 @@ public class ClosureBundleTask extends TaskFactory {
             }
             int urlPos = offset + sourceMappingUrlMarker.length();
             String sourcemapName = getSource().substring(urlPos).split("\\s")[0];
-            return Files.readString(outPath.resolve(getName()).resolveSibling(sourcemapName));
+            return Files.readString(absolutePath.resolveSibling(sourcemapName));
         }
     }
 
