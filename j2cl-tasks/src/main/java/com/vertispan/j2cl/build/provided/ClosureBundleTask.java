@@ -193,6 +193,10 @@ public class ClosureBundleTask extends TaskFactory {
 
             SourceMapGeneratorV3 sourceMapGenerator = new SourceMapGeneratorV3();
 
+            // track hashes as we go along, to name the js and sourcemap files
+            Murmur3F jsHash = new Murmur3F();
+            Murmur3F sourcemapHash = new Murmur3F();
+
             // rebundle all (optional: remaining) files using this already handled sort
             ClosureBundler bundler = new ClosureBundler(Transpiler.NULL, new BaseTranspiler(
                     new BaseTranspiler.CompilerSupplier(
@@ -208,7 +212,7 @@ public class ClosureBundleTask extends TaskFactory {
                     ""
             )).useEval(false);
 
-            String sourcemapOutFileName = fileNameKey + ".bundle.js.map";
+            final String sourcemapOutFileName;
 
             try (OutputStream outputStream = Files.newOutputStream(outputFilePath);
                  BufferedWriter bundleOut = new BufferedWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8));
@@ -223,18 +227,22 @@ public class ClosureBundleTask extends TaskFactory {
                         continue;
                     }
 
+                    jsHash.update(code.getBytes(StandardCharsets.UTF_8));
+
                     // Append a note indicating the name of the JS file that will follow
                     writer.append("//").append(name).append("\n");
 
                     // Immediately before appending the JS file's contents, check which line we're starting at, and
                     // merge sourcemap contents
                     if (sourcemapContents != null) {
+                        sourcemapHash.update(sourcemapContents.getBytes(StandardCharsets.UTF_8));
                         sourceMapGenerator.setStartingPosition(writer.getLine(), 0);
                         SourceMapConsumerV3 section = new SourceMapConsumerV3();
                         section.parse(sourcemapContents);
                         section.visitMappings((sourceName, symbolName, sourceStartPosition, startPosition, endPosition) -> sourceMapGenerator.addMapping(Paths.get(name).resolveSibling(sourceName).toString(), symbolName, sourceStartPosition, startPosition, endPosition));
                         for (String source : section.getOriginalSources()) {
                             String content = Files.readString(info.getAbsolutePath().resolveSibling(source));
+                            sourcemapHash.update(content.getBytes(StandardCharsets.UTF_8));
                             sourceMapGenerator.addSourcesContent(Paths.get(name).resolveSibling(source).toString(), content);
                         }
                     }
@@ -245,6 +253,7 @@ public class ClosureBundleTask extends TaskFactory {
                 }
 
                 // write a reference to our new sourcemaps
+                sourcemapOutFileName = fileNameKey + "-" + sourcemapHash.getValueHexString() + ".bundle.js.map";
                 writer.append("//# sourceMappingURL=").append(sourcemapOutFileName).append('\n');
             }
 
@@ -263,15 +272,7 @@ public class ClosureBundleTask extends TaskFactory {
                 gson.toJson(jsonList, jsonOut);
             }
 
-            // hash the file itself, rename to include that hash
-            Murmur3F murmur = new Murmur3F();
-            try (InputStream is = new BufferedInputStream(Files.newInputStream(outputFilePath))) {
-                int b;
-                while ((b = is.read()) != -1) {
-                    murmur.update(b);
-                }
-            }
-            Files.move(outputFilePath, outputFilePath.resolveSibling(fileNameKey + "-" + murmur.getValueHexString() + BUNDLE_JS_EXTENSION));
+            Files.move(outputFilePath, outputFilePath.resolveSibling(fileNameKey + "-" + jsHash.getValueHexString() + BUNDLE_JS_EXTENSION));
             //TODO when back to keyboard rename sourcemap? is that a thing we need to do?
         };
     }
