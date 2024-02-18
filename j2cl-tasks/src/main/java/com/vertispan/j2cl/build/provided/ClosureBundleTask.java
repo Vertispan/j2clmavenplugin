@@ -192,6 +192,7 @@ public class ClosureBundleTask extends TaskFactory {
             // TODO optional/stretch-goal find first change in the list, so we can keep old prefix of bundle output
 
             SourceMapGeneratorV3 sourceMapGenerator = new SourceMapGeneratorV3();
+            sourceMapGenerator.setSourceRoot("sources");
 
             // track hashes as we go along, to name the js and sourcemap files
             Murmur3F jsHash = new Murmur3F();
