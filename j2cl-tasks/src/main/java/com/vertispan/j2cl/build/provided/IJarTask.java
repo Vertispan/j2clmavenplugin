@@ -22,10 +22,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * TODO implement using the ijar tool or the equivelent
- *
- * For now, this is just the same output, straight passthru
+ * Along with {@link JavacTask}, no longer used unless specifically requested by the user.
+ * See {@link TurbineTask} for the more efficient replacement.
+ * <p>
+ * To re-enable this, set task type stripped_bytecode_headers to "original-bytecode".
  */
+@Deprecated
 @AutoService(TaskFactory.class)
 public class IJarTask extends TaskFactory {
     @Override

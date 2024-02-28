@@ -29,6 +29,12 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+/**
+ * Along with {@link IJarTask}, no longer used unless specifically requested by the user.
+ * See {@link TurbineTask} for the more efficient replacement. This class was an intermediate
+ * task, before IJarTask, re-enable that class through configuration to use this.
+ */
+@Deprecated
 @AutoService(TaskFactory.class)
 public class JavacTask extends TaskFactory {
 
