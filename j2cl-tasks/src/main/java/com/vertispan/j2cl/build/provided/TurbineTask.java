@@ -36,9 +36,10 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 @AutoService(TaskFactory.class)
-public class TurbineTask extends JavacTask {
+public class TurbineTask extends TaskFactory {
 
     public static final PathMatcher JAVA_SOURCES = withSuffix(".java");
+    public static final PathMatcher JAVA_BYTECODE = withSuffix(".class");
 
     @Override
     public String getOutputType() {
@@ -57,11 +58,6 @@ public class TurbineTask extends JavacTask {
 
     @Override
     public Task resolve(Project project, Config config) {
-        int version = SourceVersion.latestSupported().ordinal();
-        if(version == 8) {
-            return super.resolve(project, config);
-        }
-
         // emits only stripped bytecode, so we're not worried about anything other than .java files to compile and .class on the classpath
         Input ownSources = input(project, OutputTypes.STRIPPED_SOURCES).filter(JAVA_SOURCES);
 
