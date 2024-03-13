@@ -52,6 +52,8 @@ public class BytecodeTask extends TaskFactory {
     public static final PathMatcher JAVA_SOURCES = withSuffix(".java");
     public static final PathMatcher JAVA_BYTECODE = withSuffix(".class");
     public static final PathMatcher NOT_BYTECODE = p -> !JAVA_BYTECODE.matches(p);
+    public static final PathMatcher JAVA_MODULE_INFO = withSuffix("module-info.java");
+    public static final PathMatcher JAVA_SOURCES_EXCEPT_MODULE_INFO = p -> JAVA_SOURCES.matches(p) && !JAVA_MODULE_INFO.matches(p);
 
     public static final PathMatcher APT_PROCESSOR = p ->
                         p.equals(Paths.get("META-INF", "services", "javax.annotation.processing.Processor"));
@@ -89,7 +91,7 @@ public class BytecodeTask extends TaskFactory {
         // track the dirs (with all file changes) so that APT can see things it wants
         Input inputDirs = input(project, OutputTypes.INPUT_SOURCES);
         // track just java files (so we can just compile them)
-        Input inputSources = input(project, OutputTypes.INPUT_SOURCES).filter(JAVA_SOURCES);
+        Input inputSources = input(project, OutputTypes.INPUT_SOURCES).filter(JAVA_SOURCES_EXCEPT_MODULE_INFO);
         // track resources so they are available to downstream processors on the classpath, as they would
         // be if we had built a jar
         Input resources = input(project, OutputTypes.INPUT_SOURCES).filter(NOT_BYTECODE);
