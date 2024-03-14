@@ -163,7 +163,9 @@ public class ClosureTask extends TaskFactory {
                         // Bytecode sources will include original input sources
                         // as well as generated input when the jar was built
                         input(p, OutputTypes.BYTECODE)
-                ));
+                ))
+                // Removing any duplicate dependencies that would otherwise trigger unjustified duplicate paths detection in Closure
+                .distinct();
 
         Stream<Input> jsFromJsZips = scope(project.getDependencies(), Dependency.Scope.RUNTIME)
                 .stream()
