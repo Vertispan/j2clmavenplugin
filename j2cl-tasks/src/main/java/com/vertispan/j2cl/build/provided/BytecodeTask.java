@@ -90,7 +90,7 @@ public class BytecodeTask extends TaskFactory {
         // TODO just use one input for both of these
         // track the dirs (with all file changes) so that APT can see things it wants
         Input inputDirs = input(project, OutputTypes.INPUT_SOURCES);
-        // track just java files (so we can just compile them) ignoring module-info.java files (as they make javac 8 fail)
+        // track just java files (so we can just compile them), ignoring module-info.java files (as they make javac 8 fail)
         Input inputSources = input(project, OutputTypes.INPUT_SOURCES).filter(JAVA_SOURCES_EXCEPT_MODULE_INFO);
         // track resources so they are available to downstream processors on the classpath, as they would
         // be if we had built a jar
