@@ -6,15 +6,11 @@ import com.vertispan.j2cl.build.task.*;
 import com.vertispan.j2cl.tools.Javac;
 
 import javax.annotation.Nullable;
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -39,7 +35,7 @@ public class BytecodeTask extends TaskFactory {
     public static final PathMatcher NOT_BYTECODE = p -> !JAVA_BYTECODE.matches(p);
 
     public static final PathMatcher APT_PROCESSOR = p ->
-                        p.equals(Paths.get("META-INF", "services", "javax.annotation.processing.Processor"));
+                        p.equals(annotationProcessorPath);
 
     @Override
     public String getOutputType() {
