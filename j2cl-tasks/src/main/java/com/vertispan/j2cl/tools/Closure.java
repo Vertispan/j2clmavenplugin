@@ -20,9 +20,11 @@ import com.google.javascript.jscomp.Compiler;
 import com.vertispan.j2cl.build.DiskCache;
 import com.vertispan.j2cl.build.task.BuildLog;
 import com.vertispan.j2cl.build.task.Input;
+import com.vertispan.j2cl.tools.closure.ServiceLoadingPassConfig;
 
 import javax.annotation.Nullable;
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -190,7 +192,7 @@ public class Closure {
 
         final InProcessJsCompRunner jscompRunner;
         synchronized (GLOBAL_CLOSURE_ARGS_LOCK) {
-            jscompRunner = new InProcessJsCompRunner(log, jscompArgs.toArray(new String[0]), jsCompiler, exportTestFunctions, checkAssertions);
+            jscompRunner = new InProcessJsCompRunner(log, jscompArgs.toArray(new String[0]), jsCompiler, exportTestFunctions, checkAssertions, compilationLevel);
         }
         jscompArgs.forEach(log::debug);
         if (!jscompRunner.shouldRunCompiler()) {
@@ -210,11 +212,13 @@ public class Closure {
         private final boolean exportTestFunctions;
         private final boolean checkAssertions;
         private final Compiler compiler;
+        private final CompilationLevel compilationLevel;
         private Integer exitCode;
 
-        InProcessJsCompRunner(BuildLog log, String[] args, Compiler compiler, boolean exportTestFunctions, boolean checkAssertions) {
+        InProcessJsCompRunner(BuildLog log, String[] args, Compiler compiler, boolean exportTestFunctions, boolean checkAssertions, CompilationLevel compilationLevel) {
             super(args);
             this.compiler = compiler;
+            this.compilationLevel = compilationLevel;
             this.compiler.setErrorManager(new SortingErrorManager(Collections.singleton(new LoggingErrorReportGenerator(compiler, log))));
             this.exportTestFunctions = exportTestFunctions;
             this.checkAssertions = checkAssertions;
@@ -240,6 +244,14 @@ public class Closure {
             options.setRemoveJ2clAsserts(!checkAssertions);
 
             return options;
+        }
+
+        @Override
+        protected void setRunOptions(CompilerOptions options) throws IOException {
+            super.setRunOptions(options);
+            if (compilationLevel == CompilationLevel.ADVANCED_OPTIMIZATIONS) {
+                this.compiler.setPassConfig(new ServiceLoadingPassConfig(options));
+            }
         }
     }
 
