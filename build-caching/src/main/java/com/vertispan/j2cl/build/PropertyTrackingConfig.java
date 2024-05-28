@@ -197,6 +197,21 @@ public class PropertyTrackingConfig implements Config {
     }
 
     @Override
+    public Map<String, String> getAnnotationProcessorsArgs() {
+        ConfigValueProvider.ConfigNode args = config.findNode("annotationProcessorsArgs");
+        if (args == null) {
+            return Collections.emptyMap();
+        }
+        return args.getChildren().stream()
+                // order does not matter, let's make sure the task sees them in the correct order
+                .sorted(Comparator.comparing(ConfigValueProvider.ConfigNode::getName))
+                // create a map to return - since this is sorted it should be stable both in this tracker and for the consuming task
+                .collect(Collectors.toMap(ConfigValueProvider.ConfigNode::getName, this::useStringConfig, (s, s2) -> {
+                    throw new IllegalStateException("Two configs found with the same key: " + s + ", s2");
+                }, TreeMap::new));
+    }
+
+    @Override
     public Map<String, String> getUsedConfigs() {
         return Collections.unmodifiableMap(usedKeys);
     }

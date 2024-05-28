@@ -76,4 +76,5 @@ public interface Config {
      */
     boolean isIncrementalEnabled();
 
+    Map<String, String> getAnnotationProcessorsArgs();
 }

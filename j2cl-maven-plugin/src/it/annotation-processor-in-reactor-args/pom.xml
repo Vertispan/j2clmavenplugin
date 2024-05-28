@@ -1,0 +1,36 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>annotation-processor-in-reactor-args</groupId>
+    <artifactId>annotation-processor-in-reactor</artifactId>
+    <version>1.0</version>
+    <packaging>pom</packaging>
+
+    <description>
+        This project tests not only if an annotation processor can be in the reactor (as a dependency of
+        the actual j2cl app), but also if the processor can correctly read files out of java and resources
+        directories of projects and dependencies.
+    </description>
+
+    <modules>
+        <module>processor</module>
+        <module>app</module>
+    </modules>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.6.1</version>
+                    <configuration>
+                        <source>1.8</source>
+                        <target>1.8</target>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+</project>
