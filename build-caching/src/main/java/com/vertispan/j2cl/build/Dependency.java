@@ -15,6 +15,8 @@
  */
 package com.vertispan.j2cl.build;
 
+import java.util.Objects;
+
 /**
  * A dependency is a reference to another project's contents, scoped to indicate whether these are
  * required to be compiled against, or linked against (and so are required at runtime). The default
@@ -58,5 +60,21 @@ public class Dependency implements com.vertispan.j2cl.build.task.Dependency {
 
     public void setScope(Scope scope) {
         this.scope = scope;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        Dependency that = (Dependency) o;
+        return Objects.equals(project, that.project) && Objects.equals(scope, that.scope);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = Objects.hashCode(project);
+        result = 31 * result + Objects.hashCode(scope);
+        return result;
     }
 }

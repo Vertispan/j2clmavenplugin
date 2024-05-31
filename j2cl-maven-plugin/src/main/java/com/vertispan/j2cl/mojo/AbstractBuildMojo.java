@@ -345,7 +345,11 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
             Dependency dep = new Dependency();
             dep.setProject(child);
             dep.setScope(translateScope(mavenDependency.getScope()));
-            dependencies.add(dep);
+            // Although this new dependency is generally unique, the replacement mechanism may introduce a duplicate
+            // dependency if several original artifacts are replaced with the same final artifact.
+            if (!dependencies.contains(dep)) { // ensures we don't introduce a duplicate dependency (important for J2CL)
+                dependencies.add(dep);
+            }
         }
         project.setDependencies(dependencies);
 
