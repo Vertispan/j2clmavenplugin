@@ -106,6 +106,11 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
     private List<DependencyReplacement> defaultDependencyReplacements = Arrays.asList(
             new DependencyReplacement("com.google.jsinterop:base", "com.vertispan.jsinterop:base:" + Versions.VERTISPAN_JSINTEROP_BASE_VERSION),
             new DependencyReplacement("org.realityforge.com.google.jsinterop:base", "com.vertispan.jsinterop:base:" + Versions.VERTISPAN_JSINTEROP_BASE_VERSION),
+            // New GWT groupId since GWT 2.10
+            new DependencyReplacement("org.gwtproject:gwt-user", null),
+            new DependencyReplacement("org.gwtproject:gwt-dev", null),
+            new DependencyReplacement("org.gwtproject:gwt-servlet", null),
+            // Old GWT groupId before GWT 2.10
             new DependencyReplacement("com.google.gwt:gwt-user", null),
             new DependencyReplacement("com.google.gwt:gwt-dev", null),
             new DependencyReplacement("com.google.gwt:gwt-servlet", null)
