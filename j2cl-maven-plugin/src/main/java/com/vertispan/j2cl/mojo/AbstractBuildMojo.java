@@ -350,7 +350,9 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
             Dependency dep = new Dependency();
             dep.setProject(child);
             dep.setScope(translateScope(mavenDependency.getScope()));
-            dependencies.add(dep);
+            // Although this new dependency is generally unique, the replacement mechanism may introduce a duplicate
+            // dependency if several original artifacts are replaced with the same final artifact.
+            addDependencyResolveDuplicate(dep, dependencies); // ensures we don't introduce duplicates (important for J2CL)
         }
         project.setDependencies(dependencies);
 
@@ -375,6 +377,23 @@ public abstract class AbstractBuildMojo extends AbstractCacheMojo {
         builtProjects.put(key, project);
 
         return project;
+    }
+
+    private static void addDependencyResolveDuplicate(Dependency newDep, List<Dependency> dependencies) {
+        // We check if there is already an existing dependency in the list with the same project
+        for (int i = 0; i < dependencies.size(); i++) {
+            Dependency existingDep = dependencies.get(i);
+            if (Objects.equals(newDep.getProject(), existingDep.getProject())) {
+                // If we found one, we must keep only 1 dependency. The 2 can differ only by the scope, which has only 2
+                // possible values here: COMPILE or BOTH. BOTH is the one to keep in case of duplicates.
+                if (newDep.getScope() == Dependency.Scope.BOTH) {
+                    dependencies.set(i, newDep);
+                }
+                return;
+            }
+        }
+        // If we reach this point, it means there was no existing dependency with the same project in the list
+        dependencies.add(newDep); // So we can add it
     }
 
     private MavenProject resolveNonReactorProjectForArtifact(ProjectBuilder projectBuilder, ProjectBuildingRequest request, Artifact mavenDependency) throws ProjectBuildingException {
