@@ -20,13 +20,10 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.javascript.jscomp.deps.ClosureBundler;
 import com.vertispan.j2cl.build.task.*;
-import com.vertispan.j2cl.tools.Closure;
-import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
@@ -68,7 +65,7 @@ public class BundleJarTask extends TaskFactory {
                                 .map(inputs(OutputTypes.BUNDLED_JS)),
                         Stream.of(input(project, OutputTypes.BUNDLED_JS))
                 )
-                .map(i -> i.filter(BUNDLE_JS))
+                .map(i -> i.filter(BUNDLE_JS, withSuffix(".bundle.js.map")))
                 .collect(Collectors.toUnmodifiableList());
 
         // Sort the projects, to try to include them in order. We can't be sure that all project
@@ -128,19 +125,13 @@ public class BundleJarTask extends TaskFactory {
                     Files.copy(bundle.getAbsolutePath(), targetFile, StandardCopyOption.REPLACE_EXISTING);
                 }
 
-                File destSourcesDir = outputDir.toPath().resolve(Closure.SOURCES_DIRECTORY_NAME).toFile();
-                destSourcesDir.mkdirs();
-                for (Path dir : jsSources.stream().map(Input::getParentPaths).flatMap(Collection::stream).map(p -> p.resolve(Closure
-                        .SOURCES_DIRECTORY_NAME)).collect(Collectors.toSet())) {
-                    FileUtils.copyDirectory(dir.toFile(), destSourcesDir);
-                }
-
                 try {
                     Gson gson = new GsonBuilder().setPrettyPrinting().create();
                     String scriptsArray = gson.toJson(sourceOrder.stream()
                             .flatMap(i -> i.getFilesAndHashes().stream())
                             .map(CachedPath::getSourcePath)
                             .map(Path::toString)
+                            .filter(s -> s.endsWith(".js"))
                             .collect(Collectors.toUnmodifiableList())
                     );
                     // unconditionally set this to false, so that our dependency order works, since we're always in BUNDLE now
