@@ -44,6 +44,8 @@ public interface Config {
 
     boolean getSourcemapsEnabled();
 
+    boolean getEnableIncrementalSourcemaps();
+
     String getInitialScriptFilename();
 
     Map<String, String> getDefines();

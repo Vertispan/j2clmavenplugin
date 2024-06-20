@@ -107,6 +107,8 @@ public class ClosureBundleTask extends TaskFactory {
 
         // Consider treating this always as true, since the build doesnt get more costly to be incremental
         boolean incrementalEnabled = config.isIncrementalEnabled();
+        boolean sourcemapsEnabled = config.getSourcemapsEnabled() && config.getEnableIncrementalSourcemaps();
+        Path sourceMapsFolder = sourcemapsEnabled ? prepareSourcesFolder(config) : null;
 
         Gson gson = new GsonBuilder().setPrettyPrinting().serializeNulls().create();
 
@@ -212,6 +214,10 @@ public class ClosureBundleTask extends TaskFactory {
                     ""
             )).useEval(true);
 
+            if (sourcemapsEnabled) {
+                FileUtils.copyDirectory(context.outputPath().resolve("sources").toFile(), sourceMapsFolder.toFile());
+            }
+
             try (OutputStream outputStream = Files.newOutputStream(Paths.get(outputFile));
                  BufferedWriter bundleOut = new BufferedWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8))) {
                 for (DependencyInfoAndSource info : sorter.getSortedList()) {
@@ -251,6 +257,16 @@ public class ClosureBundleTask extends TaskFactory {
             Files.move(outputFilePath, outputFilePath.resolveSibling(fileNameKey + "-" + murmur.getValueHexString() + BUNDLE_JS_EXTENSION));
             //TODO when back to keyboard rename sourcemap? is that a thing we need to do?
         };
+    }
+
+    private Path prepareSourcesFolder(Config config) {
+        try {
+            Path initialScriptFile = config.getWebappDirectory().resolve(config.getInitialScriptFilename());
+            Path destSourcesDir = Files.createDirectories(initialScriptFile.getParent()).resolve(Closure.SOURCES_DIRECTORY_NAME);
+            return Files.createDirectories(destSourcesDir);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public interface SourceSupplier {
@@ -328,9 +344,9 @@ public class ClosureBundleTask extends TaskFactory {
 
     public static class DependencyInfoFormat implements DependencyInfo {
         private String name;
-//        private String pathRelativeToClosureBase = name;
+        //        private String pathRelativeToClosureBase = name;
         private List<String> provides;
-//        private List<RequireFormat> requires; //skipping requires as it isnt used by the dep sorter
+        //        private List<RequireFormat> requires; //skipping requires as it isnt used by the dep sorter
         private List<String> requiredSymbols;
         private List<String> typeRequires;
         private Map<String, String> loadFlags;

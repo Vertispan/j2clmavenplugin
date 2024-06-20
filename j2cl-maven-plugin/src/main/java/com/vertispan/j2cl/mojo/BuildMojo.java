@@ -186,6 +186,12 @@ public class BuildMojo extends AbstractBuildMojo {
     @Parameter(defaultValue = "false")
     protected boolean enableSourcemaps;
 
+    /**
+     * True to copy only changed source files to the output directory. This is a performance optimization.
+     */
+    @Parameter(defaultValue = "false")
+    protected boolean enableIncrementalSourcemaps;
+
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         // pre-create the directory so it is easier to find up front, even if it starts off empty

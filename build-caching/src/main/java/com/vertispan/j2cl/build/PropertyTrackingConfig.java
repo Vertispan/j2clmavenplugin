@@ -177,6 +177,11 @@ public class PropertyTrackingConfig implements Config {
     }
 
     @Override
+    public boolean getEnableIncrementalSourcemaps() {
+        return Boolean.parseBoolean(getString("enableIncrementalSourcemaps"));
+    }
+
+    @Override
     public String getInitialScriptFilename() {
         return getString("initialScriptFilename");
     }
