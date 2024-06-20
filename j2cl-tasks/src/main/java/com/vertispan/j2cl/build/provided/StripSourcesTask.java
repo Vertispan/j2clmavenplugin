@@ -81,6 +81,15 @@ public class StripSourcesTask extends TaskFactory {
                     filesToProcess.add(makeFileInfo(path));
                 }
             }
+
+            if(inputSources.getProject().hasSourcesMapped()) {
+                for (Path p : inputSources.getParentPaths()) {
+                    if(Files.exists(p.resolve(annotationProcessorPath))) {
+                        return;
+                    }
+                }
+            }
+
             GwtIncompatiblePreprocessor preprocessor = new GwtIncompatiblePreprocessor(context.outputPath().toFile(), context);
             preprocessor.preprocess(filesToProcess);
         };

@@ -49,6 +49,8 @@ public abstract class TaskFactory {
         };
     }
 
+    protected final static Path annotationProcessorPath = Path.of("META-INF", "services", "javax.annotation.processing.Processor");
+
     public final List<com.vertispan.j2cl.build.Input> inputs = new ArrayList<>();
 
     protected Input input(Dependency dependency, String outputType) {
