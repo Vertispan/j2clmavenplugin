@@ -186,6 +186,12 @@ public class BuildMojo extends AbstractBuildMojo {
     @Parameter(defaultValue = "false")
     protected boolean enableSourcemaps;
 
+    /**
+     * Arguments to pass to annotation processors, in the form of key-value pairs.
+     */
+    @Parameter
+    protected Map<String, String> annotationProcessorsArgs = new TreeMap<>();
+
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         // pre-create the directory so it is easier to find up front, even if it starts off empty

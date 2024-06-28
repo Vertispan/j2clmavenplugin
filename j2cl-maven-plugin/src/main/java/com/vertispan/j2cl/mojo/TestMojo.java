@@ -267,6 +267,12 @@ public class TestMojo extends AbstractBuildMojo {
     @Parameter
     protected TranslationsFileConfig translationsFile;
 
+    /**
+     * Arguments to pass to annotation processors, in the form of key-value pairs.
+     */
+    @Parameter
+    protected Map<String, String> annotationProcessorsArgs = new TreeMap<>();
+
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         if (skip) {

@@ -28,6 +28,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -49,7 +50,7 @@ public class Javac {
     StandardJavaFileManager fileManager;
     private DiagnosticCollector<JavaFileObject> listener;
 
-    public Javac(BuildLog log, File generatedClassesPath, List<File> sourcePaths, List<File> classpath, File classesDirFile, File bootstrap, Set<String> processors) throws IOException {
+    public Javac(BuildLog log, File generatedClassesPath, List<File> sourcePaths, List<File> classpath, File classesDirFile, File bootstrap, Set<String> processors, Map<String, String> annotationProcessorsArgs) throws IOException {
         this.log = log;
 //        for (File file : classpath) {
 //            System.out.println(file.getAbsolutePath() + " " + file.exists() + " " + file.isDirectory());
@@ -65,6 +66,10 @@ public class Javac {
         if (!processors.isEmpty()) {
             javacOptions.add("-processor");
             javacOptions.add(String.join(",", processors));
+        }
+
+        for (Map.Entry<String, String> entry : annotationProcessorsArgs.entrySet()) {
+            javacOptions.add("-A" + entry.getKey() + "=" + entry.getValue());
         }
 
         compiler = ToolProvider.getSystemJavaCompiler();
