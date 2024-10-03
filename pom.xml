@@ -90,7 +90,7 @@
     <j2cl.version>v20230718-1</j2cl.version>
     <closure.compiler.unshaded.version>v20230411-1</closure.compiler.unshaded.version>
     <commons.codec.version>1.11</commons.codec.version>
-    <commons.io.version>2.7</commons.io.version>
+    <commons.io.version>2.14.0</commons.io.version>
 
     <!-- Test -->
     <junit.version>4.13.1</junit.version>
